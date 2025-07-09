@@ -13,7 +13,7 @@ import json
 from typing import Optional, Dict, Any
 from botocore.config import Config
 from botocore.exceptions import ClientError, NoCredentialsError
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 import logging
 
 logger = logging.getLogger(__name__)
@@ -87,7 +87,7 @@ class AWSClientManager:
             cached_creds = _assumed_role_cache[cache_key]
             # Check if credentials are still valid (with buffer)
             expiry = cached_creds.get('Expiration')
-            if expiry and datetime.now() < expiry - timedelta(minutes=_cache_expiry_buffer):
+            if expiry and datetime.now(timezone.utc) < expiry - timedelta(minutes=_cache_expiry_buffer):
                 logger.debug("Using cached assumed role credentials")
                 return cached_creds
         
