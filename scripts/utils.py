@@ -4,9 +4,15 @@ from typing import Dict, List
 
 
 class TransformationUtils:
-    def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb')
-        self.s3 = boto3.client('s3')
+    def __init__(self, region_name: str = None):
+        # Auto-detect region if not provided
+        if region_name is None:
+            session = boto3.Session()
+            region_name = session.region_name or 'us-east-2'  # Default fallback
+        
+        self.region_name = region_name
+        self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
+        self.s3 = boto3.client('s3', region_name=region_name)
         self.table = self.dynamodb.Table('TransformationSystem')
 
     def list_journeys(self) -> List[Dict]:
@@ -52,6 +58,35 @@ class TransformationUtils:
         except Exception as e:
             print(f'Error getting journey status: {str(e)}')
             return None
+
+    def get_journey_stages(self, journey_id: str) -> List[Dict]:
+        """Get all stages and their steps for a journey"""
+        try:
+            response = self.table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :gsi1pk',
+                ExpressionAttributeValues={':gsi1pk': f'JOURNEY#{journey_id}#STAGES'},
+                ScanIndexForward=True,  # Order by GSI1SK (stage order)
+            )
+
+            stages = []
+            for item in response['Items']:
+                stage_data = item['Data']
+                stages.append({
+                    'stageId': stage_data['stageId'],
+                    'name': stage_data['name'],
+                    'description': stage_data['description'],
+                    'order': stage_data['order'],
+                    'canSkip': stage_data.get('canSkip', False),
+                    'estimatedDuration': stage_data.get('estimatedDuration', 'N/A'),
+                    'steps': stage_data.get('steps', [])
+                })
+
+            return stages
+
+        except Exception as e:
+            print(f'Error getting journey stages: {str(e)}')
+            return []
 
     def get_stage_jobs(self, journey_id: str, stage_id: str, limit: int = 10) -> List[Dict]:
         """Get job executions for a stage"""

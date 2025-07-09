@@ -61,6 +61,40 @@ def show_journey_status(journey_id: str):
     print(f'  Failed: {aggregates.get("failedJobs", 0)}')
 
 
+def show_journey_stages(journey_id: str):
+    """Show all stages and steps for a journey"""
+    utils = TransformationUtils()
+    stages = utils.get_journey_stages(journey_id)
+
+    if not stages:
+        print(f'No stages found for journey {journey_id}.')
+        return
+
+    print(f'\n🎭 Journey Stages and Steps: {journey_id}')
+    print('=' * 80)
+    
+    for stage in stages:
+        # Stage header
+        skip_indicator = " (⏭️ skippable)" if stage.get('canSkip', False) else ""
+        print(f'\n📋 Stage {int(stage["order"]):02d}: {stage["name"]}{skip_indicator}')
+        print(f'   ID: {stage["stageId"]}')
+        print(f'   Description: {stage["description"]}')
+        print(f'   Estimated Duration: {stage.get("estimatedDuration", "N/A")}')
+        
+        # Steps
+        steps = stage.get('steps', [])
+        if steps:
+            print(f'   Steps ({len(steps)}):')
+            for step in steps:
+                print(f'     {int(step["order"]):02d}. {step["name"]} ({step.get("estimatedDuration", "N/A")})')
+                print(f'         ID: {step["id"]}')
+                print(f'         Description: {step["description"]}')
+        else:
+            print('   No steps defined.')
+        
+        print('-' * 60)
+
+
 def list_stage_jobs(journey_id: str, stage_id: str):
     """List job executions for a stage"""
     utils = TransformationUtils()
@@ -137,6 +171,10 @@ def main():
     status_parser = subparsers.add_parser('status', help='Show journey status')
     status_parser.add_argument('journey_id', help='Journey ID')
 
+    # Show journey stages and steps
+    stages_parser = subparsers.add_parser('stages', help='Show all stages and steps for a journey')
+    stages_parser.add_argument('journey_id', help='Journey ID')
+
     # List stage jobs
     jobs_parser = subparsers.add_parser('jobs', help='List jobs for a stage')
     jobs_parser.add_argument('journey_id', help='Journey ID')
@@ -164,6 +202,8 @@ def main():
         list_journeys()
     elif args.command == 'status':
         show_journey_status(args.journey_id)
+    elif args.command == 'stages':
+        show_journey_stages(args.journey_id)
     elif args.command == 'jobs':
         list_stage_jobs(args.journey_id, args.stage_id)
     elif args.command == 'run':
