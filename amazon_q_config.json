@@ -1,0 +1,31 @@
+{
+  "mcpServers": {
+    "aurora_dsql": {
+      "command": "/opt/mycode/tmf-oda-transformer/venv/bin/awslabs.aurora-dsql-mcp-server",
+      "args": [
+        "--cluster_endpoint",
+        "5eabufu3id6no7xw5jtyv24uxi.dsql.us-east-2.on.aws",
+        "--region",
+        "us-east-2",
+        "--database_user",
+        "admin"
+      ],
+      "env": {
+        "AWS_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "DEBUG"
+      }
+    },
+    "awslabs.dynamodb-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.dynamodb-mcp-server@latest"],
+      "env": {
+        "DDB-MCP-READONLY": "true",
+        "AWS_PROFILE": "default",
+        "AWS_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
+  }
+}
