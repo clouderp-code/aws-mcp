@@ -50,7 +50,7 @@ pip install awslabs.tmf-oda-transformer-mcp-server
 
 ## Configuration
 
-### Basic Configuration
+### Basic Configuration (EC2 Instance with Instance Role)
 ```json
 {
   "mcpServers": {
@@ -59,6 +59,24 @@ pip install awslabs.tmf-oda-transformer-mcp-server
       "args": ["awslabs.tmf-oda-transformer-mcp-server@latest"],
       "env": {
         "FASTMCP_LOG_LEVEL": "INFO"
+      }
+    }
+  }
+}
+```
+
+### Configuration for External Machines (Role ARN)
+```json
+{
+  "mcpServers": {
+    "awslabs.tmf-oda-transformer-mcp-server": {
+      "command": "uvx", 
+      "args": ["awslabs.tmf-oda-transformer-mcp-server@latest"],
+      "env": {
+        "AWS_ROLE_ARN": "arn:aws:iam::123456789012:role/TMF-ODA-TransformerRole",
+        "AWS_REGION": "us-east-1",
+        "FASTMCP_LOG_LEVEL": "INFO",
+        "TMF_ODA_REFERENCE_PATH": "/path/to/tmf-oda-references"
       }
     }
   }
@@ -85,10 +103,84 @@ pip install awslabs.tmf-oda-transformer-mcp-server
 
 ## Environment Variables
 
+- `AWS_ROLE_ARN`: AWS role ARN to assume (for external machines) (optional)
 - `AWS_PROFILE`: AWS profile for accessing AWS databases (optional)
 - `AWS_REGION`: AWS region for database connections (optional)  
 - `TMF_ODA_REFERENCE_PATH`: Path to TMF ODA reference schemas (optional)
 - `FASTMCP_LOG_LEVEL`: Logging level (DEBUG, INFO, WARNING, ERROR)
+
+## AWS Authentication
+
+The TMF ODA Transformer MCP Server supports multiple AWS authentication methods:
+
+### 1. EC2 Instance Role (Recommended for EC2)
+When running on an EC2 instance, the server automatically uses the instance role. No additional configuration is required.
+
+### 2. Role ARN Assumption (Recommended for External Machines)
+When running from outside AWS, specify the role ARN to assume:
+
+```bash
+export AWS_ROLE_ARN="arn:aws:iam::123456789012:role/TMF-ODA-TransformerRole"
+```
+
+**Prerequisites:**
+- Your local AWS credentials must have permission to assume the specified role
+- The role must have the necessary permissions for DynamoDB and S3 operations
+
+### 3. AWS Profile (Local Development)
+Use AWS profiles for local development:
+
+```bash
+export AWS_PROFILE="your-profile-name"
+```
+
+### 4. Environment Variables
+Set AWS credentials directly:
+
+```bash
+export AWS_ACCESS_KEY_ID="your-access-key"
+export AWS_SECRET_ACCESS_KEY="your-secret-key"
+export AWS_SESSION_TOKEN="your-session-token"  # Optional
+```
+
+## Required AWS Permissions
+
+The role or credentials used must have the following permissions:
+
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "dynamodb:PutItem",
+        "dynamodb:GetItem",
+        "dynamodb:Query",
+        "dynamodb:UpdateItem",
+        "dynamodb:DeleteItem",
+        "dynamodb:Scan"
+      ],
+      "Resource": "arn:aws:dynamodb:*:*:table/TransformationSystem*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject",
+        "s3:PutObject",
+        "s3:DeleteObject",
+        "s3:ListBucket"
+      ],
+      "Resource": [
+        "arn:aws:s3:::transformation-journey-logs",
+        "arn:aws:s3:::transformation-journey-logs/*",
+        "arn:aws:s3:::transformation-journey-reports",
+        "arn:aws:s3:::transformation-journey-reports/*"
+      ]
+    }
+  ]
+}
+```
 
 ## Usage Examples
 

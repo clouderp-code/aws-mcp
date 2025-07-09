@@ -6,7 +6,7 @@ import time
 import uuid
 from datetime import datetime
 from decimal import Decimal
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 # Import the stage registry
 import sys
@@ -17,18 +17,27 @@ if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
 from stages import get_stage_class, list_available_stages
+from aws_client_utils import AWSClientManager
 
 
 class TransformationJobExecutor:
-    def __init__(self, region_name: str = None):
-        # Auto-detect region if not provided
-        if region_name is None:
-            session = boto3.Session()
-            region_name = session.region_name or 'us-east-2'
+    def __init__(self, region_name: str = None, role_arn: Optional[str] = None):
+        """
+        Initialize the TransformationJobExecutor.
         
+        Args:
+            region_name: AWS region name (optional)
+            role_arn: AWS role ARN to assume (optional)
+        """
+        self.role_arn = role_arn or os.environ.get('AWS_ROLE_ARN')
         self.region_name = region_name
-        self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
-        self.s3 = boto3.client('s3', region_name=region_name)
+        
+        # Create AWS client manager
+        self.client_manager = AWSClientManager(role_arn=self.role_arn, region_name=self.region_name)
+        
+        # Create AWS clients using the client manager
+        self.dynamodb = self.client_manager.create_resource('dynamodb')
+        self.s3 = self.client_manager.create_client('s3')
         self.table = self.dynamodb.Table('TransformationSystem')
         self.logs_bucket = 'transformation-journey-logs'
         self.reports_bucket = 'transformation-journey-reports'
@@ -36,6 +45,12 @@ class TransformationJobExecutor:
         # Setup logging
         logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
         self.logger = logging.getLogger(__name__)
+        
+        # Log the configuration
+        if self.role_arn:
+            self.logger.info(f"Job executor configured with role ARN: {self.role_arn}")
+        else:
+            self.logger.info("Job executor configured with default credential chain")
 
     def start_job_execution(
         self,
@@ -141,8 +156,8 @@ class TransformationJobExecutor:
             if not stage_class:
                 raise Exception(f'Stage class not found for stage: {stage_id}')
 
-            # Create stage instance
-            stage = stage_class(journey_id, stage_id, job_id, self.region_name)
+            # Create stage instance with role ARN support
+            stage = stage_class(journey_id, stage_id, job_id, self.region_name, self.role_arn)
             steps = stage.steps
 
             self.logger.info(f'🚀 Executing job {job_id} with {len(steps)} steps using {stage_class.__name__}')
@@ -206,7 +221,7 @@ class TransformationJobExecutor:
             return None
         
         # Create a temporary instance to get stage info
-        temp_stage = stage_class('temp', stage_id, 'temp', self.region_name)
+        temp_stage = stage_class('temp', stage_id, 'temp', self.region_name, self.role_arn)
         return {
             'stage_id': stage_id,
             'stage_name': temp_stage.stage_name,

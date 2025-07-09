@@ -17,7 +17,22 @@ def create_transformation_table():
 
     try:
         print_with_flush('🔗 Creating DynamoDB client...')
-        dynamodb = boto3.client('dynamodb')
+        
+        # Import AWS client utilities
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        from aws_client_utils import create_aws_client
+        
+        role_arn = os.environ.get('AWS_ROLE_ARN')
+        if role_arn:
+            print_with_flush(f'🔑 Using role ARN: {role_arn}')
+            dynamodb = create_aws_client('dynamodb', role_arn=role_arn)
+        else:
+            print_with_flush('🔑 Using default credential chain')
+            dynamodb = boto3.client('dynamodb')
+        
         print_with_flush('✅ DynamoDB client created successfully')
     except Exception as e:
         print_with_flush(f'❌ Failed to create DynamoDB client: {str(e)}')
@@ -81,7 +96,22 @@ def create_s3_buckets():
 
     try:
         print_with_flush('🔗 Creating S3 client...')
-        s3 = boto3.client('s3')
+        
+        # Import AWS client utilities  
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        from aws_client_utils import create_aws_client
+        
+        role_arn = os.environ.get('AWS_ROLE_ARN')
+        if role_arn:
+            print_with_flush(f'🔑 Using role ARN: {role_arn}')
+            s3 = create_aws_client('s3', role_arn=role_arn)
+        else:
+            print_with_flush('🔑 Using default credential chain')
+            s3 = boto3.client('s3')
+        
         print_with_flush('✅ S3 client created successfully')
     except Exception as e:
         print_with_flush(f'❌ Failed to create S3 client: {str(e)}')
@@ -274,8 +304,22 @@ def main():
     # Test AWS credentials and region
     try:
         print_with_flush('🔐 Testing AWS credentials...')
-        sts = boto3.client('sts')
-        identity = sts.get_caller_identity()
+        
+        # Import AWS client utilities  
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        from aws_client_utils import test_aws_credentials
+        
+        role_arn = os.environ.get('AWS_ROLE_ARN')
+        if role_arn:
+            print_with_flush(f'🔑 Testing credentials with role ARN: {role_arn}')
+            identity = test_aws_credentials(role_arn=role_arn)
+        else:
+            print_with_flush('🔑 Testing credentials with default credential chain')
+            identity = test_aws_credentials()
+        
         print_with_flush(f'✅ AWS Identity: {identity["Arn"]}')
         print_with_flush(f'✅ AWS Account: {identity["Account"]}')
 

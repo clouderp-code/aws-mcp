@@ -519,10 +519,10 @@ async def raw_analysis_tool(
             importlib.reload(sys.modules['job_executor'])
             # Re-import after reload
             from job_executor import TransformationJobExecutor as FreshExecutor
-            executor = FreshExecutor()
+            executor = FreshExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
         else:
             # First time import
-            executor = TransformationJobExecutor()
+            executor = TransformationJobExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
         
         logger.info(f'🚀 Starting job for journey: {journey_id}, stage: {stage_id}')
         
@@ -674,10 +674,10 @@ async def stripped_schema_tool(
             importlib.reload(sys.modules['job_executor'])
             # Re-import after reload
             from job_executor import TransformationJobExecutor as FreshExecutor
-            executor = FreshExecutor()
+            executor = FreshExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
         else:
             # First time import
-            executor = TransformationJobExecutor()
+            executor = TransformationJobExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
         
         logger.info(f'🚀 Starting job for journey: {journey_id}, stage: {stage_id}')
         
@@ -825,8 +825,17 @@ async def get_job_logs_tool(
     try:
         import boto3
         
-        # Create S3 client
-        s3_client = boto3.client('s3')
+        # Create S3 client with role ARN support
+        role_arn = os.environ.get('AWS_ROLE_ARN')
+        if role_arn:
+            # Import AWS client utilities
+            scripts_path = os.path.join(os.path.dirname(__file__), '../../../../scripts')
+            if scripts_path not in sys.path:
+                sys.path.append(scripts_path)
+            from aws_client_utils import create_aws_client
+            s3_client = create_aws_client('s3', role_arn=role_arn)
+        else:
+            s3_client = boto3.client('s3')
         
         # Construct the S3 key for the logs
         logs_key = f'journeys/{journey_id}/stages/{stage_name}/executions/{job_id}/logs/{step_name}.json'

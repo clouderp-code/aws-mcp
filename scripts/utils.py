@@ -1,19 +1,33 @@
 # utils.py
 import boto3
-from typing import Dict, List
+import os
+from typing import Dict, List, Optional
+
+# Import AWS client utilities
+from aws_client_utils import AWSClientManager
 
 
 class TransformationUtils:
-    def __init__(self, region_name: str = None):
-        # Auto-detect region if not provided
-        if region_name is None:
-            session = boto3.Session()
-            region_name = session.region_name or 'us-east-2'  # Default fallback
+    def __init__(self, region_name: str = None, role_arn: Optional[str] = None):
+        """
+        Initialize TransformationUtils with optional role ARN support.
         
-        self.region_name = region_name
-        self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
-        self.s3 = boto3.client('s3', region_name=region_name)
+        Args:
+            region_name: AWS region name (optional)
+            role_arn: AWS role ARN to assume (optional)
+        """
+        self.role_arn = role_arn or os.environ.get('AWS_ROLE_ARN')
+        
+        # Create AWS client manager
+        self.client_manager = AWSClientManager(role_arn=self.role_arn, region_name=region_name)
+        
+        # Create AWS clients using the client manager
+        self.dynamodb = self.client_manager.create_resource('dynamodb')
+        self.s3 = self.client_manager.create_client('s3')
         self.table = self.dynamodb.Table('TransformationSystem')
+        
+        # Get region from client manager
+        self.region_name = self.client_manager.region_name
 
     def list_journeys(self) -> List[Dict]:
         """List all transformation journeys"""

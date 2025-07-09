@@ -7,10 +7,21 @@ It provides the common interface and utilities for stage execution.
 
 import json
 import boto3
+import os
 from abc import ABC, abstractmethod
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 from decimal import Decimal
+
+# Import AWS client utilities
+import sys
+import os
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+if parent_dir not in sys.path:
+    sys.path.insert(0, parent_dir)
+
+from aws_client_utils import AWSClientManager
 
 
 class BaseStage(ABC):
@@ -20,7 +31,7 @@ class BaseStage(ABC):
     Each stage must implement the execute_step method and define its steps.
     """
     
-    def __init__(self, journey_id: str, stage_id: str, job_id: str, region_name: str = None):
+    def __init__(self, journey_id: str, stage_id: str, job_id: str, region_name: str = None, role_arn: Optional[str] = None):
         """
         Initialize the stage.
         
@@ -29,20 +40,23 @@ class BaseStage(ABC):
             stage_id: The stage ID (e.g., 'raw_analysis')
             job_id: The job execution ID
             region_name: AWS region name (optional)
+            role_arn: AWS role ARN to assume (optional)
         """
         self.journey_id = journey_id
         self.stage_id = stage_id
         self.job_id = job_id
+        self.role_arn = role_arn or os.environ.get('AWS_ROLE_ARN')
         
-        # Auto-detect region if not provided
-        if region_name is None:
-            session = boto3.Session()
-            region_name = session.region_name or 'us-east-2'
+        # Create AWS client manager
+        self.client_manager = AWSClientManager(role_arn=self.role_arn, region_name=region_name)
         
-        self.region_name = region_name
-        self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
-        self.s3 = boto3.client('s3', region_name=region_name)
+        # Create AWS clients using the client manager
+        self.dynamodb = self.client_manager.create_resource('dynamodb')
+        self.s3 = self.client_manager.create_client('s3')
         self.table = self.dynamodb.Table('TransformationSystem')
+        
+        # Get region from client manager
+        self.region_name = self.client_manager.region_name
         
         # Stage execution state
         self.logs = []
