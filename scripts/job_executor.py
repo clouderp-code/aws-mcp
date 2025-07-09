@@ -1,5 +1,4 @@
-# job_executor.py (continued)
-# job_executor.py
+# job_executor.py - Refactored for Stage-based Architecture
 import boto3
 import json
 import logging
@@ -9,11 +8,27 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Dict, List
 
+# Import the stage registry
+import sys
+import os
+# Add the scripts directory to the path for imports
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
+
+from stages import get_stage_class, list_available_stages
+
 
 class TransformationJobExecutor:
-    def __init__(self):
-        self.dynamodb = boto3.resource('dynamodb')
-        self.s3 = boto3.client('s3')
+    def __init__(self, region_name: str = None):
+        # Auto-detect region if not provided
+        if region_name is None:
+            session = boto3.Session()
+            region_name = session.region_name or 'us-east-2'
+        
+        self.region_name = region_name
+        self.dynamodb = boto3.resource('dynamodb', region_name=region_name)
+        self.s3 = boto3.client('s3', region_name=region_name)
         self.table = self.dynamodb.Table('TransformationSystem')
         self.logs_bucket = 'transformation-journey-logs'
         self.reports_bucket = 'transformation-journey-reports'
@@ -41,6 +56,10 @@ class TransformationJobExecutor:
             if not stage_def:
                 raise Exception(f'Stage {stage_id} not found')
 
+            # Validate stage is available
+            if stage_id not in list_available_stages():
+                raise Exception(f'Stage {stage_id} not implemented')
+
             # Generate job ID and execution number
             timestamp = datetime.utcnow().strftime('%Y%m%d%H%M%S')
             execution_number = self.get_next_execution_number(journey_id, stage_id)
@@ -66,7 +85,7 @@ class TransformationJobExecutor:
                     'startTime': datetime.utcnow().isoformat() + 'Z',
                     'endTime': None,
                     'duration': None,
-                    'progress': 0,
+                    'progress': Decimal('0'),
                     'triggeredBy': triggered_by,
                     'triggerReason': reason,
                     'retryAttempt': 0,
@@ -75,19 +94,19 @@ class TransformationJobExecutor:
                         'logsPrefix': f'journeys/{journey_id}/stages/{stage_id}/executions/{job_id}/',
                         'reportsBucket': self.reports_bucket,
                         'reportsPrefix': f'journeys/{journey_id}/stages/{stage_id}/executions/{job_id}/',
-                        'region': 'us-east-1',
+                        'region': self.region_name,
                     },
                     'currentStepIndex': 0,
                     'currentStepId': stage_def['steps'][0]['id'],
                     'stepResults': {
-                        step['id']: {'status': 'pending', 'progress': 0}
+                        step['id']: {'status': 'pending', 'progress': Decimal('0')}
                         for step in stage_def['steps']
                     },
                     'jobMetrics': {
                         'totalLogs': 0,
                         'totalErrors': 0,
                         'totalWarnings': 0,
-                        'overallProgress': 0,
+                        'overallProgress': Decimal('0'),
                         'itemsProcessed': 0,
                         'itemsTotal': 0,
                     },
@@ -108,37 +127,64 @@ class TransformationJobExecutor:
             raise
 
     def execute_job(self, journey_id: str, job_id: str):
-        """Execute all steps in a job"""
+        """Execute all steps in a job using stage-based architecture"""
         try:
             # Get job data
             job_data = self.get_job_execution(journey_id, job_id)
             if not job_data:
                 raise Exception(f'Job {job_id} not found')
 
-            stage_def = self.get_stage_definition(journey_id, job_data['stageId'])
-            steps = stage_def['steps']
+            stage_id = job_data['stageId']
+            
+            # Get stage class
+            stage_class = get_stage_class(stage_id)
+            if not stage_class:
+                raise Exception(f'Stage class not found for stage: {stage_id}')
 
-            self.logger.info(f'🚀 Executing job {job_id} with {len(steps)} steps')
+            # Create stage instance
+            stage = stage_class(journey_id, stage_id, job_id, self.region_name)
+            steps = stage.steps
 
-            # Execute each step
+            self.logger.info(f'🚀 Executing job {job_id} with {len(steps)} steps using {stage_class.__name__}')
+            
+            # DEBUG: Log what steps we're about to execute
+            self.logger.info('📋 Steps to execute:')
+            for i, step in enumerate(steps):
+                self.logger.info(f'  {i+1}. {step["id"]} - {step["name"]}')
+            self.logger.info(f'🔢 Total steps in execution list: {len(steps)}')
+
+            # Execute each step using the stage implementation
             for step_index, step in enumerate(steps):
                 step_id = step['id']
-                self.logger.info(f'📝 Starting step {step_index + 1}/{len(steps)}: {step["name"]}')
+                self.logger.info(f'📝 Starting step {step_index + 1}/{len(steps)}: {step["name"]} (ID: {step_id})')
 
-                # Update step to in_progress
-                self.update_step_status(journey_id, job_id, step_id, 'in_progress', step_index)
+                try:
+                    # Update step to in_progress
+                    self.logger.info(f'🔄 Updating step status to in_progress for {step_id}')
+                    self.update_step_status(journey_id, job_id, step_id, 'in_progress', step_index)
 
-                # Execute step
-                step_result = self.execute_step(job_data, step, step_index)
+                    # Execute step using the stage implementation
+                    self.logger.info(f'🚀 Executing step: {step_id}')
+                    step_result = stage.execute_step(step_id, step)
+                    self.logger.info(f'✅ Step execution completed for {step_id}, result status: {step_result.get("status", "unknown")}')
 
-                # Update step with results
-                self.update_step_results(journey_id, job_id, step_id, step_result)
+                    # Update step with results
+                    self.logger.info(f'💾 Updating step results for {step_id}')
+                    self.update_step_results(journey_id, job_id, step_id, step_result)
 
-                # Update job progress
-                progress = ((step_index + 1) / len(steps)) * 100
-                self.update_job_progress(journey_id, job_id, progress, step_index + 1)
+                    # Update job progress
+                    progress = ((step_index + 1) / len(steps)) * 100
+                    self.logger.info(f'📈 Updating job progress to {progress}% (step {step_index + 1}/{len(steps)})')
+                    self.update_job_progress(journey_id, job_id, progress, step_index + 1)
 
-                self.logger.info(f'✅ Completed step: {step["name"]}')
+                    self.logger.info(f'✅ Completed step: {step["name"]} (ID: {step_id})')
+                    
+                except Exception as step_error:
+                    self.logger.error(f'❌ Error in step {step_id}: {str(step_error)}')
+                    self.logger.error(f'Error type: {type(step_error).__name__}')
+                    import traceback
+                    traceback.print_exc()
+                    raise step_error
 
             # Complete the job
             self.complete_job(journey_id, job_id)
@@ -149,497 +195,43 @@ class TransformationJobExecutor:
             self.fail_job(journey_id, job_id, str(e))
             raise
 
-    def execute_step(self, job_data: Dict, step: Dict, step_index: int) -> Dict:
-        """Execute a single step and return results"""
-        step_id = step['id']
-        job_id = job_data['jobId']
-        journey_id = job_data['journeyId']
-        stage_id = job_data['stageId']
+    def get_available_stages(self) -> List[str]:
+        """Get list of available stage implementations"""
+        return list_available_stages()
 
-        start_time = datetime.utcnow()
-        logs = []
-
-        try:
-            # Log step start
-            logs.append(
-                self.create_log_entry(
-                    'INFO', f'Starting step: {step["name"]}', job_id, journey_id, stage_id, step_id
-                )
-            )
-
-            # Simulate step execution based on step type
-            if step_id == 'schema_parsing':
-                result = self.execute_schema_parsing(logs, job_id, journey_id, stage_id, step_id)
-            elif step_id == 'relationship_discovery':
-                result = self.execute_relationship_discovery(
-                    logs, job_id, journey_id, stage_id, step_id
-                )
-            elif step_id == 'data_type_analysis':
-                result = self.execute_data_type_analysis(
-                    logs, job_id, journey_id, stage_id, step_id
-                )
-            elif step_id == 'tmf_relevance_filtering':
-                result = self.execute_tmf_filtering(logs, job_id, journey_id, stage_id, step_id)
-            elif step_id == 'simplified_schema_creation':
-                result = self.execute_schema_creation(logs, job_id, journey_id, stage_id, step_id)
-            else:
-                result = self.execute_generic_step(
-                    step, logs, job_id, journey_id, stage_id, step_id
-                )
-
-            end_time = datetime.utcnow()
-            duration = str(end_time - start_time)
-
-            # Log step completion
-            logs.append(
-                self.create_log_entry(
-                    'SUCCESS',
-                    f'Step completed: {step["name"]}',
-                    job_id,
-                    journey_id,
-                    stage_id,
-                    step_id,
-                    metadata=result.get('metrics', {}),
-                )
-            )
-
-            # Store logs in S3
-            self.store_step_logs(job_data, step_id, logs)
-
-            # Generate and store step report
-            report = self.generate_step_report(step, result, logs, start_time, end_time)
-            self.store_step_report(job_data, step_id, report)
-
-            return {
-                'status': 'completed',
-                'startTime': start_time.isoformat() + 'Z',
-                'endTime': end_time.isoformat() + 'Z',
-                'duration': duration,
-                'progress': 100,
-                'logSummary': {
-                    'totalLogs': len(logs),
-                    'infoLogs': len([l for l in logs if l['level'] == 'INFO']),
-                    'warnLogs': len([l for l in logs if l['level'] == 'WARN']),
-                    'errorLogs': len([l for l in logs if l['level'] == 'ERROR']),
-                    'successLogs': len([l for l in logs if l['level'] == 'SUCCESS']),
-                },
-                'metrics': result.get('metrics', {}),
-                'summary': result.get('summary', {}),
-                's3Pointers': {
-                    'logsKey': f'journeys/{journey_id}/stages/{stage_id}/executions/{job_id}/logs/{step_id}.json',
-                    'reportKey': f'journeys/{journey_id}/stages/{stage_id}/executions/{job_id}/reports/{step_id}.json',
-                },
-            }
-
-        except Exception as e:
-            end_time = datetime.utcnow()
-            logs.append(
-                self.create_log_entry(
-                    'ERROR', f'Step failed: {str(e)}', job_id, journey_id, stage_id, step_id
-                )
-            )
-
-            # Store error logs
-            self.store_step_logs(job_data, step_id, logs)
-
-            return {
-                'status': 'failed',
-                'startTime': start_time.isoformat() + 'Z',
-                'endTime': end_time.isoformat() + 'Z',
-                'duration': str(end_time - start_time),
-                'progress': 0,
-                'errorMessage': str(e),
-                'logSummary': {'totalLogs': len(logs), 'errorLogs': 1},
-            }
-
-    def execute_schema_parsing(
-        self, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Simulate schema parsing step execution"""
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Loading schema file: sample_schema.sql',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-                metadata={'fileName': 'sample_schema.sql', 'fileSizeMB': 25},
-            )
-        )
-
-        time.sleep(2)  # Simulate processing time
-
-        logs.append(
-            self.create_log_entry(
-                'INFO', 'Parsing SQL statements...', job_id, journey_id, stage_id, step_id
-            )
-        )
-
-        time.sleep(3)
-
-        logs.append(
-            self.create_log_entry(
-                'WARN',
-                'Found legacy data type: MONEY',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-                metadata={'legacyType': 'MONEY', 'modernEquivalent': 'DECIMAL'},
-            )
-        )
-
-        time.sleep(2)
-
+    def get_stage_info(self, stage_id: str) -> Dict:
+        """Get information about a stage implementation"""
+        stage_class = get_stage_class(stage_id)
+        if not stage_class:
+            return None
+        
+        # Create a temporary instance to get stage info
+        temp_stage = stage_class('temp', stage_id, 'temp', self.region_name)
         return {
-            'metrics': {
-                'tablesProcessed': 125,
-                'columnsProcessed': 1547,
-                'constraintsFound': 89,
-                'filesProcessed': 1,
-                'fileSizeMB': 25,
-            },
-            'summary': {
-                'success': True,
-                'primaryMessage': 'Schema parsing completed successfully',
-                'keyAchievements': [
-                    'Parsed 125 tables',
-                    'Identified 1547 columns',
-                    'Found 89 constraints',
-                ],
-            },
+            'stage_id': stage_id,
+            'stage_name': temp_stage.stage_name,
+            'stage_description': temp_stage.stage_description,
+            'steps': temp_stage.steps,
+            'class_name': stage_class.__name__
         }
 
-    def execute_relationship_discovery(
-        self, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Simulate relationship discovery step execution"""
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Analyzing foreign key constraints...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(2)
-
-        logs.append(
-            self.create_log_entry(
-                'INFO', 'Building dependency graph...', job_id, journey_id, stage_id, step_id
-            )
-        )
-        time.sleep(3)
-
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Checking for circular dependencies...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(1)
-
-        return {
-            'metrics': {
-                'relationshipsFound': 67,
-                'foreignKeysAnalyzed': 45,
-                'dependencyGraphNodes': 125,
-                'circularDependencies': 0,
-            },
-            'summary': {
-                'success': True,
-                'primaryMessage': 'Relationship discovery completed',
-                'keyAchievements': [
-                    'Discovered 67 table relationships',
-                    'Analyzed 45 foreign key constraints',
-                    'Built complete dependency graph',
-                ],
-            },
-        }
-
-    def execute_data_type_analysis(
-        self, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Simulate data type analysis step execution"""
-        logs.append(
-            self.create_log_entry(
-                'INFO', 'Analyzing column data types...', job_id, journey_id, stage_id, step_id
-            )
-        )
-        time.sleep(2)
-
-        logs.append(
-            self.create_log_entry(
-                'WARN',
-                'Found deprecated data type usage',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-                metadata={'deprecatedTypes': ['TEXT', 'MONEY']},
-            )
-        )
-        time.sleep(1)
-
-        return {
-            'metrics': {
-                'columnsAnalyzed': 1547,
-                'uniqueDataTypes': 23,
-                'legacyTypesFound': 8,
-                'constraintsAnalyzed': 89,
-            },
-            'summary': {
-                'success': True,
-                'primaryMessage': 'Data type analysis completed',
-                'keyAchievements': [
-                    'Analyzed 1547 columns',
-                    'Identified 23 unique data types',
-                    'Found 8 legacy types requiring migration',
-                ],
-            },
-        }
-
-    def execute_tmf_filtering(
-        self, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Simulate TMF relevance filtering step execution"""
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Applying TMF Customer Management filters...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(3)
-
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Evaluating table relevance scores...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(2)
-
-        return {
-            'metrics': {
-                'tablesEvaluated': 125,
-                'tmfRelevantTables': 34,
-                'customerRelatedTables': 28,
-                'supportingTables': 6,
-            },
-            'summary': {
-                'success': True,
-                'primaryMessage': 'TMF filtering completed',
-                'keyAchievements': [
-                    'Identified 34 TMF-relevant tables',
-                    '28 customer-related core tables',
-                    '6 supporting reference tables',
-                ],
-            },
-        }
-
-    def execute_schema_creation(
-        self, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Simulate simplified schema creation step execution"""
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Creating simplified schema structure...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(2)
-
-        logs.append(
-            self.create_log_entry(
-                'INFO',
-                'Optimizing for TMF compatibility...',
-                job_id,
-                journey_id,
-                stage_id,
-                step_id,
-            )
-        )
-        time.sleep(3)
-
-        return {
-            'metrics': {
-                'simplifiedTables': 34,
-                'columnsRetained': 456,
-                'relationshipsPreserved': 28,
-                'tmfCompatibilityScore': 92,
-            },
-            'summary': {
-                'success': True,
-                'primaryMessage': 'Simplified schema created',
-                'keyAchievements': [
-                    'Created 34-table simplified schema',
-                    'Retained 456 essential columns',
-                    'Achieved 92% TMF compatibility',
-                ],
-            },
-        }
-
-    def execute_generic_step(
-        self, step: Dict, logs: List, job_id: str, journey_id: str, stage_id: str, step_id: str
-    ) -> Dict:
-        """Execute a generic step"""
-        logs.append(
-            self.create_log_entry(
-                'INFO', f'Processing {step["name"]}...', job_id, journey_id, stage_id, step_id
-            )
-        )
-        time.sleep(3)
-
-        return {
-            'metrics': {'itemsProcessed': 100},
-            'summary': {
-                'success': True,
-                'primaryMessage': f'{step["name"]} completed',
-                'keyAchievements': ['Step completed successfully'],
-            },
-        }
-
-    def create_log_entry(
-        self,
-        level: str,
-        message: str,
-        job_id: str,
-        journey_id: str,
-        stage_id: str,
-        step_id: str,
-        details: str = None,
-        metadata: Dict = None,
-    ) -> Dict:
-        """Create a structured log entry"""
-        return {
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'level': level,
-            'jobId': job_id,
-            'journeyId': journey_id,
-            'stageId': stage_id,
-            'stepId': step_id,
-            'message': message,
-            'details': details,
-            'metadata': metadata or {},
-            'requestId': str(uuid.uuid4())[:8],
-        }
-
-    def store_step_logs(self, job_data: Dict, step_id: str, logs: List):
-        """Store step logs in S3"""
-        logs_key = f'journeys/{job_data["journeyId"]}/stages/{job_data["stageId"]}/executions/{job_data["jobId"]}/logs/{step_id}.json'
-
-        try:
-            self.s3.put_object(
-                Bucket=self.logs_bucket,
-                Key=logs_key,
-                Body=json.dumps(logs, indent=2),
-                ContentType='application/json',
-            )
-            self.logger.info(
-                f'📄 Stored logs for step {step_id} at s3://{self.logs_bucket}/{logs_key}'
-            )
-        except Exception as e:
-            self.logger.error(f'❌ Error storing logs: {str(e)}')
-
-    def store_step_report(self, job_data: Dict, step_id: str, report: Dict):
-        """Store step report in S3"""
-        report_key = f'journeys/{job_data["journeyId"]}/stages/{job_data["stageId"]}/executions/{job_data["jobId"]}/reports/{step_id}.json'
-
-        try:
-            self.s3.put_object(
-                Bucket=self.reports_bucket,
-                Key=report_key,
-                Body=json.dumps(report, indent=2),
-                ContentType='application/json',
-            )
-            self.logger.info(
-                f'📊 Stored report for step {step_id} at s3://{self.reports_bucket}/{report_key}'
-            )
-        except Exception as e:
-            self.logger.error(f'❌ Error storing report: {str(e)}')
-
-    def generate_step_report(
-        self, step: Dict, result: Dict, logs: List, start_time: datetime, end_time: datetime
-    ) -> Dict:
-        """Generate a comprehensive step report"""
-        return {
-            'stepId': step['id'],
-            'stepName': step['name'],
-            'description': step['description'],
-            'execution': {
-                'startTime': start_time.isoformat() + 'Z',
-                'endTime': end_time.isoformat() + 'Z',
-                'duration': str(end_time - start_time),
-                'status': result.get('status', 'completed'),
-            },
-            'metrics': result.get('metrics', {}),
-            'summary': result.get('summary', {}),
-            'logAnalysis': {
-                'totalLogs': len(logs),
-                'logLevels': {
-                    'info': len([l for l in logs if l['level'] == 'INFO']),
-                    'warn': len([l for l in logs if l['level'] == 'WARN']),
-                    'error': len([l for l in logs if l['level'] == 'ERROR']),
-                    'success': len([l for l in logs if l['level'] == 'SUCCESS']),
-                },
-                'keyEvents': [l['message'] for l in logs if l['level'] in ['SUCCESS', 'ERROR']],
-            },
-            'recommendations': self.generate_recommendations(step['id'], result),
-            'generatedAt': datetime.utcnow().isoformat() + 'Z',
-        }
-
-    def generate_recommendations(self, step_id: str, result: Dict) -> List[str]:
-        """Generate recommendations based on step results"""
-        recommendations = []
-
-        if step_id == 'schema_parsing':
-            if result.get('metrics', {}).get('legacyTypesFound', 0) > 0:
-                recommendations.append('Consider modernizing legacy data types before TMF mapping')
-        elif step_id == 'relationship_discovery':
-            if result.get('metrics', {}).get('circularDependencies', 0) > 0:
-                recommendations.append('Resolve circular dependencies before proceeding')
-
-        recommendations.append('Proceed to next step')
-        return recommendations
-
-    # Helper methods for DynamoDB operations
     def get_journey(self, journey_id: str) -> Dict:
         """Get journey metadata"""
         try:
             response = self.table.get_item(Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'})
             return response.get('Item', {}).get('Data')
         except Exception as e:
-            self.logger.error(f'Error getting journey: {str(e)}')
+            self.logger.error(f'Error getting journey {journey_id}: {str(e)}')
             return None
 
     def get_stage_definition(self, journey_id: str, stage_id: str) -> Dict:
-        """Get stage definition"""
+        """Get stage definition from DynamoDB"""
         try:
-            # Query for stage by stage_id
             response = self.table.query(
                 KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
                 ExpressionAttributeValues={
                     ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'STAGE#',
+                    ':sk_prefix': f'STAGE#',
                     ':stage_id': stage_id,
                 },
                 FilterExpression='#data.stageId = :stage_id',
@@ -649,6 +241,7 @@ class TransformationJobExecutor:
             if response['Items']:
                 return response['Items'][0]['Data']
             return None
+
         except Exception as e:
             self.logger.error(f'Error getting stage definition: {str(e)}')
             return None
@@ -668,6 +261,7 @@ class TransformationJobExecutor:
                 last_execution = response['Items'][0]['Data']['executionNumber']
                 return int(last_execution) + 1
             return 1
+
         except Exception as e:
             self.logger.error(f'Error getting next execution number: {str(e)}')
             return 1
@@ -689,6 +283,7 @@ class TransformationJobExecutor:
             if response['Items']:
                 return response['Items'][0]['Data']
             return None
+
         except Exception as e:
             self.logger.error(f'Error getting job execution: {str(e)}')
             return None
@@ -696,12 +291,15 @@ class TransformationJobExecutor:
     def update_journey_current_job(
         self, journey_id: str, stage_id: str, job_id: str, execution_number: int
     ):
-        """Update journey with current job information"""
+        """Update journey with current job info"""
         try:
             self.table.update_item(
                 Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
-                UpdateExpression='SET #data.currentJobs.#stage_id = :job_info, #data.stageSummary.#stage_id.lastJobId = :job_id, #data.stageSummary.#stage_id.totalExecutions = #data.stageSummary.#stage_id.totalExecutions + :inc, #data.stageSummary.#stage_id.lastStatus = :status, #data.aggregates.totalJobs = #data.aggregates.totalJobs + :inc, UpdatedAt = :updated_at',
-                ExpressionAttributeNames={'#data': 'Data', '#stage_id': stage_id},
+                UpdateExpression='SET #data.currentJobs.#stage_id = :job_info, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={
+                    '#data': 'Data',
+                    '#stage_id': stage_id,
+                },
                 ExpressionAttributeValues={
                     ':job_info': {
                         'jobId': job_id,
@@ -709,9 +307,6 @@ class TransformationJobExecutor:
                         'status': 'in_progress',
                         'startTime': datetime.utcnow().isoformat() + 'Z',
                     },
-                    ':job_id': job_id,
-                    ':status': 'in_progress',
-                    ':inc': 1,
                     ':updated_at': datetime.utcnow().isoformat() + 'Z',
                 },
             )
@@ -721,158 +316,150 @@ class TransformationJobExecutor:
     def update_step_status(
         self, journey_id: str, job_id: str, step_id: str, status: str, step_index: int
     ):
-        """Update step status in job execution"""
+        """Update step status in job record"""
         try:
-            # Find and update the job item
-            response = self.table.query(
-                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
-                ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'JOB#',
-                    ':job_id': job_id,
-                },
-                FilterExpression='#data.jobId = :job_id',
-                ExpressionAttributeNames={'#data': 'Data'},
-            )
+            # First, get the job to find the correct SK
+            job_data = self.get_job_execution(journey_id, job_id)
+            if not job_data:
+                raise Exception(f'Job {job_id} not found')
 
-            if response['Items']:
-                item = response['Items'][0]
-                self.table.update_item(
-                    Key={'PK': item['PK'], 'SK': item['SK']},
-                    UpdateExpression='SET #data.stepResults.#step_id.#status = :status, #data.currentStepIndex = :step_index, #data.currentStepId = :step_id, #data.stepResults.#step_id.startTime = :start_time, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={
-                        '#data': 'Data',
-                        '#step_id': step_id,
-                        '#status': 'status',
-                    },
-                    ExpressionAttributeValues={
-                        ':status': status,
-                        ':step_index': step_index,
-                        ':step_id': step_id,
-                        ':start_time': datetime.utcnow().isoformat() + 'Z',
-                        ':updated_at': datetime.utcnow().isoformat() + 'Z',
-                    },
-                )
+            # Build the SK from job data
+            stage_id = job_data['stageId']
+            execution_number = job_data['executionNumber']
+            timestamp = job_id.split('-')[-1]  # Extract timestamp from job_id
+            sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
+
+            self.table.update_item(
+                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                UpdateExpression='SET #data.stepResults.#step_id.#status = :status, #data.currentStepIndex = :step_index, #data.currentStepId = :step_id, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={
+                    '#data': 'Data',
+                    '#step_id': step_id,
+                    '#status': 'status',
+                },
+                ExpressionAttributeValues={
+                    ':status': status,
+                    ':step_index': step_index,
+                    ':step_id': step_id,
+                    ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                },
+            )
         except Exception as e:
             self.logger.error(f'Error updating step status: {str(e)}')
 
     def update_step_results(self, journey_id: str, job_id: str, step_id: str, step_result: Dict):
-        """Update step results in job execution"""
+        """Update step results in job record"""
         try:
-            response = self.table.query(
-                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
-                ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'JOB#',
-                    ':job_id': job_id,
-                },
-                FilterExpression='#data.jobId = :job_id',
-                ExpressionAttributeNames={'#data': 'Data'},
-            )
+            # Get job data to find correct SK
+            job_data = self.get_job_execution(journey_id, job_id)
+            if not job_data:
+                raise Exception(f'Job {job_id} not found')
 
-            if response['Items']:
-                item = response['Items'][0]
-                self.table.update_item(
-                    Key={'PK': item['PK'], 'SK': item['SK']},
-                    UpdateExpression='SET #data.stepResults.#step_id = :step_result, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={'#data': 'Data', '#step_id': step_id},
-                    ExpressionAttributeValues={
-                        ':step_result': step_result,
-                        ':updated_at': datetime.utcnow().isoformat() + 'Z',
-                    },
-                )
+            # Build the SK
+            stage_id = job_data['stageId']
+            execution_number = job_data['executionNumber']
+            timestamp = job_id.split('-')[-1]
+            sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
+
+            # Convert float values to Decimal for DynamoDB compatibility
+            step_result_converted = self._convert_floats_to_decimal(step_result)
+
+            self.table.update_item(
+                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                UpdateExpression='SET #data.stepResults.#step_id = :step_result, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={
+                    '#data': 'Data',
+                    '#step_id': step_id,
+                },
+                ExpressionAttributeValues={
+                    ':step_result': step_result_converted,
+                    ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                },
+            )
         except Exception as e:
             self.logger.error(f'Error updating step results: {str(e)}')
+
+    def _convert_floats_to_decimal(self, obj):
+        """Recursively convert float values to Decimal for DynamoDB compatibility"""
+        if isinstance(obj, dict):
+            return {key: self._convert_floats_to_decimal(value) for key, value in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_floats_to_decimal(item) for item in obj]
+        elif isinstance(obj, float):
+            return Decimal(str(obj))
+        else:
+            return obj
 
     def update_job_progress(
         self, journey_id: str, job_id: str, progress: float, current_step_index: int
     ):
         """Update job progress"""
         try:
-            response = self.table.query(
-                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
-                ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'JOB#',
-                    ':job_id': job_id,
-                },
-                FilterExpression='#data.jobId = :job_id',
-                ExpressionAttributeNames={'#data': 'Data'},
-            )
+            # Get job data to find correct SK
+            job_data = self.get_job_execution(journey_id, job_id)
+            if not job_data:
+                raise Exception(f'Job {job_id} not found')
 
-            if response['Items']:
-                item = response['Items'][0]
-                self.table.update_item(
-                    Key={'PK': item['PK'], 'SK': item['SK']},
-                    UpdateExpression='SET #data.progress = :progress, #data.currentStepIndex = :step_index, #data.jobMetrics.overallProgress = :progress, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={'#data': 'Data'},
-                    ExpressionAttributeValues={
-                        ':progress': Decimal(str(progress)),
-                        ':step_index': current_step_index,
-                        ':updated_at': datetime.utcnow().isoformat() + 'Z',
-                    },
-                )
+            # Build the SK
+            stage_id = job_data['stageId']
+            execution_number = job_data['executionNumber']
+            timestamp = job_id.split('-')[-1]
+            sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
+
+            self.table.update_item(
+                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                UpdateExpression='SET #data.progress = :progress, #data.jobMetrics.overallProgress = :progress, #data.currentStepIndex = :step_index, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={'#data': 'Data'},
+                ExpressionAttributeValues={
+                    ':progress': Decimal(str(progress)),
+                    ':step_index': current_step_index,
+                    ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                },
+            )
         except Exception as e:
             self.logger.error(f'Error updating job progress: {str(e)}')
 
     def complete_job(self, journey_id: str, job_id: str):
         """Mark job as completed"""
         try:
-            end_time = datetime.utcnow().isoformat() + 'Z'
+            # Get job data
+            job_data = self.get_job_execution(journey_id, job_id)
+            if not job_data:
+                raise Exception(f'Job {job_id} not found')
 
-            response = self.table.query(
-                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
-                ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'JOB#',
-                    ':job_id': job_id,
+            # Build the SK
+            stage_id = job_data['stageId']
+            execution_number = job_data['executionNumber']
+            timestamp = job_id.split('-')[-1]
+            sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
+
+            # Calculate duration
+            from datetime import timezone
+            start_time = datetime.fromisoformat(job_data['startTime'].replace('Z', '+00:00'))
+            end_time = datetime.utcnow().replace(tzinfo=timezone.utc)
+            duration_seconds = (end_time - start_time).total_seconds()
+            duration_str = f'{int(duration_seconds // 60)}m {int(duration_seconds % 60)}s'
+
+            # Update job record
+            self.table.update_item(
+                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.#duration = :duration, #data.progress = :progress, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={
+                    '#data': 'Data',
+                    '#status': 'status',
+                    '#duration': 'duration',
                 },
-                FilterExpression='#data.jobId = :job_id',
-                ExpressionAttributeNames={'#data': 'Data'},
+                ExpressionAttributeValues={
+                    ':status': 'completed',
+                    ':end_time': end_time.isoformat() + 'Z',
+                    ':duration': duration_str,
+                    ':progress': Decimal('100'),
+                    ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                },
             )
 
-            if response['Items']:
-                item = response['Items'][0]
-                start_time = datetime.fromisoformat(
-                    item['Data']['startTime'].replace('Z', '+00:00')
-                )
-                end_time_dt = datetime.fromisoformat(end_time.replace('Z', '+00:00'))
-                duration = str(end_time_dt - start_time)
-
-                self.table.update_item(
-                    Key={'PK': item['PK'], 'SK': item['SK']},
-                    UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.#duration = :duration, #data.progress = :progress, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={
-                        '#data': 'Data',
-                        '#status': 'status',
-                        '#duration': 'duration',
-                    },
-                    ExpressionAttributeValues={
-                        ':status': 'completed',
-                        ':end_time': end_time,
-                        ':duration': duration,
-                        ':progress': Decimal('100'),
-                        ':updated_at': end_time,
-                    },
-                )
-
-                # Update journey current job status
-                stage_id = item['Data']['stageId']
-                self.table.update_item(
-                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
-                    UpdateExpression='SET #data.currentJobs.#stage_id.#status = :status, #data.currentJobs.#stage_id.endTime = :end_time, #data.stageSummary.#stage_id.lastStatus = :status, #data.aggregates.completedJobs = #data.aggregates.completedJobs + :inc, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={
-                        '#data': 'Data',
-                        '#stage_id': stage_id,
-                        '#status': 'status',
-                    },
-                    ExpressionAttributeValues={
-                        ':status': 'completed',
-                        ':end_time': end_time,
-                        ':inc': 1,
-                        ':updated_at': end_time,
-                    },
-                )
+            # Update journey aggregates
+            self.update_journey_aggregates(journey_id, stage_id, 'completed')
 
         except Exception as e:
             self.logger.error(f'Error completing job: {str(e)}')
@@ -880,50 +467,70 @@ class TransformationJobExecutor:
     def fail_job(self, journey_id: str, job_id: str, error_message: str):
         """Mark job as failed"""
         try:
-            end_time = datetime.utcnow().isoformat() + 'Z'
+            # Get job data
+            job_data = self.get_job_execution(journey_id, job_id)
+            if not job_data:
+                raise Exception(f'Job {job_id} not found')
 
-            response = self.table.query(
-                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
-                ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
-                    ':sk_prefix': 'JOB#',
-                    ':job_id': job_id,
+            # Build the SK
+            stage_id = job_data['stageId']
+            execution_number = job_data['executionNumber']
+            timestamp = job_id.split('-')[-1]
+            sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
+
+            # Update job record
+            self.table.update_item(
+                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.errorMessage = :error_message, #data.updatedAt = :updated_at',
+                ExpressionAttributeNames={
+                    '#data': 'Data',
+                    '#status': 'status',
                 },
-                FilterExpression='#data.jobId = :job_id',
-                ExpressionAttributeNames={'#data': 'Data'},
+                ExpressionAttributeValues={
+                    ':status': 'failed',
+                    ':end_time': datetime.utcnow().isoformat() + 'Z',
+                    ':error_message': error_message,
+                    ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                },
             )
 
-            if response['Items']:
-                item = response['Items'][0]
-
-                self.table.update_item(
-                    Key={'PK': item['PK'], 'SK': item['SK']},
-                    UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.errorMessage = :error, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={'#data': 'Data', '#status': 'status'},
-                    ExpressionAttributeValues={
-                        ':status': 'failed',
-                        ':end_time': end_time,
-                        ':error': error_message,
-                        ':updated_at': end_time,
-                    },
-                )
-
-                # Update journey aggregates
-                stage_id = item['Data']['stageId']
-                self.table.update_item(
-                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
-                    UpdateExpression='SET #data.currentJobs.#stage_id.#status = :status, #data.stageSummary.#stage_id.lastStatus = :status, #data.aggregates.failedJobs = #data.aggregates.failedJobs + :inc, UpdatedAt = :updated_at',
-                    ExpressionAttributeNames={
-                        '#data': 'Data',
-                        '#stage_id': stage_id,
-                        '#status': 'status',
-                    },
-                    ExpressionAttributeValues={
-                        ':status': 'failed',
-                        ':inc': 1,
-                        ':updated_at': end_time,
-                    },
-                )
+            # Update journey aggregates
+            self.update_journey_aggregates(journey_id, stage_id, 'failed')
 
         except Exception as e:
             self.logger.error(f'Error failing job: {str(e)}')
+
+    def update_journey_aggregates(self, journey_id: str, stage_id: str, status: str):
+        """Update journey aggregate statistics"""
+        try:
+            # Update journey aggregates based on job completion
+            if status == 'completed':
+                self.table.update_item(
+                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
+                    UpdateExpression='ADD #data.aggregates.completedJobs :inc SET #data.aggregates.totalJobs = #data.aggregates.totalJobs + :inc, #data.stageSummary.#stage_id.totalExecutions = #data.stageSummary.#stage_id.totalExecutions + :inc, #data.stageSummary.#stage_id.lastStatus = :status, #data.updatedAt = :updated_at',
+                    ExpressionAttributeNames={
+                        '#data': 'Data',
+                        '#stage_id': stage_id,
+                    },
+                    ExpressionAttributeValues={
+                        ':inc': 1,
+                        ':status': status,
+                        ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                    },
+                )
+            elif status == 'failed':
+                self.table.update_item(
+                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
+                    UpdateExpression='ADD #data.aggregates.failedJobs :inc SET #data.aggregates.totalJobs = #data.aggregates.totalJobs + :inc, #data.stageSummary.#stage_id.totalExecutions = #data.stageSummary.#stage_id.totalExecutions + :inc, #data.stageSummary.#stage_id.lastStatus = :status, #data.updatedAt = :updated_at',
+                    ExpressionAttributeNames={
+                        '#data': 'Data',
+                        '#stage_id': stage_id,
+                    },
+                    ExpressionAttributeValues={
+                        ':inc': 1,
+                        ':status': status,
+                        ':updated_at': datetime.utcnow().isoformat() + 'Z',
+                    },
+                )
+        except Exception as e:
+            self.logger.error(f'Error updating journey aggregates: {str(e)}')

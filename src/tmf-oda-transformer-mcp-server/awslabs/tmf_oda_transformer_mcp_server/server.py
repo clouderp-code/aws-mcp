@@ -20,7 +20,23 @@ import os
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
+
+# Import transformation job executor
+try:
+    scripts_path = os.path.join(os.path.dirname(__file__), '../../../../scripts')
+    if scripts_path not in sys.path:
+        sys.path.append(scripts_path)
+    
+    # Force reload to get latest version
+    import importlib
+    if 'job_executor' in sys.modules:
+        importlib.reload(sys.modules['job_executor'])
+    
+    from job_executor import TransformationJobExecutor
+except ImportError:
+    logger.warning("TransformationJobExecutor not available - raw_analysis tool will not work")
+    TransformationJobExecutor = None
 
 from awslabs.tmf_oda_transformer_mcp_server.consts import (
     ANALYSIS_STATUS,
@@ -79,7 +95,22 @@ mcp = FastMCP(
     Connects to and analyzes database structures for TMF ODA transformation requirements.
     Supports various database types including PostgreSQL, MySQL, MongoDB, and others.
     
-    Both tools provide detailed compliance assessments, transformation recommendations, and actionable insights
+    ### raw-analysis
+    Executes the raw analysis stage of a TMF ODA transformation journey.
+    This includes schema parsing, relationship discovery, and data type analysis.
+    This is typically the first step in a transformation journey.
+    
+    ### stripped-schema
+    Executes the stripped schema stage of a TMF ODA transformation journey.
+    This includes schema stripping to remove non-essential elements and core structure extraction.
+    This is typically the second step in a transformation journey.
+    
+    ### get-job-logs
+    Retrieves execution logs for a specific job step from S3 storage.
+    Useful for debugging job execution issues and monitoring step-by-step progress.
+    Provides detailed execution logs including timing, metrics, and error information.
+    
+    All tools provide detailed compliance assessments, transformation recommendations, and actionable insights
     for achieving TMF ODA compliance.
     """,
     dependencies=[
@@ -397,6 +428,478 @@ async def db_analyzer_tool(
         logger.error(f'Database analysis failed: {str(e)}')
         await ctx.error(f'{ERROR_DATABASE_ANALYSIS_FAILED}: {str(e)}')
         raise Exception(f'{ERROR_DATABASE_ANALYSIS_FAILED}: {str(e)}')
+
+
+@mcp.tool(
+    name='raw-analysis',
+    description="""Execute raw analysis stage of TMF ODA transformation journey.
+    
+    This tool executes the raw analysis stage which includes:
+    - Schema file parsing to understand database structure
+    - Relationship discovery between tables and entities
+    - Data type analysis for TMF ODA compatibility assessment
+    
+    The raw analysis stage is typically the first step in a TMF ODA transformation journey
+    and provides the foundation for subsequent transformation stages.
+    """,
+)
+async def raw_analysis_tool(
+    ctx: Context,
+    journey_id: Annotated[
+        str,
+        Field(
+            description="""The journey ID for the transformation process.
+            This should be a valid journey ID that exists in the transformation system.
+            Example: 'JRN-SAMPLE-001'"""
+        ),
+    ],
+    stage_id: Annotated[
+        str,
+        Field(
+            default="raw_analysis",
+            description="""The stage ID to execute. Defaults to 'raw_analysis'.
+            This should typically be 'raw_analysis' for the initial analysis stage."""
+        ),
+    ],
+    triggered_by: Annotated[
+        str,
+        Field(
+            default="mcp-server",
+            description="""Who or what triggered this job execution.
+            This is used for auditing and tracking purposes."""
+        ),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            default="MCP Server execution",
+            description="""The reason for executing this job.
+            This provides context for why the job was started."""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Execute raw analysis stage of TMF ODA transformation journey.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        journey_id: The journey ID for the transformation process
+        stage_id: The stage ID to execute (defaults to 'raw_analysis')
+        triggered_by: Who triggered this job execution
+        reason: The reason for executing this job
+        
+    Returns:
+        Dict[str, Any]: Job execution result with status and details
+    """
+    logger.info(f'Starting raw analysis execution for journey: {journey_id}')
+    
+    # Check if TransformationJobExecutor is available
+    if TransformationJobExecutor is None:
+        error_msg = "TransformationJobExecutor not available - cannot execute raw analysis"
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        raise Exception(error_msg)
+    
+    # Validate inputs
+    if not journey_id or journey_id.strip() == '':
+        error_msg = "Journey ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not stage_id or stage_id.strip() == '':
+        error_msg = "Stage ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    start_time = datetime.now()
+    
+    try:
+        # Force reload of job executor to get latest version with all fixes
+        import importlib
+        if 'job_executor' in sys.modules:
+            importlib.reload(sys.modules['job_executor'])
+            # Re-import after reload
+            from job_executor import TransformationJobExecutor as FreshExecutor
+            executor = FreshExecutor()
+        else:
+            # First time import
+            executor = TransformationJobExecutor()
+        
+        logger.info(f'🚀 Starting job for journey: {journey_id}, stage: {stage_id}')
+        
+        # Start job execution
+        job_id = executor.start_job_execution(
+            journey_id=journey_id,
+            stage_id=stage_id,
+            triggered_by=triggered_by,
+            reason=reason,
+        )
+        
+        logger.info(f'✅ Job started: {job_id}')
+        
+        # Execute the job
+        executor.execute_job(journey_id, job_id)
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        logger.success(f'🎉 Job {job_id} completed successfully!')
+        
+        # Return success result
+        result = {
+            'status': 'success',
+            'job_id': job_id,
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'message': f'Raw analysis job {job_id} completed successfully'
+        }
+        
+        return result
+        
+    except Exception as e:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        error_msg = f'Raw analysis job execution failed: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        
+        # Return error result
+        result = {
+            'status': 'error',
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'error_message': str(e),
+            'message': error_msg
+        }
+        
+        return result
+
+
+@mcp.tool(
+    name='stripped-schema',
+    description="""Execute stripped schema stage of TMF ODA transformation journey.
+    
+    This tool executes the stripped schema stage which includes:
+    - Schema stripping to remove non-essential elements
+    - Core structure extraction for TMF ODA compliance
+    - Data model simplification and standardization
+    
+    The stripped schema stage is typically the second step in a TMF ODA transformation journey
+    and builds upon the raw analysis stage results.
+    """,
+)
+async def stripped_schema_tool(
+    ctx: Context,
+    journey_id: Annotated[
+        str,
+        Field(
+            description="""The journey ID for the transformation process.
+            This should be a valid journey ID that exists in the transformation system.
+            Example: 'JRN-SAMPLE-001'"""
+        ),
+    ],
+    stage_id: Annotated[
+        str,
+        Field(
+            default="stripped_schema",
+            description="""The stage ID to execute. Defaults to 'stripped_schema'.
+            This should typically be 'stripped_schema' for the schema stripping stage."""
+        ),
+    ],
+    triggered_by: Annotated[
+        str,
+        Field(
+            default="mcp-server",
+            description="""Who or what triggered this job execution.
+            This is used for auditing and tracking purposes."""
+        ),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            default="MCP Server execution",
+            description="""The reason for executing this job.
+            This provides context for why the job was started."""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Execute stripped schema stage of TMF ODA transformation journey.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        journey_id: The journey ID for the transformation process
+        stage_id: The stage ID to execute (defaults to 'stripped_schema')
+        triggered_by: Who triggered this job execution
+        reason: The reason for executing this job
+        
+    Returns:
+        Dict[str, Any]: Job execution result with status and details
+    """
+    logger.info(f'Starting stripped schema execution for journey: {journey_id}')
+    
+    # Check if TransformationJobExecutor is available
+    if TransformationJobExecutor is None:
+        error_msg = "TransformationJobExecutor not available - cannot execute stripped schema"
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        raise Exception(error_msg)
+    
+    # Validate inputs
+    if not journey_id or journey_id.strip() == '':
+        error_msg = "Journey ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not stage_id or stage_id.strip() == '':
+        error_msg = "Stage ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    start_time = datetime.now()
+    
+    try:
+        # Force reload of job executor to get latest version with all fixes
+        import importlib
+        if 'job_executor' in sys.modules:
+            importlib.reload(sys.modules['job_executor'])
+            # Re-import after reload
+            from job_executor import TransformationJobExecutor as FreshExecutor
+            executor = FreshExecutor()
+        else:
+            # First time import
+            executor = TransformationJobExecutor()
+        
+        logger.info(f'🚀 Starting job for journey: {journey_id}, stage: {stage_id}')
+        
+        # Start job execution
+        job_id = executor.start_job_execution(
+            journey_id=journey_id,
+            stage_id=stage_id,
+            triggered_by=triggered_by,
+            reason=reason,
+        )
+        
+        logger.info(f'✅ Job started: {job_id}')
+        
+        # Execute the job
+        executor.execute_job(journey_id, job_id)
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        logger.success(f'🎉 Job {job_id} completed successfully!')
+        
+        # Return success result
+        result = {
+            'status': 'success',
+            'job_id': job_id,
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'message': f'Stripped schema job {job_id} completed successfully'
+        }
+        
+        return result
+        
+    except Exception as e:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        error_msg = f'Stripped schema job execution failed: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        
+        # Return error result
+        result = {
+            'status': 'error',
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'error_message': str(e),
+            'message': error_msg
+        }
+        
+        return result
+
+
+@mcp.tool(
+    name='get-job-logs',
+    description="""Retrieve execution logs for a specific job step.
+    
+    This tool downloads and returns the execution logs for a specific step of a transformation job.
+    Useful for debugging job execution issues and monitoring step-by-step progress.
+    
+    The logs include:
+    - Step execution details and timing
+    - Processing information and metrics
+    - Error messages and debugging information
+    - S3 upload confirmations
+    """,
+)
+async def get_job_logs_tool(
+    ctx: Context,
+    journey_id: Annotated[
+        str,
+        Field(
+            description="""The journey ID for the transformation process.
+            Example: 'JRN-SAMPLE-001'"""
+        ),
+    ],
+    stage_name: Annotated[
+        str,
+        Field(
+            description="""The stage name (e.g., 'raw_analysis', 'stripped_schema').
+            This should match the stage that was executed."""
+        ),
+    ],
+    job_id: Annotated[
+        str,
+        Field(
+            description="""The job execution ID.
+            Example: 'JOB-016-20250709170359'"""
+        ),
+    ],
+    step_name: Annotated[
+        str,
+        Field(
+            description="""The step name to retrieve logs for.
+            Examples: 'schema_parsing', 'relationship_discovery', 'data_type_analysis', 
+            'business_rules_extraction', 'complexity_assessment', 'schema_stripping', 
+            'core_structure_extraction', 'data_model_simplification'"""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Retrieve execution logs for a specific job step.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        journey_id: The journey ID for the transformation process
+        stage_name: The stage name that was executed
+        job_id: The job execution ID
+        step_name: The step name to retrieve logs for
+        
+    Returns:
+        Dict[str, Any]: Log data and metadata
+    """
+    logger.info(f'Retrieving logs for {journey_id}/{stage_name}/{job_id}/{step_name}')
+    
+    # Validate inputs
+    if not journey_id or journey_id.strip() == '':
+        error_msg = "Journey ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not stage_name or stage_name.strip() == '':
+        error_msg = "Stage name cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not job_id or job_id.strip() == '':
+        error_msg = "Job ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not step_name or step_name.strip() == '':
+        error_msg = "Step name cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    try:
+        import boto3
+        
+        # Create S3 client
+        s3_client = boto3.client('s3')
+        
+        # Construct the S3 key for the logs
+        logs_key = f'journeys/{journey_id}/stages/{stage_name}/executions/{job_id}/logs/{step_name}.json'
+        bucket_name = 'transformation-journey-logs'
+        
+        logger.info(f'Attempting to download logs from s3://{bucket_name}/{logs_key}')
+        
+        # Try to get the object from S3
+        try:
+            response = s3_client.get_object(Bucket=bucket_name, Key=logs_key)
+            logs_content = response['Body'].read().decode('utf-8')
+            
+            # Parse the JSON content
+            import json
+            logs_data = json.loads(logs_content)
+            
+            # Get object metadata
+            last_modified = response['LastModified'].isoformat() if 'LastModified' in response else None
+            content_length = response.get('ContentLength', 0)
+            
+            logger.success(f'Successfully retrieved logs for {step_name} ({content_length} bytes)')
+            
+            return {
+                'status': 'success',
+                'journey_id': journey_id,
+                'stage_name': stage_name,
+                'job_id': job_id,
+                'step_name': step_name,
+                'logs_found': True,
+                'logs_data': logs_data,
+                'metadata': {
+                    's3_bucket': bucket_name,
+                    's3_key': logs_key,
+                    'last_modified': last_modified,
+                    'content_length': content_length,
+                    'total_log_entries': len(logs_data) if isinstance(logs_data, list) else 1
+                },
+                'message': f'Successfully retrieved {len(logs_data) if isinstance(logs_data, list) else 1} log entries for step {step_name}'
+            }
+            
+        except s3_client.exceptions.NoSuchKey:
+            # Logs don't exist - step might not have executed
+            logger.warning(f'Logs not found for {step_name} - step may not have executed')
+            
+            return {
+                'status': 'not_found',
+                'journey_id': journey_id,
+                'stage_name': stage_name,
+                'job_id': job_id,
+                'step_name': step_name,
+                'logs_found': False,
+                'logs_data': None,
+                'metadata': {
+                    's3_bucket': bucket_name,
+                    's3_key': logs_key,
+                    'last_modified': None,
+                    'content_length': 0,
+                    'total_log_entries': 0
+                },
+                'message': f'No logs found for step {step_name} - step may not have executed or logs may not have been uploaded'
+            }
+            
+        except Exception as s3_error:
+            error_msg = f'Error accessing S3 logs: {str(s3_error)}'
+            logger.error(error_msg)
+            await ctx.error(error_msg)
+            raise Exception(error_msg)
+            
+    except Exception as e:
+        error_msg = f'Failed to retrieve job logs: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        raise Exception(error_msg)
 
 
 # Helper functions for pseudo implementation
