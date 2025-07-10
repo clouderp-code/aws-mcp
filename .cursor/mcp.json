@@ -1,21 +1,4 @@
 {
   "mcpServers": {
-    "awslabs.tmf-oda-transformer-mcp-server": {
-      "command": "uv",
-      "args": [
-        "--directory",
-        "/opt/mycode/aws-mcp/src/tmf-oda-transformer-mcp-server/awslabs/tmf_oda_transformer_mcp_server",
-        "run",
-        "server.py"
-      ],
-      "env": {
-        "FASTMCP_LOG_LEVEL": "ERROR",
-        "TMF_ODA_REFERENCE_PATH": "/opt/mycode/tmf-oda-references",
-        "AWS_PROFILE": "default",
-        "AWS_REGION": "us-east-1"
-      },
-      "disabled": false,
-      "autoApprove": []
-    }
   }
 }

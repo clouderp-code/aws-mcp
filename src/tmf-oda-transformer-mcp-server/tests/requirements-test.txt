@@ -1,0 +1,17 @@
+# Test dependencies for TMF ODA Transformer MCP Server
+pytest>=8.0.0
+pytest-asyncio>=0.26.0
+pytest-mock>=3.12.0
+pytest-cov>=4.1.0
+
+# Core dependencies (should match main project)
+boto3>=1.38.5
+botocore>=1.38.5
+pydantic>=2.10.6
+loguru>=0.7.0
+mcp[cli]>=1.6.0
+
+# Additional test utilities
+freezegun>=1.2.0  # For mocking time in tests
+responses>=0.24.0  # For mocking HTTP requests
+moto>=4.2.0  # For mocking AWS services 

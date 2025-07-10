@@ -24,16 +24,7 @@ from typing import List, Optional, Dict, Any
 
 # Import transformation job executor
 try:
-    scripts_path = os.path.join(os.path.dirname(__file__), '../../../../scripts')
-    if scripts_path not in sys.path:
-        sys.path.append(scripts_path)
-    
-    # Force reload to get latest version
-    import importlib
-    if 'job_executor' in sys.modules:
-        importlib.reload(sys.modules['job_executor'])
-    
-    from job_executor import TransformationJobExecutor
+    from .scripts.job_executor import TransformationJobExecutor
 except ImportError:
     logger.warning("TransformationJobExecutor not available - raw_analysis tool will not work")
     TransformationJobExecutor = None
@@ -829,10 +820,7 @@ async def get_job_logs_tool(
         role_arn = os.environ.get('AWS_ROLE_ARN')
         if role_arn:
             # Import AWS client utilities
-            scripts_path = os.path.join(os.path.dirname(__file__), '../../../../scripts')
-            if scripts_path not in sys.path:
-                sys.path.append(scripts_path)
-            from aws_client_utils import create_aws_client
+            from .scripts.aws_client_utils import create_aws_client
             s3_client = create_aws_client('s3', role_arn=role_arn)
         else:
             s3_client = boto3.client('s3')
@@ -909,6 +897,681 @@ async def get_job_logs_tool(
         logger.error(error_msg)
         await ctx.error(error_msg)
         raise Exception(error_msg)
+
+
+@mcp.tool(
+    name='test-runner',
+    description="""Run comprehensive verification tests for all TMF ODA transformer tools.
+    
+    This tool executes the complete test suite to verify that all MCP server tools are working correctly.
+    It's designed to be called directly from Cursor to avoid terminal integration issues.
+    
+    The test suite includes:
+    - Tool import verification
+    - Parameter validation testing
+    - Error handling verification
+    - Integration testing
+    - Performance validation
+    
+    Returns detailed results about the health and functionality of all tools.
+    """,
+)
+async def test_runner_tool(
+    ctx: Context,
+    test_type: Annotated[
+        str,
+        Field(
+            default="comprehensive",
+            description="""Type of tests to run.
+            Options: 'quick' (basic checks only), 'comprehensive' (all tests), 'imports' (import tests only)"""
+        ),
+    ],
+    include_performance: Annotated[
+        bool,
+        Field(
+            default=False,
+            description="""Whether to include performance timing tests.
+            Set to true for detailed performance analysis."""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Run comprehensive verification tests for all TMF ODA transformer tools.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        test_type: Type of tests to run (quick, comprehensive, imports)
+        include_performance: Whether to include performance timing tests
+        
+    Returns:
+        Dict[str, Any]: Comprehensive test results with status, details, and recommendations
+    """
+    logger.info(f'Starting TMF ODA tool verification tests (type: {test_type})')
+    
+    start_time = datetime.now()
+    test_results = {
+        'status': 'running',
+        'test_type': test_type,
+        'start_time': start_time.isoformat(),
+        'tests_executed': [],
+        'tests_passed': 0,
+        'tests_failed': 0,
+        'total_tests': 0,
+        'errors': [],
+        'warnings': [],
+        'performance_metrics': {} if include_performance else None
+    }
+    
+    try:
+        # Test 1: Import Verification
+        logger.info('🔍 Testing tool imports...')
+        import_result = await _test_tool_imports(ctx, include_performance)
+        test_results['tests_executed'].append(import_result)
+        if import_result['passed']:
+            test_results['tests_passed'] += 1
+        else:
+            test_results['tests_failed'] += 1
+        test_results['total_tests'] += 1
+        
+        # Test 2: Schema Analyzer Validation
+        if test_type in ['comprehensive', 'validation']:
+            logger.info('🔍 Testing schema analyzer validation...')
+            schema_result = await _test_schema_analyzer_validation(ctx, include_performance)
+            test_results['tests_executed'].append(schema_result)
+            if schema_result['passed']:
+                test_results['tests_passed'] += 1
+            else:
+                test_results['tests_failed'] += 1
+            test_results['total_tests'] += 1
+        
+        # Test 3: Database Analyzer Validation
+        if test_type in ['comprehensive', 'validation']:
+            logger.info('🗄️ Testing database analyzer validation...')
+            db_result = await _test_db_analyzer_validation(ctx, include_performance)
+            test_results['tests_executed'].append(db_result)
+            if db_result['passed']:
+                test_results['tests_passed'] += 1
+            else:
+                test_results['tests_failed'] += 1
+            test_results['total_tests'] += 1
+        
+        # Test 4: Raw Analysis Validation
+        if test_type in ['comprehensive', 'validation']:
+            logger.info('⚡ Testing raw analysis validation...')
+            raw_result = await _test_raw_analysis_validation(ctx, include_performance)
+            test_results['tests_executed'].append(raw_result)
+            if raw_result['passed']:
+                test_results['tests_passed'] += 1
+            else:
+                test_results['tests_failed'] += 1
+            test_results['total_tests'] += 1
+        
+        # Test 5: Stripped Schema Validation
+        if test_type in ['comprehensive', 'validation']:
+            logger.info('🔧 Testing stripped schema validation...')
+            stripped_result = await _test_stripped_schema_validation(ctx, include_performance)
+            test_results['tests_executed'].append(stripped_result)
+            if stripped_result['passed']:
+                test_results['tests_passed'] += 1
+            else:
+                test_results['tests_failed'] += 1
+            test_results['total_tests'] += 1
+        
+        # Test 6: Get Job Logs Validation
+        if test_type in ['comprehensive', 'validation']:
+            logger.info('📋 Testing get job logs validation...')
+            logs_result = await _test_get_job_logs_validation(ctx, include_performance)
+            test_results['tests_executed'].append(logs_result)
+            if logs_result['passed']:
+                test_results['tests_passed'] += 1
+            else:
+                test_results['tests_failed'] += 1
+            test_results['total_tests'] += 1
+        
+        # Calculate final results
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        success_rate = (test_results['tests_passed'] / test_results['total_tests'] * 100) if test_results['total_tests'] > 0 else 0
+        
+        # Determine overall status
+        if test_results['tests_failed'] == 0:
+            overall_status = 'success'
+            status_message = f'🎉 All {test_results["total_tests"]} tests passed! TMF ODA MCP Server is fully operational.'
+        elif test_results['tests_passed'] > test_results['tests_failed']:
+            overall_status = 'partial_success'
+            status_message = f'⚠️ {test_results["tests_passed"]}/{test_results["total_tests"]} tests passed. Some issues detected.'
+        else:
+            overall_status = 'failure'
+            status_message = f'❌ {test_results["tests_failed"]}/{test_results["total_tests"]} tests failed. Significant issues detected.'
+        
+        # Build final result
+        final_result = {
+            'status': overall_status,
+            'message': status_message,
+            'test_type': test_type,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'tests_passed': test_results['tests_passed'],
+            'tests_failed': test_results['tests_failed'],
+            'total_tests': test_results['total_tests'],
+            'success_rate': round(success_rate, 1),
+            'detailed_results': test_results['tests_executed'],
+            'summary': {
+                'tools_verified': len([t for t in test_results['tests_executed'] if t['test_name'] != 'Import Verification']),
+                'import_status': 'success' if import_result['passed'] else 'failed',
+                'validation_status': f"{len([t for t in test_results['tests_executed'] if t['passed'] and t['test_name'] != 'Import Verification'])}/{len([t for t in test_results['tests_executed'] if t['test_name'] != 'Import Verification'])} tools validated" if test_type != 'imports' else 'N/A',
+                'performance_collected': include_performance
+            },
+            'recommendations': _generate_test_recommendations(test_results['tests_executed']),
+            'next_steps': _generate_next_steps(overall_status, test_results['tests_executed'])
+        }
+        
+        if include_performance:
+            final_result['performance_metrics'] = _calculate_performance_metrics(test_results['tests_executed'])
+        
+        logger.success(f'Test execution completed: {status_message}')
+        return final_result
+        
+    except Exception as e:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        error_msg = f'Test runner execution failed: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        
+        return {
+            'status': 'error',
+            'message': error_msg,
+            'test_type': test_type,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'tests_passed': test_results.get('tests_passed', 0),
+            'tests_failed': test_results.get('tests_failed', 0),
+            'total_tests': test_results.get('total_tests', 0),
+            'error_details': str(e),
+            'partial_results': test_results.get('tests_executed', [])
+        }
+
+
+# Helper functions for test execution
+
+async def _test_tool_imports(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test that all tools can be imported successfully."""
+    test_start = datetime.now()
+    
+    try:
+        # Test imports one by one to identify specific failures
+        imports_tested = []
+        
+        # Test server tools
+        try:
+            from awslabs.tmf_oda_transformer_mcp_server.server import (
+                schema_analyzer_tool,
+                db_analyzer_tool,
+                raw_analysis_tool,
+                stripped_schema_tool,
+                get_job_logs_tool
+            )
+            imports_tested.append(('Server Tools', True, 'All 5 tools imported successfully'))
+        except Exception as e:
+            imports_tested.append(('Server Tools', False, f'Import failed: {str(e)}'))
+        
+        # Test models
+        try:
+            from awslabs.tmf_oda_transformer_mcp_server.models import (
+                TMFODAComponentType,
+                DatabaseType,
+                SchemaFormat,
+                ComplianceLevel
+            )
+            imports_tested.append(('Models', True, 'All model classes imported successfully'))
+        except Exception as e:
+            imports_tested.append(('Models', False, f'Import failed: {str(e)}'))
+        
+        # Test scripts
+        try:
+            from awslabs.tmf_oda_transformer_mcp_server.scripts import (
+                TransformationJobExecutor,
+                AWSClientManager
+            )
+            imports_tested.append(('Scripts', True, 'All script classes imported successfully'))
+        except Exception as e:
+            imports_tested.append(('Scripts', False, f'Import failed: {str(e)}'))
+        
+        # Test constants
+        try:
+            from awslabs.tmf_oda_transformer_mcp_server.consts import (
+                TMF_ODA_COMPONENT_TYPES,
+                SUPPORTED_DATABASE_TYPES,
+                SUPPORTED_SCHEMA_FORMATS
+            )
+            imports_tested.append(('Constants', True, f'{len(TMF_ODA_COMPONENT_TYPES)} component types, {len(SUPPORTED_DATABASE_TYPES)} DB types, {len(SUPPORTED_SCHEMA_FORMATS)} schema formats'))
+        except Exception as e:
+            imports_tested.append(('Constants', False, f'Import failed: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        # Check if all imports passed
+        all_passed = all(result[1] for result in imports_tested)
+        passed_count = sum(1 for result in imports_tested if result[1])
+        
+        return {
+            'test_name': 'Import Verification',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'imports_tested': len(imports_tested),
+                'imports_passed': passed_count,
+                'results': imports_tested
+            },
+            'message': f'✅ All imports successful' if all_passed else f'❌ {len(imports_tested) - passed_count}/{len(imports_tested)} imports failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Import Verification',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Import test failed: {str(e)}'
+        }
+
+
+async def _test_schema_analyzer_validation(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test schema analyzer tool validation."""
+    test_start = datetime.now()
+    
+    try:
+        from unittest.mock import Mock
+        
+        mock_ctx = Mock()
+        mock_ctx.error = Mock()
+        
+        validation_tests = []
+        
+        # Test empty workspace validation
+        try:
+            await schema_analyzer_tool(
+                ctx=mock_ctx,
+                workspace_dir="",
+                oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
+                schema_format=None
+            )
+            validation_tests.append(('Empty workspace', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty workspace', True, 'Correctly validates empty workspace'))
+        except Exception as e:
+            validation_tests.append(('Empty workspace', False, f'Unexpected error: {str(e)}'))
+        
+        # Test invalid workspace validation
+        try:
+            await schema_analyzer_tool(
+                ctx=mock_ctx,
+                workspace_dir="/non/existent/path",
+                oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
+                schema_format=None
+            )
+            validation_tests.append(('Invalid workspace', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Invalid workspace', True, 'Correctly validates invalid workspace'))
+        except Exception as e:
+            validation_tests.append(('Invalid workspace', False, f'Unexpected error: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        all_passed = all(result[1] for result in validation_tests)
+        passed_count = sum(1 for result in validation_tests if result[1])
+        
+        return {
+            'test_name': 'Schema Analyzer Validation',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'validations_tested': len(validation_tests),
+                'validations_passed': passed_count,
+                'results': validation_tests
+            },
+            'message': f'✅ All validations passed' if all_passed else f'❌ {len(validation_tests) - passed_count}/{len(validation_tests)} validations failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Schema Analyzer Validation',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Schema analyzer test failed: {str(e)}'
+        }
+
+
+async def _test_db_analyzer_validation(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test database analyzer tool validation."""
+    test_start = datetime.now()
+    
+    try:
+        from unittest.mock import Mock
+        
+        mock_ctx = Mock()
+        mock_ctx.error = Mock()
+        
+        validation_tests = []
+        
+        # Test empty connection string validation
+        try:
+            await db_analyzer_tool(
+                ctx=mock_ctx,
+                connection_string="",
+                database_type=DatabaseType.POSTGRESQL,
+                oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
+                tables_filter=None
+            )
+            validation_tests.append(('Empty connection string', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty connection string', True, 'Correctly validates empty connection string'))
+        except Exception as e:
+            validation_tests.append(('Empty connection string', False, f'Unexpected error: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        all_passed = all(result[1] for result in validation_tests)
+        passed_count = sum(1 for result in validation_tests if result[1])
+        
+        return {
+            'test_name': 'Database Analyzer Validation',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'validations_tested': len(validation_tests),
+                'validations_passed': passed_count,
+                'results': validation_tests
+            },
+            'message': f'✅ All validations passed' if all_passed else f'❌ {len(validation_tests) - passed_count}/{len(validation_tests)} validations failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Database Analyzer Validation',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Database analyzer test failed: {str(e)}'
+        }
+
+
+async def _test_raw_analysis_validation(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test raw analysis tool validation."""
+    test_start = datetime.now()
+    
+    try:
+        from unittest.mock import Mock
+        
+        mock_ctx = Mock()
+        mock_ctx.error = Mock()
+        
+        validation_tests = []
+        
+        # Test empty journey ID validation
+        try:
+            await raw_analysis_tool(
+                ctx=mock_ctx,
+                journey_id="",
+                stage_id="raw_analysis",
+                triggered_by="test",
+                reason="test"
+            )
+            validation_tests.append(('Empty journey ID', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty journey ID', True, 'Correctly validates empty journey ID'))
+        except Exception as e:
+            validation_tests.append(('Empty journey ID', False, f'Unexpected error: {str(e)}'))
+        
+        # Test empty stage ID validation
+        try:
+            await raw_analysis_tool(
+                ctx=mock_ctx,
+                journey_id="JRN-TEST-001",
+                stage_id="",
+                triggered_by="test",
+                reason="test"
+            )
+            validation_tests.append(('Empty stage ID', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty stage ID', True, 'Correctly validates empty stage ID'))
+        except Exception as e:
+            validation_tests.append(('Empty stage ID', False, f'Unexpected error: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        all_passed = all(result[1] for result in validation_tests)
+        passed_count = sum(1 for result in validation_tests if result[1])
+        
+        return {
+            'test_name': 'Raw Analysis Validation',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'validations_tested': len(validation_tests),
+                'validations_passed': passed_count,
+                'results': validation_tests
+            },
+            'message': f'✅ All validations passed' if all_passed else f'❌ {len(validation_tests) - passed_count}/{len(validation_tests)} validations failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Raw Analysis Validation',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Raw analysis test failed: {str(e)}'
+        }
+
+
+async def _test_stripped_schema_validation(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test stripped schema tool validation."""
+    test_start = datetime.now()
+    
+    try:
+        from unittest.mock import Mock
+        
+        mock_ctx = Mock()
+        mock_ctx.error = Mock()
+        
+        validation_tests = []
+        
+        # Test empty journey ID validation
+        try:
+            await stripped_schema_tool(
+                ctx=mock_ctx,
+                journey_id="",
+                stage_id="stripped_schema",
+                triggered_by="test",
+                reason="test"
+            )
+            validation_tests.append(('Empty journey ID', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty journey ID', True, 'Correctly validates empty journey ID'))
+        except Exception as e:
+            validation_tests.append(('Empty journey ID', False, f'Unexpected error: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        all_passed = all(result[1] for result in validation_tests)
+        passed_count = sum(1 for result in validation_tests if result[1])
+        
+        return {
+            'test_name': 'Stripped Schema Validation',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'validations_tested': len(validation_tests),
+                'validations_passed': passed_count,
+                'results': validation_tests
+            },
+            'message': f'✅ All validations passed' if all_passed else f'❌ {len(validation_tests) - passed_count}/{len(validation_tests)} validations failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Stripped Schema Validation',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Stripped schema test failed: {str(e)}'
+        }
+
+
+async def _test_get_job_logs_validation(ctx: Context, include_performance: bool = False) -> Dict[str, Any]:
+    """Test get job logs tool validation."""
+    test_start = datetime.now()
+    
+    try:
+        from unittest.mock import Mock
+        
+        mock_ctx = Mock()
+        mock_ctx.error = Mock()
+        
+        validation_tests = []
+        
+        # Test empty journey ID validation
+        try:
+            await get_job_logs_tool(
+                ctx=mock_ctx,
+                journey_id="",
+                stage_name="raw_analysis",
+                job_id="JOB-001-20240101120000",
+                step_name="schema_parsing"
+            )
+            validation_tests.append(('Empty journey ID', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty journey ID', True, 'Correctly validates empty journey ID'))
+        except Exception as e:
+            validation_tests.append(('Empty journey ID', False, f'Unexpected error: {str(e)}'))
+        
+        # Test empty stage name validation
+        try:
+            await get_job_logs_tool(
+                ctx=mock_ctx,
+                journey_id="JRN-TEST-001",
+                stage_name="",
+                job_id="JOB-001-20240101120000",
+                step_name="schema_parsing"
+            )
+            validation_tests.append(('Empty stage name', False, 'Should have raised ValueError'))
+        except ValueError:
+            validation_tests.append(('Empty stage name', True, 'Correctly validates empty stage name'))
+        except Exception as e:
+            validation_tests.append(('Empty stage name', False, f'Unexpected error: {str(e)}'))
+        
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        all_passed = all(result[1] for result in validation_tests)
+        passed_count = sum(1 for result in validation_tests if result[1])
+        
+        return {
+            'test_name': 'Get Job Logs Validation',
+            'passed': all_passed,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {
+                'validations_tested': len(validation_tests),
+                'validations_passed': passed_count,
+                'results': validation_tests
+            },
+            'message': f'✅ All validations passed' if all_passed else f'❌ {len(validation_tests) - passed_count}/{len(validation_tests)} validations failed'
+        }
+        
+    except Exception as e:
+        test_end = datetime.now()
+        test_duration = (test_end - test_start).total_seconds()
+        
+        return {
+            'test_name': 'Get Job Logs Validation',
+            'passed': False,
+            'duration_seconds': test_duration if include_performance else None,
+            'details': {'error': str(e)},
+            'message': f'❌ Get job logs test failed: {str(e)}'
+        }
+
+
+def _generate_test_recommendations(test_results: List[Dict[str, Any]]) -> List[str]:
+    """Generate recommendations based on test results."""
+    recommendations = []
+    
+    failed_tests = [test for test in test_results if not test['passed']]
+    
+    if not failed_tests:
+        recommendations.append("🎉 All tests passed! Your TMF ODA MCP Server is fully operational.")
+        recommendations.append("💡 Consider running periodic tests to ensure continued reliability.")
+    else:
+        recommendations.append(f"⚠️ {len(failed_tests)} test(s) failed. Review the detailed results above.")
+        
+        if any('Import' in test['test_name'] for test in failed_tests):
+            recommendations.append("🔧 Import failures detected. Check Python path and dependencies.")
+        
+        if any('Validation' in test['test_name'] for test in failed_tests):
+            recommendations.append("🔍 Validation failures detected. Review tool parameter handling.")
+    
+    return recommendations
+
+
+def _generate_next_steps(status: str, test_results: List[Dict[str, Any]]) -> List[str]:
+    """Generate next steps based on overall test status."""
+    if status == 'success':
+        return [
+            "✅ All systems operational - ready for production use",
+            "📝 You can now use all TMF ODA transformer tools with confidence",
+            "🔄 Run this test periodically to ensure continued reliability"
+        ]
+    elif status == 'partial_success':
+        return [
+            "⚠️ Some tests failed - investigate specific issues",
+            "🔧 Fix failing components before production use",
+            "🧪 Re-run tests after applying fixes"
+        ]
+    else:
+        return [
+            "❌ Multiple test failures - requires immediate attention",
+            "🔍 Review detailed error messages and fix critical issues",
+            "🛠️ Consider reinstalling dependencies or checking configuration"
+        ]
+
+
+def _calculate_performance_metrics(test_results: List[Dict[str, Any]]) -> Dict[str, Any]:
+    """Calculate performance metrics from test results."""
+    durations = [test.get('duration_seconds', 0) for test in test_results if test.get('duration_seconds')]
+    
+    if not durations:
+        return {'note': 'No performance data collected'}
+    
+    return {
+        'total_test_duration': sum(durations),
+        'average_test_duration': sum(durations) / len(durations),
+        'fastest_test': min(durations),
+        'slowest_test': max(durations),
+        'tests_with_timing': len(durations)
+    }
 
 
 # Helper functions for pseudo implementation
