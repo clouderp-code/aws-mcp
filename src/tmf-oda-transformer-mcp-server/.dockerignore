@@ -1,0 +1,108 @@
+# Development files
+.git
+.gitignore
+*.md
+README*
+CHANGELOG*
+!README.md
+LICENSE
+NOTICE
+
+# Python cache and temporary files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Testing
+.coverage
+.pytest_cache/
+.tox/
+.nox/
+htmlcov/
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+.hypothesis/
+
+# Logs
+*.log
+logs/
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Docker files (avoid recursive copy)
+Dockerfile*
+.dockerignore
+docker-compose*
+
+# Development dependencies and scripts
+uv-requirements.txt
+tests/
+*.test.py
+test_*.py
+*_test.py
+
+# Documentation
+docs/
+*.rst
+*.txt
+!requirements-prod.txt
+!uv-requirements.txt
+
+# Jupyter notebooks
+*.ipynb
+
+# Node modules (if any)
+node_modules/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Build artifacts
+*.tar.gz
+*.zip 

@@ -16,7 +16,6 @@ dependencies = [
     "mysql-connector-python>=8.0.0"
 ]
 license = {text = "Apache-2.0"}
-license-files = ["LICENSE", "NOTICE" ]
 authors = [
     {name = "Amazon Web Services"},
     {name = "AWSLabs MCP", email="203918161+awslabs-mcp@users.noreply.github.com"}

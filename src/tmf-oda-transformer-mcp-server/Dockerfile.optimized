@@ -1,0 +1,120 @@
+# Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+#==============================================================================
+# Multi-stage build for optimal image size and security
+#==============================================================================
+
+# Stage 1: Build stage with all build dependencies
+FROM python:3.12-slim as builder
+
+# Set build arguments
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    g++ \
+    libc6-dev \
+    pkg-config \
+    git \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean
+
+# Install uv for faster dependency resolution
+RUN pip install --no-cache-dir uv==0.1.18
+
+# Set working directory
+WORKDIR /build
+
+# Copy requirements files
+COPY requirements-prod.txt requirements-prod.txt
+COPY pyproject.toml pyproject.toml
+COPY README.md README.md
+
+# Create virtual environment and install dependencies
+RUN uv venv /opt/venv
+ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
+RUN uv pip install --no-cache-dir -r requirements-prod.txt
+
+# Copy and install the application
+COPY awslabs/ ./awslabs/
+RUN uv pip install --no-cache-dir -e .
+
+#==============================================================================
+# Stage 2: Runtime stage with minimal dependencies
+#==============================================================================
+
+FROM python:3.12-slim as runtime
+
+# Set build arguments
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Install only runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    curl \
+    && rm -rf /var/lib/apt/lists/* \
+    && apt-get clean \
+    && apt-get autoremove -y
+
+# Copy virtual environment from builder stage
+COPY --from=builder /opt/venv /opt/venv
+
+# Set PATH to use virtual environment
+ENV PATH="/opt/venv/bin:$PATH"
+ENV VIRTUAL_ENV="/opt/venv"
+
+# Create non-root user with specific UID/GID for security
+RUN groupadd --gid 1000 app \
+    && useradd --uid 1000 --gid app --create-home --shell /bin/bash app
+
+# Set working directory
+WORKDIR /app
+
+# Copy application code
+COPY --from=builder /build/awslabs/ ./awslabs/
+COPY docker-healthcheck.sh ./
+
+# Set execute permissions on healthcheck script
+RUN chmod +x docker-healthcheck.sh
+
+# Change ownership to app user
+RUN chown -R app:app /app
+
+# Switch to non-root user
+USER app
+
+# Set environment variables for production
+ENV PYTHONPATH=/app
+ENV PYTHONUNBUFFERED=1
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+
+# Security: Remove write permissions from Python libraries
+RUN find /opt/venv -type d -exec chmod 755 {} \; && \
+    find /opt/venv -type f -exec chmod 644 {} \;
+
+# Health check with optimized intervals
+HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
+    CMD ["./docker-healthcheck.sh"]
+
+# Expose port (if needed for HTTP transport)
+EXPOSE 8000
+
+# Use exec form for better signal handling
+ENTRYPOINT ["python", "-m", "awslabs.tmf_oda_transformer_mcp_server.server"] 
