@@ -140,7 +140,22 @@ def seed_sample_journey():
 
     try:
         print_with_flush('🔗 Creating DynamoDB resource...')
-        dynamodb = boto3.resource('dynamodb')
+        
+        # Import AWS client utilities  
+        import os
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        if current_dir not in sys.path:
+            sys.path.insert(0, current_dir)
+        from aws_client_utils import create_aws_resource
+        
+        role_arn = os.environ.get('AWS_ROLE_ARN')
+        if role_arn:
+            print_with_flush(f'🔑 Using role ARN: {role_arn}')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+        else:
+            print_with_flush('🔑 Using default credential chain')
+            dynamodb = boto3.resource('dynamodb')
+        
         table = dynamodb.Table('TransformationSystem')
         print_with_flush('✅ DynamoDB resource created successfully')
     except Exception as e:
