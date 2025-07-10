@@ -1187,10 +1187,10 @@ async def _test_schema_analyzer_validation(ctx: Context, include_performance: bo
     test_start = datetime.now()
     
     try:
-        from unittest.mock import Mock
+        from unittest.mock import AsyncMock
         
-        mock_ctx = Mock()
-        mock_ctx.error = Mock()
+        mock_ctx = AsyncMock()
+        mock_ctx.error = AsyncMock()
         
         validation_tests = []
         
@@ -1258,10 +1258,10 @@ async def _test_db_analyzer_validation(ctx: Context, include_performance: bool =
     test_start = datetime.now()
     
     try:
-        from unittest.mock import Mock
+        from unittest.mock import AsyncMock
         
-        mock_ctx = Mock()
-        mock_ctx.error = Mock()
+        mock_ctx = AsyncMock()
+        mock_ctx.error = AsyncMock()
         
         validation_tests = []
         
@@ -1316,10 +1316,10 @@ async def _test_raw_analysis_validation(ctx: Context, include_performance: bool 
     test_start = datetime.now()
     
     try:
-        from unittest.mock import Mock
+        from unittest.mock import AsyncMock
         
-        mock_ctx = Mock()
-        mock_ctx.error = Mock()
+        mock_ctx = AsyncMock()
+        mock_ctx.error = AsyncMock()
         
         validation_tests = []
         
@@ -1389,10 +1389,10 @@ async def _test_stripped_schema_validation(ctx: Context, include_performance: bo
     test_start = datetime.now()
     
     try:
-        from unittest.mock import Mock
+        from unittest.mock import AsyncMock
         
-        mock_ctx = Mock()
-        mock_ctx.error = Mock()
+        mock_ctx = AsyncMock()
+        mock_ctx.error = AsyncMock()
         
         validation_tests = []
         
@@ -1447,10 +1447,10 @@ async def _test_get_job_logs_validation(ctx: Context, include_performance: bool 
     test_start = datetime.now()
     
     try:
-        from unittest.mock import Mock
+        from unittest.mock import AsyncMock
         
-        mock_ctx = Mock()
-        mock_ctx.error = Mock()
+        mock_ctx = AsyncMock()
+        mock_ctx.error = AsyncMock()
         
         validation_tests = []
         

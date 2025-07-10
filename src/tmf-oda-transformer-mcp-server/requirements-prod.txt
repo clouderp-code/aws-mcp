@@ -28,4 +28,8 @@ python-magic>=0.4.0
 
 # Data processing (production optimized versions)
 pandas>=1.5.0,<3.0.0
-numpy>=1.24.0,<2.0.0 
+numpy>=1.24.0,<2.0.0
+
+# HTTP API server (for external access)
+fastapi>=0.104.0
+uvicorn>=0.24.0 

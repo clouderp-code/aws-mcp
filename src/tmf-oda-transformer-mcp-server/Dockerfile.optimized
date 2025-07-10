@@ -52,6 +52,7 @@ RUN uv pip install --no-cache-dir -r requirements-prod.txt
 
 # Copy and install the application
 COPY awslabs/ ./awslabs/
+COPY http_wrapper.py ./
 RUN uv pip install --no-cache-dir -e .
 
 #==============================================================================
@@ -88,6 +89,7 @@ WORKDIR /app
 # Copy application code
 COPY --from=builder /build/awslabs/ ./awslabs/
 COPY docker-healthcheck.sh ./
+COPY http_wrapper.py ./
 
 # Set execute permissions on healthcheck script
 RUN chmod +x docker-healthcheck.sh
@@ -117,4 +119,4 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
 EXPOSE 8000
 
 # Use exec form for better signal handling
-ENTRYPOINT ["python", "-m", "awslabs.tmf_oda_transformer_mcp_server.server"] 
+ENTRYPOINT ["python", "http_wrapper.py"] 
