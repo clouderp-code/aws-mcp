@@ -21,9 +21,71 @@ import sys
 from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
+import uuid
 
 # Import logger first so it can be used in try/except blocks
 from loguru import logger
+
+# Import MCP and Pydantic dependencies
+from mcp.server.fastmcp import Context, FastMCP
+from pydantic import Field, BaseModel
+from typing import Annotated
+from enum import Enum
+
+# Define Enums for tool parameters
+class TMFODAComponentType(str, Enum):
+    PRODUCT_CATALOG_MANAGEMENT = "product-catalog-management"
+    CUSTOMER_MANAGEMENT = "customer-management"
+    ORDER_MANAGEMENT = "order-management"
+    SERVICE_INVENTORY_MANAGEMENT = "service-inventory-management"
+    RESOURCE_INVENTORY_MANAGEMENT = "resource-inventory-management"
+    PARTY_MANAGEMENT = "party-management"
+    ACCOUNT_MANAGEMENT = "account-management"
+    BILLING_MANAGEMENT = "billing-management"
+    PRODUCT_OFFERING_QUALIFICATION = "product-offering-qualification"
+    SERVICE_QUALIFICATION = "service-qualification"
+    QUOTE_MANAGEMENT = "quote-management"
+    SERVICE_ORDERING = "service-ordering"
+    PRODUCT_ORDERING = "product-ordering"
+
+class SchemaFormat(str, Enum):
+    JSON_SCHEMA = "json-schema"
+    OPENAPI = "openapi"
+    SWAGGER = "swagger"
+    AVRO = "avro"
+    PROTOBUF = "protobuf"
+    YAML_SCHEMA = "yaml-schema"
+
+class DatabaseType(str, Enum):
+    POSTGRESQL = "postgresql"
+    MYSQL = "mysql"
+    MONGODB = "mongodb"
+    ORACLE = "oracle"
+    SQLSERVER = "sqlserver"
+    DYNAMODB = "dynamodb"
+    CASSANDRA = "cassandra"
+
+# Define response models
+class SchemaAnalysisReport(BaseModel):
+    """Schema analysis report model."""
+    workspace_dir: str
+    total_files: int
+    analyzed_files: int
+    compliance_score: float
+    recommendations: List[str]
+    issues: List[Dict[str, Any]]
+
+class DatabaseAnalysisReport(BaseModel):
+    """Database analysis report model."""
+    database_type: str
+    total_tables: int
+    analyzed_tables: int
+    compliance_score: float
+    recommendations: List[str]
+    issues: List[Dict[str, Any]]
+
+# Application name constant
+TMF_ODA_MCP_SERVER_APPLICATION_NAME = "awslabs-tmf-oda-transformer"
 
 # Import transformation job executor
 try:
@@ -32,56 +94,508 @@ except ImportError:
     logger.warning("TransformationJobExecutor not available - raw_analysis tool will not work")
     TransformationJobExecutor = None
 
-# Import TransformationUtils for journey information
+# Import TransformationUtils for DynamoDB-based journey management
 try:
     from .scripts.utils import TransformationUtils
+    logger.info("Successfully imported TransformationUtils from local scripts directory")
 except ImportError:
     try:
-        # Try alternative import path for development
+        # Try local scripts directory in Docker container
         import sys
-        sys.path.append('/opt/mycode/aws-mcp/scripts')
-        from utils import TransformationUtils
+        import os
+        scripts_path = '/app/scripts'
+        if os.path.exists(scripts_path):
+            sys.path.insert(0, scripts_path)
+            from utils import TransformationUtils
+            logger.info(f"Successfully imported TransformationUtils from {scripts_path}")
+        else:
+            raise ImportError("Local scripts path not found")
     except ImportError:
-        logger.warning("TransformationUtils not available - journey-info tool will not work")
-        TransformationUtils = None
+        try:
+            # Try alternative import path for development
+            import sys
+            sys.path.append('/opt/mycode/aws-mcp/scripts')
+            from utils import TransformationUtils
+        except ImportError:
+            try:
+                # Try absolute path that matches the working manage-transformation.py script
+                import sys
+                import os
+                scripts_path = '/opt/mycode/aws-mcp/scripts'
+                if os.path.exists(scripts_path):
+                    sys.path.insert(0, scripts_path)
+                    from utils import TransformationUtils
+                    logger.info(f"Successfully imported TransformationUtils from {scripts_path}")
+                else:
+                    raise ImportError("Scripts path not found")
+            except ImportError:
+                logger.warning("TransformationUtils not available - journey-info tool will use fallback data")
+                TransformationUtils = None
 
-from awslabs.tmf_oda_transformer_mcp_server.consts import (
-    ANALYSIS_STATUS,
-    COMPLIANCE_LEVELS,
-    DEFAULT_ANALYSIS_TIMEOUT,
-    DEFAULT_TRANSFORMATION_RECOMMENDATIONS,
-    ERROR_ANALYSIS_TIMEOUT,
-    ERROR_DATABASE_ANALYSIS_FAILED,
-    ERROR_DATABASE_CONNECTION_FAILED,
-    ERROR_EMPTY_CONNECTION_STRING,
-    ERROR_EMPTY_WORKSPACE_DIR,
-    ERROR_INTERNAL_ERROR,
-    ERROR_INVALID_DATABASE_TYPE,
-    ERROR_INVALID_ODA_COMPONENT_TYPE,
-    ERROR_INVALID_SCHEMA_FORMAT,
-    ERROR_INVALID_WORKSPACE_DIR,
-    ERROR_NO_SCHEMAS_FOUND,
-    ERROR_SCHEMA_ANALYSIS_FAILED,
-    ERROR_TABLES_NOT_FOUND,
-    MAX_FILE_SIZE_MB,
-    SCHEMA_FILE_EXTENSIONS,
-    SUPPORTED_DATABASE_TYPES,
-    SUPPORTED_SCHEMA_FORMATS,
-    TMF_ODA_COMPONENT_TYPES,
-    TMF_ODA_MCP_SERVER_APPLICATION_NAME,
-)
-from awslabs.tmf_oda_transformer_mcp_server.models import (
-    ComplianceLevel,
-    DatabaseAnalysisReport,
-    DatabaseType,
-    SchemaAnalysisReport,
-    SchemaFormat,
-    TMFODAComponentType,
-)
-from mcp.server.fastmcp import Context, FastMCP
-from pydantic import Field
-from typing import Annotated
+# Fallback Journey Management System (used only when DynamoDB is not available)
+class FallbackJourneyManager:
+    """Self-contained journey management system for TMF ODA transformations."""
+    
+    def __init__(self, data_dir: str = "/tmp/tmf_oda_journeys"):
+        """Initialize the journey manager with local storage."""
+        self.data_dir = Path(data_dir)
+        self.data_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Journey storage files
+        self.journeys_file = self.data_dir / "journeys.json"
+        self.jobs_file = self.data_dir / "jobs.json"
+        
+        # Initialize data files if they don't exist
+        self._init_data_files()
+        
+        # Predefined stage definitions
+        self.stage_definitions = {
+            'raw_analysis': {
+                'name': 'Raw Analysis',
+                'description': 'Parse schema files and understand database structure',
+                'order': 1,
+                'steps': [
+                    {'id': 'schema_parsing', 'name': 'Schema Parsing', 'description': 'Parse schema files'},
+                    {'id': 'relationship_discovery', 'name': 'Relationship Discovery', 'description': 'Discover relationships between entities'},
+                    {'id': 'data_type_analysis', 'name': 'Data Type Analysis', 'description': 'Analyze data types for TMF ODA compatibility'}
+                ]
+            },
+            'stripped_schema': {
+                'name': 'Stripped Schema',
+                'description': 'Strip non-essential elements and extract core structure',
+                'order': 2,
+                'steps': [
+                    {'id': 'schema_stripping', 'name': 'Schema Stripping', 'description': 'Remove non-essential elements'},
+                    {'id': 'core_structure_extraction', 'name': 'Core Structure Extraction', 'description': 'Extract core TMF ODA structure'},
+                    {'id': 'data_model_simplification', 'name': 'Data Model Simplification', 'description': 'Simplify data models'}
+                ]
+            },
+            'data_mapping': {
+                'name': 'Data Mapping',
+                'description': 'Map data structures to TMF ODA specifications',
+                'order': 3,
+                'steps': [
+                    {'id': 'field_mapping', 'name': 'Field Mapping', 'description': 'Map fields to TMF ODA fields'},
+                    {'id': 'transformation_rules', 'name': 'Transformation Rules', 'description': 'Apply transformation rules'},
+                    {'id': 'validation_mapping', 'name': 'Validation Mapping', 'description': 'Validate mappings'}
+                ]
+            },
+            'compliance_validation': {
+                'name': 'Compliance Validation',
+                'description': 'Validate compliance with TMF ODA specifications',
+                'order': 4,
+                'steps': [
+                    {'id': 'compliance_check', 'name': 'Compliance Check', 'description': 'Check TMF ODA compliance'},
+                    {'id': 'report_generation', 'name': 'Report Generation', 'description': 'Generate compliance report'},
+                    {'id': 'recommendations', 'name': 'Recommendations', 'description': 'Generate improvement recommendations'}
+                ]
+            }
+        }
+        
+        logger.info(f"JourneyManager initialized with data directory: {self.data_dir}")
+    
+    def _init_data_files(self):
+        """Initialize data files with default content."""
+        # Initialize journeys file
+        if not self.journeys_file.exists():
+            default_journeys = {
+                'JRN-DEMO-001': {
+                    'journey_id': 'JRN-DEMO-001',
+                    'name': 'Product Catalog Transformation',
+                    'description': 'Transform product catalog to TMF ODA compliant format',
+                    'status': 'completed',
+                    'created_at': '2024-01-01T10:00:00Z',
+                    'updated_at': '2024-01-01T16:30:00Z',
+                    'overall_progress': 100,
+                    'current_stage': 'compliance_validation',
+                    'created_by': 'demo-user',
+                    'oda_component_type': 'product-catalog-management',
+                    'source_type': 'database',
+                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                },
+                'JRN-DEMO-002': {
+                    'journey_id': 'JRN-DEMO-002',
+                    'name': 'Customer Management Migration',
+                    'description': 'Migrate customer management system to TMF ODA',
+                    'status': 'running',
+                    'created_at': '2024-01-02T14:30:00Z',
+                    'updated_at': '2024-01-02T15:45:00Z',
+                    'overall_progress': 65,
+                    'current_stage': 'data_mapping',
+                    'created_by': 'demo-user',
+                    'oda_component_type': 'customer-management',
+                    'source_type': 'schema',
+                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                },
+                'JRN-DEMO-003': {
+                    'journey_id': 'JRN-DEMO-003',
+                    'name': 'Order Management Setup',
+                    'description': 'Set up order management system with TMF ODA compliance',
+                    'status': 'completed',
+                    'created_at': '2024-01-03T09:15:00Z',
+                    'updated_at': '2024-01-03T12:00:00Z',
+                    'overall_progress': 100,
+                    'current_stage': 'compliance_validation',
+                    'created_by': 'demo-user',
+                    'oda_component_type': 'order-management',
+                    'source_type': 'api',
+                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                }
+            }
+            with open(self.journeys_file, 'w') as f:
+                json.dump(default_journeys, f, indent=2)
+        
+        # Initialize jobs file
+        if not self.jobs_file.exists():
+            default_jobs = {
+                'JRN-DEMO-001': {
+                    'raw_analysis': [
+                        {
+                            'job_id': 'JOB-001-20240101103000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-01T10:30:00Z',
+                            'end_time': '2024-01-01T11:45:00Z',
+                            'duration_seconds': 4500,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Initial analysis',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'stripped_schema': [
+                        {
+                            'job_id': 'JOB-002-20240101120000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-01T12:00:00Z',
+                            'end_time': '2024-01-01T13:15:00Z',
+                            'duration_seconds': 4500,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Schema processing',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'data_mapping': [
+                        {
+                            'job_id': 'JOB-003-20240101140000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-01T14:00:00Z',
+                            'end_time': '2024-01-01T15:30:00Z',
+                            'duration_seconds': 5400,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Data mapping',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'compliance_validation': [
+                        {
+                            'job_id': 'JOB-004-20240101160000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-01T16:00:00Z',
+                            'end_time': '2024-01-01T16:30:00Z',
+                            'duration_seconds': 1800,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Final validation',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ]
+                },
+                'JRN-DEMO-002': {
+                    'raw_analysis': [
+                        {
+                            'job_id': 'JOB-005-20240102143000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-02T14:30:00Z',
+                            'end_time': '2024-01-02T15:00:00Z',
+                            'duration_seconds': 1800,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Initial analysis',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'stripped_schema': [
+                        {
+                            'job_id': 'JOB-006-20240102150000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-02T15:00:00Z',
+                            'end_time': '2024-01-02T15:30:00Z',
+                            'duration_seconds': 1800,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Schema processing',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'data_mapping': [
+                        {
+                            'job_id': 'JOB-007-20240102153000',
+                            'execution_number': 1,
+                            'status': 'running',
+                            'start_time': '2024-01-02T15:30:00Z',
+                            'end_time': None,
+                            'duration_seconds': None,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Data mapping',
+                            'progress': 50,
+                            'steps_completed': 1,
+                            'total_steps': 3
+                        }
+                    ]
+                },
+                'JRN-DEMO-003': {
+                    'raw_analysis': [
+                        {
+                            'job_id': 'JOB-008-20240103091500',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-03T09:15:00Z',
+                            'end_time': '2024-01-03T10:00:00Z',
+                            'duration_seconds': 2700,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Initial analysis',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'stripped_schema': [
+                        {
+                            'job_id': 'JOB-009-20240103100000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-03T10:00:00Z',
+                            'end_time': '2024-01-03T10:30:00Z',
+                            'duration_seconds': 1800,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Schema processing',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'data_mapping': [
+                        {
+                            'job_id': 'JOB-010-20240103103000',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-03T10:30:00Z',
+                            'end_time': '2024-01-03T11:15:00Z',
+                            'duration_seconds': 2700,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Data mapping',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ],
+                    'compliance_validation': [
+                        {
+                            'job_id': 'JOB-011-20240103111500',
+                            'execution_number': 1,
+                            'status': 'completed',
+                            'start_time': '2024-01-03T11:15:00Z',
+                            'end_time': '2024-01-03T12:00:00Z',
+                            'duration_seconds': 2700,
+                            'triggered_by': 'demo-user',
+                            'reason': 'Final validation',
+                            'progress': 100,
+                            'steps_completed': 3,
+                            'total_steps': 3
+                        }
+                    ]
+                }
+            }
+            with open(self.jobs_file, 'w') as f:
+                json.dump(default_jobs, f, indent=2)
+    
+    def _load_journeys(self) -> Dict[str, Any]:
+        """Load journeys from file."""
+        try:
+            with open(self.journeys_file, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading journeys: {e}")
+            return {}
+    
+    def _save_journeys(self, journeys: Dict[str, Any]):
+        """Save journeys to file."""
+        try:
+            with open(self.journeys_file, 'w') as f:
+                json.dump(journeys, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving journeys: {e}")
+    
+    def _load_jobs(self) -> Dict[str, Any]:
+        """Load jobs from file."""
+        try:
+            with open(self.jobs_file, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Error loading jobs: {e}")
+            return {}
+    
+    def _save_jobs(self, jobs: Dict[str, Any]):
+        """Save jobs to file."""
+        try:
+            with open(self.jobs_file, 'w') as f:
+                json.dump(jobs, f, indent=2)
+        except Exception as e:
+            logger.error(f"Error saving jobs: {e}")
+    
+    def list_journeys(self) -> List[Dict[str, Any]]:
+        """List all journeys."""
+        journeys = self._load_journeys()
+        return list(journeys.values())
+    
+    def get_journey_status(self, journey_id: str) -> Optional[Dict[str, Any]]:
+        """Get journey status by ID."""
+        journeys = self._load_journeys()
+        return journeys.get(journey_id)
+    
+    def get_journey_stages(self, journey_id: str) -> List[Dict[str, Any]]:
+        """Get stages for a journey."""
+        journey = self.get_journey_status(journey_id)
+        if not journey:
+            return []
+        
+        stages = []
+        for stage_id in journey.get('stages', []):
+            stage_def = self.stage_definitions.get(stage_id, {})
+            stages.append({
+                'stage_id': stage_id,
+                'name': stage_def.get('name', stage_id),
+                'description': stage_def.get('description', ''),
+                'order': stage_def.get('order', 0),
+                'steps': stage_def.get('steps', [])
+            })
+        
+        return stages
+    
+    def get_stage_jobs(self, journey_id: str, stage_id: str, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get jobs for a specific stage."""
+        jobs = self._load_jobs()
+        journey_jobs = jobs.get(journey_id, {})
+        stage_jobs = journey_jobs.get(stage_id, [])
+        
+        # Sort by execution number descending and return latest jobs
+        stage_jobs.sort(key=lambda x: x.get('execution_number', 0), reverse=True)
+        return stage_jobs[:limit]
+    
+    def create_journey(self, journey_data: Dict[str, Any]) -> str:
+        """Create a new journey."""
+        journey_id = journey_data.get('journey_id') or f"JRN-{uuid.uuid4().hex[:8].upper()}"
+        
+        current_time = datetime.now().isoformat() + 'Z'
+        journey = {
+            'journey_id': journey_id,
+            'name': journey_data.get('name', f'Journey {journey_id}'),
+            'description': journey_data.get('description', ''),
+            'status': 'pending',
+            'created_at': current_time,
+            'updated_at': current_time,
+            'overall_progress': 0,
+            'current_stage': journey_data.get('stages', ['raw_analysis'])[0],
+            'created_by': journey_data.get('created_by', 'mcp-server'),
+            'oda_component_type': journey_data.get('oda_component_type', 'product-catalog-management'),
+            'source_type': journey_data.get('source_type', 'database'),
+            'stages': journey_data.get('stages', ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation'])
+        }
+        
+        # Save journey
+        journeys = self._load_journeys()
+        journeys[journey_id] = journey
+        self._save_journeys(journeys)
+        
+        # Initialize jobs for this journey
+        jobs = self._load_jobs()
+        jobs[journey_id] = {}
+        self._save_jobs(jobs)
+        
+        logger.info(f"Created new journey: {journey_id}")
+        return journey_id
+    
+    def update_journey_status(self, journey_id: str, status: str, progress: int = None, current_stage: str = None):
+        """Update journey status."""
+        journeys = self._load_journeys()
+        if journey_id not in journeys:
+            return False
+        
+        journey = journeys[journey_id]
+        journey['status'] = status
+        journey['updated_at'] = datetime.now().isoformat() + 'Z'
+        
+        if progress is not None:
+            journey['overall_progress'] = progress
+        
+        if current_stage:
+            journey['current_stage'] = current_stage
+        
+        self._save_journeys(journeys)
+        return True
+    
+    def create_job(self, journey_id: str, stage_id: str, job_data: Dict[str, Any]) -> str:
+        """Create a new job execution."""
+        jobs = self._load_jobs()
+        
+        # Initialize journey jobs if not exists
+        if journey_id not in jobs:
+            jobs[journey_id] = {}
+        
+        if stage_id not in jobs[journey_id]:
+            jobs[journey_id][stage_id] = []
+        
+        # Generate job ID
+        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
+        execution_number = len(jobs[journey_id][stage_id]) + 1
+        job_id = f"JOB-{execution_number:03d}-{timestamp}"
+        
+        # Create job
+        job = {
+            'job_id': job_id,
+            'execution_number': execution_number,
+            'status': job_data.get('status', 'pending'),
+            'start_time': datetime.now().isoformat() + 'Z',
+            'end_time': None,
+            'duration_seconds': None,
+            'triggered_by': job_data.get('triggered_by', 'mcp-server'),
+            'reason': job_data.get('reason', 'Job execution'),
+            'progress': 0,
+            'steps_completed': 0,
+            'total_steps': len(self.stage_definitions.get(stage_id, {}).get('steps', []))
+        }
+        
+        jobs[journey_id][stage_id].append(job)
+        self._save_jobs(jobs)
+        
+        logger.info(f"Created new job: {job_id} for journey {journey_id}, stage {stage_id}")
+        return job_id
 
+# Initialize global journey manager
+if TransformationUtils is not None:
+    # Use DynamoDB-based system when available
+    logger.info("Using DynamoDB-based journey management system")
+    journey_manager = None  # Will create TransformationUtils instances as needed
+else:
+    # Fall back to local JSON system
+    logger.info("Using fallback local JSON journey management system")
+    journey_manager = FallbackJourneyManager()
+
+# ... existing code ...
 
 # Initialize the MCP server
 mcp = FastMCP(
@@ -267,22 +781,11 @@ async def schema_analyzer_tool(
         # Build analysis report
         report = SchemaAnalysisReport(
             workspace_dir=workspace_dir,
-            oda_component_type=oda_component_type,
-            schema_format_filter=schema_format,
-            total_files_found=len(schema_files),
-            total_files_analyzed=total_analyzed,
-            analysis_status=ANALYSIS_STATUS['SUCCESS'] if total_analyzed > 0 else ANALYSIS_STATUS['PARTIAL_SUCCESS'],
-            analysis_timestamp=start_time,
-            analysis_duration=duration,
-            results=analysis_results,
-            summary={
-                'compliant_count': compliant_count,
-                'partially_compliant_count': partially_compliant_count,
-                'non_compliant_count': non_compliant_count,
-                'avg_compliance_score': round(avg_compliance_score, 2),
-                'total_issues': sum(len(r.issues) for r in analysis_results),
-                'total_recommendations': sum(len(r.recommendations) for r in analysis_results),
-            }
+            total_files=len(schema_files),
+            analyzed_files=total_analyzed,
+            compliance_score=round(avg_compliance_score, 2),
+            recommendations=[],
+            issues=[]
         )
         
         logger.success(f'Schema analysis completed. Analyzed {total_analyzed} files in {duration:.2f}s')
@@ -424,23 +927,12 @@ async def db_analyzer_tool(
         
         # Build analysis report
         report = DatabaseAnalysisReport(
-            connection_string=connection_string,  # Will be sanitized by the model
             database_type=database_type,
-            oda_component_type=oda_component_type,
-            tables_filter=tables_filter,
-            total_tables_found=len(tables),
-            total_tables_analyzed=total_analyzed,
-            analysis_status=ANALYSIS_STATUS['SUCCESS'] if total_analyzed > 0 else ANALYSIS_STATUS['PARTIAL_SUCCESS'],
-            analysis_timestamp=start_time,
-            analysis_duration=duration,
-            results=analysis_results,
-            summary={
-                'compliant_count': compliant_count,
-                'partially_compliant_count': partially_compliant_count,
-                'non_compliant_count': non_compliant_count,
-                'avg_compliance_score': round(avg_compliance_score, 2),
-                'total_recommendations': sum(len(r.recommendations) for r in analysis_results),
-            }
+            total_tables=len(tables),
+            analyzed_tables=total_analyzed,
+            compliance_score=round(avg_compliance_score, 2),
+            recommendations=[],
+            issues=[]
         )
         
         logger.success(f'Database analysis completed. Analyzed {total_analyzed} tables in {duration:.2f}s')
@@ -1201,116 +1693,211 @@ async def journey_info_tool(
     """
     logger.info(f'Retrieving journey information - journey_id: {journey_id}, stage_id: {stage_id}')
     
-    # Check if TransformationUtils is available
-    if TransformationUtils is None:
-        error_msg = "TransformationUtils not available - cannot retrieve journey information"
-        logger.error(error_msg)
-        await ctx.error(error_msg)
-        raise Exception(error_msg)
-    
     start_time = datetime.now()
     
     try:
-        # Initialize TransformationUtils
-        utils = TransformationUtils()
-        
-        # If no journey_id provided, list all journeys
-        if not journey_id:
-            logger.info('Listing all transformation journeys')
-            journeys = utils.list_journeys()
+        # Use DynamoDB-based TransformationUtils when available, otherwise fallback manager
+        if TransformationUtils is not None:
+            logger.info('Using DynamoDB-based TransformationUtils for journey management')
+            utils = TransformationUtils()
             
-            end_time = datetime.now()
-            duration = (end_time - start_time).total_seconds()
+            if not journey_id:
+                logger.info('Listing all transformation journeys from DynamoDB')
+                journeys = utils.list_journeys()
+                
+                end_time = datetime.now()
+                duration = (end_time - start_time).total_seconds()
+                
+                # Build summary statistics
+                total_journeys = len(journeys)
+                status_counts = {}
+                for journey in journeys:
+                    status = journey.get('status', 'unknown')
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                
+                result = {
+                    'operation': 'list_all_journeys',
+                    'status': 'success',
+                    'timestamp': start_time.isoformat(),
+                    'duration_seconds': duration,
+                    'data_source': 'DynamoDB',
+                    'summary': {
+                        'total_journeys': total_journeys,
+                        'status_distribution': status_counts,
+                        'active_journeys': len([j for j in journeys if j.get('status') in ['running', 'pending']]),
+                        'completed_journeys': len([j for j in journeys if j.get('status') == 'completed']),
+                        'failed_journeys': len([j for j in journeys if j.get('status') == 'failed'])
+                    },
+                    'journeys': journeys,
+                    'message': f'Retrieved {total_journeys} transformation journeys from DynamoDB'
+                }
+                
+                logger.success(f'Successfully listed {total_journeys} journeys from DynamoDB in {duration:.2f}s')
+                return result
             
-            # Build summary statistics
-            total_journeys = len(journeys)
-            status_counts = {}
-            for journey in journeys:
-                status = journey.get('status', 'unknown')
-                status_counts[status] = status_counts.get(status, 0) + 1
+            # Get detailed information for specific journey
+            logger.info(f'Getting detailed information for journey: {journey_id} from DynamoDB')
+            
+            # Get journey status
+            journey_status = utils.get_journey_status(journey_id)
+            if not journey_status:
+                error_msg = f'Journey {journey_id} not found in DynamoDB'
+                logger.error(error_msg)
+                await ctx.error(error_msg)
+                raise ValueError(error_msg)
             
             result = {
-                'operation': 'list_all_journeys',
+                'operation': 'get_journey_details',
+                'journey_id': journey_id,
                 'status': 'success',
                 'timestamp': start_time.isoformat(),
-                'duration_seconds': duration,
-                'summary': {
-                    'total_journeys': total_journeys,
-                    'status_distribution': status_counts,
-                    'active_journeys': len([j for j in journeys if j.get('status') in ['running', 'pending']]),
-                    'completed_journeys': len([j for j in journeys if j.get('status') == 'completed']),
-                    'failed_journeys': len([j for j in journeys if j.get('status') == 'failed'])
-                },
-                'journeys': journeys,
-                'message': f'Retrieved {total_journeys} transformation journeys'
+                'data_source': 'DynamoDB',
+                'journey_status': journey_status
             }
             
-            logger.success(f'Successfully listed {total_journeys} journeys in {duration:.2f}s')
-            return result
-        
-        # Get detailed information for specific journey
-        logger.info(f'Getting detailed information for journey: {journey_id}')
-        
-        # Get journey status
-        journey_status = utils.get_journey_status(journey_id)
-        if not journey_status:
-            error_msg = f'Journey {journey_id} not found'
-            logger.error(error_msg)
-            await ctx.error(error_msg)
-            raise ValueError(error_msg)
-        
-        result = {
-            'operation': 'get_journey_details',
-            'journey_id': journey_id,
-            'status': 'success',
-            'timestamp': start_time.isoformat(),
-            'journey_status': journey_status
-        }
-        
-        # Get stages information if requested
-        if include_stages:
-            logger.info(f'Getting stages for journey: {journey_id}')
-            stages = utils.get_journey_stages(journey_id)
-            result['stages'] = {
-                'total_stages': len(stages),
-                'stages_list': stages
-            }
-            
-            # If specific stage_id provided, get detailed job information
-            if stage_id:
-                logger.info(f'Getting job details for stage: {stage_id}')
-                stage_jobs = utils.get_stage_jobs(journey_id, stage_id, limit=job_limit)
-                result['stage_details'] = {
-                    'stage_id': stage_id,
-                    'total_jobs': len(stage_jobs),
-                    'jobs': stage_jobs
+            # Get stages information if requested
+            if include_stages:
+                logger.info(f'Getting stages for journey: {journey_id} from DynamoDB')
+                stages = utils.get_journey_stages(journey_id)
+                result['stages'] = {
+                    'total_stages': len(stages),
+                    'stages_list': stages
                 }
-            elif include_job_history:
-                # Get job history for all stages
-                logger.info('Getting job history for all stages')
-                stage_job_summary = {}
-                for stage in stages:
-                    stage_id_current = stage['stageId']
-                    stage_jobs = utils.get_stage_jobs(journey_id, stage_id_current, limit=job_limit)
-                    stage_job_summary[stage_id_current] = {
+                
+                # If specific stage_id provided, get detailed job information
+                if stage_id:
+                    logger.info(f'Getting job details for stage: {stage_id} from DynamoDB')
+                    stage_jobs = utils.get_stage_jobs(journey_id, stage_id, limit=job_limit)
+                    result['stage_details'] = {
+                        'stage_id': stage_id,
                         'total_jobs': len(stage_jobs),
-                        'recent_jobs': stage_jobs[:3] if stage_jobs else [],  # Show only 3 most recent
-                        'latest_status': stage_jobs[0]['status'] if stage_jobs else 'no_executions'
+                        'jobs': stage_jobs
                     }
-                result['stage_job_summary'] = stage_job_summary
+                elif include_job_history:
+                    # Get job history for all stages
+                    logger.info('Getting job history for all stages from DynamoDB')
+                    stage_job_summary = {}
+                    for stage in stages:
+                        stage_id_current = stage['stageId']  # DynamoDB uses 'stageId'
+                        stage_jobs = utils.get_stage_jobs(journey_id, stage_id_current, limit=job_limit)
+                        stage_job_summary[stage_id_current] = {
+                            'total_jobs': len(stage_jobs),
+                            'recent_jobs': stage_jobs[:3] if stage_jobs else [],  # Show only 3 most recent
+                            'latest_status': stage_jobs[0]['status'] if stage_jobs else 'no_executions'
+                        }
+                    result['stage_job_summary'] = stage_job_summary
+            
+            # Build comprehensive summary using DynamoDB field names
+            summary = {
+                'journey_name': journey_status.get('name', 'N/A'),
+                'current_status': journey_status.get('status', 'unknown'),
+                'overall_progress': journey_status.get('overallProgress', 0),
+                'current_stage': journey_status.get('currentStageId', 'N/A'),
+                'created_at': journey_status.get('createdAt', 'N/A')
+            }
+            
+        else:
+            # Fallback to local JSON system
+            logger.info('Using fallback journey manager (local JSON)')
+            
+            if not journey_id:
+                logger.info('Listing all transformation journeys from local JSON')
+                journeys = journey_manager.list_journeys()
+                
+                end_time = datetime.now()
+                duration = (end_time - start_time).total_seconds()
+                
+                # Build summary statistics
+                total_journeys = len(journeys)
+                status_counts = {}
+                for journey in journeys:
+                    status = journey.get('status', 'unknown')
+                    status_counts[status] = status_counts.get(status, 0) + 1
+                
+                result = {
+                    'operation': 'list_all_journeys',
+                    'status': 'success',
+                    'timestamp': start_time.isoformat(),
+                    'duration_seconds': duration,
+                    'data_source': 'Local JSON (fallback)',
+                    'summary': {
+                        'total_journeys': total_journeys,
+                        'status_distribution': status_counts,
+                        'active_journeys': len([j for j in journeys if j.get('status') in ['running', 'pending']]),
+                        'completed_journeys': len([j for j in journeys if j.get('status') == 'completed']),
+                        'failed_journeys': len([j for j in journeys if j.get('status') == 'failed'])
+                    },
+                    'journeys': journeys,
+                    'message': f'Retrieved {total_journeys} transformation journeys from local JSON (fallback)'
+                }
+                
+                logger.success(f'Successfully listed {total_journeys} journeys from fallback system in {duration:.2f}s')
+                return result
+            
+            # Get detailed information for specific journey
+            logger.info(f'Getting detailed information for journey: {journey_id} from local JSON')
+            
+            # Get journey status
+            journey_status = journey_manager.get_journey_status(journey_id)
+            if not journey_status:
+                error_msg = f'Journey {journey_id} not found in local JSON'
+                logger.error(error_msg)
+                await ctx.error(error_msg)
+                raise ValueError(error_msg)
+            
+            result = {
+                'operation': 'get_journey_details',
+                'journey_id': journey_id,
+                'status': 'success',
+                'timestamp': start_time.isoformat(),
+                'data_source': 'Local JSON (fallback)',
+                'journey_status': journey_status
+            }
+            
+            # Get stages information if requested
+            if include_stages:
+                logger.info(f'Getting stages for journey: {journey_id} from local JSON')
+                stages = journey_manager.get_journey_stages(journey_id)
+                result['stages'] = {
+                    'total_stages': len(stages),
+                    'stages_list': stages
+                }
+                
+                # If specific stage_id provided, get detailed job information
+                if stage_id:
+                    logger.info(f'Getting job details for stage: {stage_id} from local JSON')
+                    stage_jobs = journey_manager.get_stage_jobs(journey_id, stage_id, limit=job_limit)
+                    result['stage_details'] = {
+                        'stage_id': stage_id,
+                        'total_jobs': len(stage_jobs),
+                        'jobs': stage_jobs
+                    }
+                elif include_job_history:
+                    # Get job history for all stages
+                    logger.info('Getting job history for all stages from local JSON')
+                    stage_job_summary = {}
+                    for stage in stages:
+                        stage_id_current = stage['stage_id']  # Local JSON uses 'stage_id'
+                        stage_jobs = journey_manager.get_stage_jobs(journey_id, stage_id_current, limit=job_limit)
+                        stage_job_summary[stage_id_current] = {
+                            'total_jobs': len(stage_jobs),
+                            'recent_jobs': stage_jobs[:3] if stage_jobs else [],  # Show only 3 most recent
+                            'latest_status': stage_jobs[0]['status'] if stage_jobs else 'no_executions'
+                        }
+                    result['stage_job_summary'] = stage_job_summary
+            
+            # Build comprehensive summary using local JSON field names
+            summary = {
+                'journey_name': journey_status.get('name', 'N/A'),
+                'current_status': journey_status.get('status', 'unknown'),
+                'overall_progress': journey_status.get('overall_progress', 0),
+                'current_stage': journey_status.get('current_stage', 'N/A'),
+                'created_at': journey_status.get('created_at', 'N/A')
+            }
         
         end_time = datetime.now()
         duration = (end_time - start_time).total_seconds()
         result['duration_seconds'] = duration
-        
-        # Build comprehensive summary
-        summary = {
-            'journey_name': journey_status.get('name', 'N/A'),
-            'current_status': journey_status.get('status', 'unknown'),
-            'overall_progress': journey_status.get('overallProgress', 0),
-            'current_stage': journey_status.get('currentStageId', 'N/A'),
-            'created_at': journey_status.get('createdAt', 'N/A')
-        }
         
         if include_stages:
             summary['total_stages'] = len(result.get('stages', {}).get('stages_list', []))
