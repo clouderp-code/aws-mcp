@@ -120,6 +120,11 @@ mcp = FastMCP(
     Includes journey status, stages, steps, job execution history, and system state overview.
     Essential for monitoring and managing transformation processes.
     
+    ### run-jobs
+    Executes any specific stage of a TMF ODA transformation journey.
+    This is a generic job execution tool that can run any stage (raw_analysis, stripped_schema, etc.)
+    for a given journey. It provides flexible job execution with customizable parameters.
+    
     ### test-runner
     Runs comprehensive verification tests for all TMF ODA transformer tools.
     Executes test suite to verify tool functionality, parameter validation, and error handling.
@@ -1356,6 +1361,168 @@ async def journey_info_tool(
         }
         
         return error_result
+
+
+@mcp.tool(
+    name='run-jobs',
+    description="""Execute any specific stage of a TMF ODA transformation journey.
+    
+    This tool provides a generic job execution interface that can run any stage of a transformation journey.
+    Unlike the specialized raw-analysis and stripped-schema tools, this tool accepts any stage_id parameter,
+    making it flexible for executing any stage in the transformation pipeline.
+    
+    The tool executes the specified stage which may include:
+    - Schema file parsing and analysis
+    - Data transformation and mapping
+    - Compliance validation and assessment
+    - Business rules extraction and application
+    - Custom stage processing as defined in the journey
+    
+    This tool is equivalent to running the command-line script but provides MCP integration
+    with proper error handling, logging, and result formatting.
+    """,
+)
+async def run_jobs_tool(
+    ctx: Context,
+    journey_id: Annotated[
+        str,
+        Field(
+            description="""The journey ID for the transformation process.
+            This should be a valid journey ID that exists in the transformation system.
+            Example: 'JRN-SAMPLE-001'"""
+        ),
+    ],
+    stage_id: Annotated[
+        str,
+        Field(
+            description="""The stage ID to execute.
+            This can be any valid stage ID in the transformation journey.
+            Common examples: 'raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation', etc.
+            Check the journey configuration for available stages."""
+        ),
+    ],
+    triggered_by: Annotated[
+        str,
+        Field(
+            default="mcp-server",
+            description="""Who or what triggered this job execution.
+            This is used for auditing and tracking purposes."""
+        ),
+    ],
+    reason: Annotated[
+        str,
+        Field(
+            default="MCP Server execution",
+            description="""The reason for executing this job.
+            This provides context for why the job was started."""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Execute any specific stage of a TMF ODA transformation journey.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        journey_id: The journey ID for the transformation process
+        stage_id: The stage ID to execute (can be any valid stage)
+        triggered_by: Who triggered this job execution
+        reason: The reason for executing this job
+        
+    Returns:
+        Dict[str, Any]: Job execution result with status and details
+    """
+    logger.info(f'Starting job execution for journey: {journey_id}, stage: {stage_id}')
+    
+    # Check if TransformationJobExecutor is available
+    if TransformationJobExecutor is None:
+        error_msg = "TransformationJobExecutor not available - cannot execute job"
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        raise Exception(error_msg)
+    
+    # Validate inputs
+    if not journey_id or journey_id.strip() == '':
+        error_msg = "Journey ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if not stage_id or stage_id.strip() == '':
+        error_msg = "Stage ID cannot be empty"
+        await ctx.error(error_msg)
+        raise ValueError(error_msg)
+    
+    start_time = datetime.now()
+    
+    try:
+        # Force reload of job executor to get latest version with all fixes
+        import importlib
+        if 'job_executor' in sys.modules:
+            importlib.reload(sys.modules['job_executor'])
+            # Re-import after reload
+            from job_executor import TransformationJobExecutor as FreshExecutor
+            executor = FreshExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
+        else:
+            # First time import
+            executor = TransformationJobExecutor(role_arn=os.environ.get('AWS_ROLE_ARN'))
+        
+        logger.info(f'🚀 Starting job for journey: {journey_id}, stage: {stage_id}')
+        
+        # Start job execution
+        job_id = executor.start_job_execution(
+            journey_id=journey_id,
+            stage_id=stage_id,
+            triggered_by=triggered_by,
+            reason=reason,
+        )
+        
+        logger.info(f'✅ Job started: {job_id}')
+        
+        # Execute the job
+        executor.execute_job(journey_id, job_id)
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        logger.success(f'🎉 Job {job_id} completed successfully!')
+        
+        # Return success result
+        result = {
+            'status': 'success',
+            'job_id': job_id,
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'message': f'Job {job_id} for stage {stage_id} completed successfully'
+        }
+        
+        return result
+        
+    except Exception as e:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        error_msg = f'Job execution failed for stage {stage_id}: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        
+        # Return error result
+        result = {
+            'status': 'error',
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'triggered_by': triggered_by,
+            'reason': reason,
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'duration_seconds': duration,
+            'error_message': error_msg,
+            'message': error_msg
+        }
+        
+        return result
 
 
 # Helper functions for test execution

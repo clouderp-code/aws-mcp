@@ -13,6 +13,8 @@ This directory contains comprehensive tests for all tools provided by the TMF OD
 3. **test_raw_analysis.py** - Tests for the `raw-analysis` tool
 4. **test_stripped_schema.py** - Tests for the `stripped-schema` tool
 5. **test_get_job_logs.py** - Tests for the `get-job-logs` tool
+6. **test_run_jobs.py** - Tests for the `run-jobs` tool
+7. **test_journey_info.py** - Tests for the `journey-info` tool
 
 ### Configuration Files
 
@@ -97,6 +99,23 @@ This directory contains comprehensive tests for all tools provided by the TMF OD
 
 **Test Cases**: 13+ comprehensive test scenarios
 
+### 🚀 Run Jobs Tool (`run-jobs`)
+
+**Purpose**: Execute any specific stage of a TMF ODA transformation journey with flexible parameters.
+
+**Tests Cover**:
+- ✅ Successful job execution for multiple stage types
+- ✅ Generic stage execution (raw_analysis, stripped_schema, custom stages)
+- ✅ Parameter validation and default value handling
+- ✅ Error handling for job startup and execution failures
+- ✅ AWS role ARN configuration support
+- ✅ Timing measurement and performance tracking
+- ✅ Job ID format validation and result message formatting
+- ✅ Concurrent execution simulation
+- ✅ Custom stage support and error debugging
+
+**Test Cases**: 18+ comprehensive test scenarios
+
 ## Test Features
 
 ### Mocking and Fixtures
@@ -158,6 +177,8 @@ python -m pytest tests/test_db_analyzer.py -v
 python -m pytest tests/test_raw_analysis.py -v
 python -m pytest tests/test_stripped_schema.py -v
 python -m pytest tests/test_get_job_logs.py -v
+python -m pytest tests/test_run_jobs.py -v
+python -m pytest tests/test_journey_info.py -v
 
 # Test specific scenarios
 python -m pytest tests/test_schema_analyzer.py::TestSchemaAnalyzer::test_schema_analyzer_success -v
@@ -165,7 +186,7 @@ python -m pytest tests/test_schema_analyzer.py::TestSchemaAnalyzer::test_schema_
 
 ## Test Results
 
-The test suite verifies **71+ individual test cases** covering:
+The test suite verifies **89+ individual test cases** covering:
 
 ### Functionality Verification ✅
 
@@ -195,9 +216,9 @@ The test suite verifies **71+ individual test cases** covering:
 
 The test suite provides comprehensive coverage of:
 
-- **Happy Path Scenarios**: 25+ successful execution tests
-- **Error Conditions**: 30+ error handling tests  
-- **Edge Cases**: 15+ boundary condition tests
+- **Happy Path Scenarios**: 35+ successful execution tests
+- **Error Conditions**: 40+ error handling tests  
+- **Edge Cases**: 20+ boundary condition tests
 - **Integration Points**: AWS services, file systems, databases
 
 ## Benefits
