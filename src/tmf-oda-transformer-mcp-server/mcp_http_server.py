@@ -31,7 +31,7 @@ try:
         stripped_schema_tool,
         get_job_logs_tool,
         test_runner_tool,
-        journey_info_tool,
+        journeys_tool,
         run_jobs_tool
     )
     print("✅ MCP server and tools imported successfully")
@@ -146,9 +146,9 @@ TOOLS = {
             "required": []
         }
     },
-    "journey-info": {
-        "func": journey_info_tool,
-        "description": "Get information about transformation journeys",
+    "journeys": {
+        "func": journeys_tool,
+        "description": "Comprehensive journey management with CRUD operations (CREATE, READ, UPDATE, DELETE)",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -302,7 +302,7 @@ Available tools:
 - stripped-schema: Execute stripped schema stage of transformation
 - get-job-logs: Retrieve job execution logs
 - test-runner: Run comprehensive tool verification tests
-- journey-info: Get information about transformation journeys
+- journeys: Comprehensive journey management with CRUD operations
 - run-jobs: Execute any transformation stage
                 """
             }

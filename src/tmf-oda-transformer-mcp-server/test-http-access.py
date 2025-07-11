@@ -12,7 +12,7 @@ Perfect for external UIs, CI/CD pipelines, and integration testing - no SSH or D
 - stripped-schema: Execute stripped schema stage of transformation journey
 - get-job-logs: Retrieve execution logs for job steps
 - test-runner: Run comprehensive test suite for all tools
-- journey-info: Get detailed information about transformation journeys
+- journeys: Comprehensive journey management with CRUD operations (CREATE, READ, UPDATE, DELETE)
 - run-jobs: Execute any stage of a transformation journey
 
 🧪 Comprehensive Test Coverage:
@@ -324,7 +324,7 @@ class TMFODAHttpTester:
         # Test 1: Schema Analyzer Tool
         print_color(Colors.CYAN, "🔍 Testing schema-analyzer with realistic parameters...")
         test_params = {
-            "workspace_dir": "/tmp/test-workspace",
+            "workspace_dir": "/tmp",
             "oda_component_type": "customer-management",
             "schema_format": "json-schema"
         }
@@ -490,9 +490,10 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ test-runner: {result.get('error', 'Unknown error')}")
         
-        # Test 7: Journey Info Tool
-        print_color(Colors.CYAN, "🗺️ Testing journey-info with realistic parameters...")
+        # Test 7: Journeys Tool (READ operation)
+        print_color(Colors.CYAN, "🗺️ Testing journeys tool with READ operation...")
         test_params = {
+            "action": "read",
             "journey_id": "JRN-SAMPLE-001",
             "stage_id": "raw_analysis",
             "include_stages": True,
@@ -500,8 +501,8 @@ class TMFODAHttpTester:
             "job_limit": 5
         }
         
-        success, result = self.make_request('POST', '/tools/journey-info', test_params)
-        tool_results["journey_info"] = {
+        success, result = self.make_request('POST', '/tools/journeys', test_params)
+        tool_results["journeys"] = {
             "success": success,
             "params": test_params,
             "result": result,
@@ -509,21 +510,25 @@ class TMFODAHttpTester:
         }
         
         if success:
-            print_color(Colors.GREEN, "✅ journey-info: Success")
+            print_color(Colors.GREEN, "✅ journeys: Success")
             journey_result = result.get('result', {})
             if isinstance(journey_result, dict):
-                journey_data = journey_result.get('journey', {})
-                if journey_data:
+                operation = journey_result.get('operation', 'unknown')
+                print_color(Colors.BLUE, f"   🎬 Operation: {operation}")
+                
+                if 'journey_status' in journey_result:
+                    # Single journey details
+                    journey_data = journey_result['journey_status']
                     status = journey_data.get('status', 'unknown')
-                    progress = journey_data.get('progress', 0)
+                    progress = journey_data.get('overallProgress', 0)
                     print_color(Colors.BLUE, f"   📊 Status: {status}")
                     print_color(Colors.BLUE, f"   📈 Progress: {progress}%")
-                else:
-                    # Handle list of journeys
+                elif 'journeys' in journey_result:
+                    # List of journeys
                     journeys = journey_result.get('journeys', [])
                     print_color(Colors.BLUE, f"   📊 Found {len(journeys)} journeys")
         else:
-            print_color(Colors.RED, f"❌ journey-info: {result.get('error', 'Unknown error')}")
+            print_color(Colors.RED, f"❌ journeys: {result.get('error', 'Unknown error')}")
         
         # Test 8: Run Jobs Tool
         print_color(Colors.CYAN, "🏃 Testing run-jobs with realistic parameters...")
@@ -574,26 +579,52 @@ class TMFODAHttpTester:
         
         variation_results = {}
         
-        # Test journey-info with different parameter combinations
-        print_color(Colors.CYAN, "🧪 Testing journey-info parameter variations...")
+        # Test journeys with different parameter combinations (CRUD operations)
+        print_color(Colors.CYAN, "🧪 Testing journeys parameter variations...")
         
         test_cases = [
-            {"name": "list_all_journeys", "params": {}},
-            {"name": "specific_journey", "params": {"journey_id": "JRN-SAMPLE-001"}},
-            {"name": "journey_with_stages", "params": {"journey_id": "JRN-SAMPLE-001", "include_stages": True}},
-            {"name": "journey_with_jobs", "params": {"journey_id": "JRN-SAMPLE-001", "include_job_history": True}},
+            {"name": "list_all_journeys", "params": {"action": "read"}},
+            {"name": "specific_journey", "params": {"action": "read", "journey_id": "JRN-SAMPLE-001"}},
+            {"name": "journey_with_stages", "params": {
+                "action": "read", 
+                "journey_id": "JRN-SAMPLE-001", 
+                "include_stages": True
+            }},
+            {"name": "journey_with_jobs", "params": {
+                "action": "read", 
+                "journey_id": "JRN-SAMPLE-001", 
+                "include_job_history": True
+            }},
             {"name": "journey_full_details", "params": {
+                "action": "read",
                 "journey_id": "JRN-SAMPLE-001",
                 "include_stages": True,
                 "include_job_history": True,
                 "job_limit": 10
+            }},
+            {"name": "create_journey_test", "params": {
+                "action": "create",
+                "journey_data": {
+                    "name": "HTTP Test Journey",
+                    "description": "Test journey created via HTTP API",
+                    "oda_component_type": "product-catalog-management",
+                    "priority": "low"
+                }
+            }},
+            {"name": "update_journey_test", "params": {
+                "action": "update",
+                "journey_id": "JRN-SAMPLE-001",
+                "journey_data": {
+                    "status": "running",
+                    "overall_progress": 75
+                }
             }}
         ]
         
-        journey_info_results = {}
+        journeys_results = {}
         for test_case in test_cases:
-            success, result = self.make_request('POST', '/tools/journey-info', test_case["params"])
-            journey_info_results[test_case["name"]] = {
+            success, result = self.make_request('POST', '/tools/journeys', test_case["params"])
+            journeys_results[test_case["name"]] = {
                 "success": success,
                 "params": test_case["params"],
                 "result": result
@@ -604,7 +635,7 @@ class TMFODAHttpTester:
             else:
                 print_color(Colors.RED, f"❌ {test_case['name']}: {result.get('error', 'Unknown error')}")
         
-        variation_results["journey_info_variations"] = journey_info_results
+        variation_results["journeys_variations"] = journeys_results
         
         # Test test-runner with different types
         print_color(Colors.CYAN, "🧪 Testing test-runner parameter variations...")

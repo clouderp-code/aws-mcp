@@ -195,7 +195,7 @@ print_color $CYAN "📝 Build context: $SCRIPT_DIR"
 cd "$SCRIPT_DIR"
 
 # Build the Docker image
-docker build -f $DOCKERFILE_PATH -t $DOCKER_IMAGE_NAME:$DOCKER_TAG .
+docker build --no-cache -f $DOCKERFILE_PATH -t $DOCKER_IMAGE_NAME:$DOCKER_TAG .
 
 print_color $GREEN "✅ Docker image built successfully"
 

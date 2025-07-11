@@ -318,19 +318,64 @@ async def test_all_tools():
     except Exception as e:
         results["get_job_logs"] = f"❌ Unexpected error: {e}"
     
-    # Test 6: Test Runner (Quick mode)
-    try:
-        result = await test_runner_tool(
-            ctx=ctx,
-            test_type="quick",
-            include_performance=False
-        )
-        if result.get("status") == "success":
-            results["test_runner"] = f"✅ Test runner passed: {result.get('tests_passed', 0)}/{result.get('total_tests', 0)} tests"
-        else:
-            results["test_runner"] = f"⚠️ Test runner partial: {result.get('message', 'Unknown')}"
-    except Exception as e:
-        results["test_runner"] = f"❌ Test runner error: {e}"
+            # Test 6: Test Runner (Quick mode)
+        try:
+            result = await test_runner_tool(
+                ctx=ctx,
+                test_type="quick",
+                include_performance=False
+            )
+            if result.get("status") == "success":
+                results["test_runner"] = f"✅ Test runner passed: {result.get('tests_passed', 0)}/{result.get('total_tests', 0)} tests"
+            else:
+                results["test_runner"] = f"⚠️ Test runner partial: {result.get('message', 'Unknown')}"
+        except Exception as e:
+            results["test_runner"] = f"❌ Test runner error: {e}"
+        
+        # Test 7: Journeys Tool (READ operation)
+        try:
+            result = await journeys_tool(
+                ctx=ctx,
+                action="read",
+                journey_id=None,
+                journey_data=None,
+                stage_id=None,
+                include_stages=True,
+                include_job_history=True,
+                job_limit=10
+            )
+            if result.get("status") == "success":
+                journeys_count = len(result.get("journeys", []))
+                results["journeys_read"] = f"✅ Journeys list retrieved: {journeys_count} journeys"
+            else:
+                results["journeys_read"] = f"⚠️ Journeys read partial: {result.get('message', 'Unknown')}"
+        except Exception as e:
+            results["journeys_read"] = f"❌ Journeys read error: {e}"
+        
+        # Test 8: Journeys Tool (CREATE operation)
+        try:
+            result = await journeys_tool(
+                ctx=ctx,
+                action="create",
+                journey_id=None,
+                journey_data={
+                    "name": "External Test Journey",
+                    "description": "Test journey created via external test",
+                    "oda_component_type": "customer-management",
+                    "priority": "low"
+                },
+                stage_id=None,
+                include_stages=True,
+                include_job_history=True,
+                job_limit=10
+            )
+            if result.get("status") == "success":
+                journey_id = result.get("journey_id", "Unknown")
+                results["journeys_create"] = f"✅ Journey created: {journey_id}"
+            else:
+                results["journeys_create"] = f"⚠️ Journey creation partial: {result.get('message', 'Unknown')}"
+        except Exception as e:
+            results["journeys_create"] = f"❌ Journey creation error: {e}"
     
     print(json.dumps(results, indent=2))
 
