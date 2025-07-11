@@ -203,7 +203,7 @@ from awslabs.tmf_oda_transformer_mcp_server.server import (
     get_job_logs_tool,
     test_runner_tool
 )
-print('✅ All 6 tools imported successfully')
+print('✅ All 8 tools imported successfully')
 "'''),
             ("Import models", 
              "python -c 'from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType; print(\"✅ Models imported\")'")
@@ -234,7 +234,8 @@ from awslabs.tmf_oda_transformer_mcp_server.server import (
     raw_analysis_tool,
     stripped_schema_tool,
     get_job_logs_tool,
-    test_runner_tool
+    test_runner_tool,
+    journeys_tool
 )
 from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType
 
@@ -376,6 +377,65 @@ async def test_all_tools():
                 results["journeys_create"] = f"⚠️ Journey creation partial: {result.get('message', 'Unknown')}"
         except Exception as e:
             results["journeys_create"] = f"❌ Journey creation error: {e}"
+        
+        # Test 9: Journeys Tool (DELETE operation)
+        try:
+            result = await journeys_tool(
+                ctx=ctx,
+                action="delete",
+                journey_id="JRN-TEST-DELETE",
+                journey_data=None,
+                stage_id=None,
+                include_stages=True,
+                include_job_history=True,
+                job_limit=10
+            )
+            if result.get("status") == "success":
+                results["journeys_delete"] = "✅ Journey deletion handled"
+            else:
+                results["journeys_delete"] = f"⚠️ Journey deletion partial: {result.get('message', 'Unknown')}"
+        except Exception as e:
+            results["journeys_delete"] = f"❌ Journey deletion error: {e}"
+        
+        # Test 10: Journeys Tool (Backward compatibility - list action)
+        try:
+            result = await journeys_tool(
+                ctx=ctx,
+                action="list",  # Should work same as "read"
+                journey_id=None,
+                journey_data=None,
+                stage_id=None,
+                include_stages=True,
+                include_job_history=True,
+                job_limit=10
+            )
+            if result.get("status") == "success":
+                journeys_count = len(result.get("journeys", []))
+                results["journeys_list_alias"] = f"✅ List action alias works: {journeys_count} journeys"
+            else:
+                results["journeys_list_alias"] = f"⚠️ List action partial: {result.get('message', 'Unknown')}"
+        except Exception as e:
+            results["journeys_list_alias"] = f"❌ List action error: {e}"
+        
+        # Test 11: Journeys Tool (Error handling - unsupported action)
+        try:
+            result = await journeys_tool(
+                ctx=ctx,
+                action="invalid_action",
+                journey_id=None,
+                journey_data=None,
+                stage_id=None,
+                include_stages=True,
+                include_job_history=True,
+                job_limit=10
+            )
+            # Should return error result, not raise exception
+            if result.get("status") == "error":
+                results["journeys_error_handling"] = "✅ Error handling works correctly"
+            else:
+                results["journeys_error_handling"] = "❌ Should have returned error for invalid action"
+        except Exception as e:
+            results["journeys_error_handling"] = f"⚠️ Exception raised (acceptable): {str(e)[:50]}"
     
     print(json.dumps(results, indent=2))
 

@@ -618,6 +618,28 @@ class TMFODAHttpTester:
                     "status": "running",
                     "overall_progress": 75
                 }
+            }},
+            # NEW: Add DELETE operation testing
+            {"name": "delete_journey_test", "params": {
+                "action": "delete",
+                "journey_id": "JRN-TEST-DELETE"
+            }},
+            # NEW: Add backward compatibility testing
+            {"name": "list_action_alias", "params": {"action": "list"}},
+            # NEW: Add error handling tests
+            {"name": "unsupported_action", "params": {"action": "invalid_action"}},
+            {"name": "create_missing_data", "params": {
+                "action": "create",
+                "journey_data": None  # Should fail
+            }},
+            {"name": "update_missing_id", "params": {
+                "action": "update",
+                "journey_data": {"status": "completed"}
+                # Missing journey_id
+            }},
+            {"name": "delete_missing_id", "params": {
+                "action": "delete"
+                # Missing journey_id
             }}
         ]
         
