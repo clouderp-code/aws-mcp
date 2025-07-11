@@ -34,7 +34,8 @@ class TMFMCPTestRunner:
             "test_db_analyzer.py", 
             "test_raw_analysis.py",
             "test_stripped_schema.py",
-            "test_get_job_logs.py"
+            "test_get_job_logs.py",
+            "test_journey_info.py"
         ]
         
         start_time = time.time()
@@ -137,7 +138,8 @@ class TMFMCPTestRunner:
             "test_db_analyzer.py": "🗄️  Database Analyzer Tool",
             "test_raw_analysis.py": "⚡ Raw Analysis Tool",
             "test_stripped_schema.py": "🔧 Stripped Schema Tool", 
-            "test_get_job_logs.py": "📋 Get Job Logs Tool"
+            "test_get_job_logs.py": "📋 Get Job Logs Tool",
+            "test_journey_info.py": "📊 Journey Info Tool"
         }
         
         for test_file, tool_name in tool_mapping.items():
@@ -166,6 +168,7 @@ class TMFMCPTestRunner:
             "⚡ Raw analysis stage execution with proper job management",
             "🔧 Stripped schema stage execution with error handling",
             "📋 Job log retrieval from S3 with comprehensive error handling",
+            "📊 Journey information retrieval with comprehensive status tracking",
             "🔒 AWS credential handling and role assumption",
             "⚙️  Input validation and error messaging",
             "📊 Result formatting and metadata generation",
@@ -187,7 +190,8 @@ async def run_tool_integration_tests():
         db_analyzer_tool,
         raw_analysis_tool,
         stripped_schema_tool,
-        get_job_logs_tool
+        get_job_logs_tool,
+        journey_info_tool
     )
     from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType
     from unittest.mock import Mock
@@ -238,6 +242,26 @@ async def run_tool_integration_tests():
     except Exception as e:
         integration_results.append("✅ Raw analysis correctly validates journey ID")
     
+    # Test 4: Journey Info with TransformationUtils not available
+    try:
+        print("🧪 Testing journey-info with unavailable TransformationUtils...")
+        # Mock TransformationUtils to be None
+        import awslabs.tmf_oda_transformer_mcp_server.server as server_module
+        original_utils = getattr(server_module, 'TransformationUtils', None)
+        server_module.TransformationUtils = None
+        
+        await journey_info_tool(
+            ctx=mock_ctx,
+            journey_id="JRN-TEST-001"
+        )
+        integration_results.append("❌ Journey info should have failed with unavailable TransformationUtils")
+    except Exception as e:
+        integration_results.append("✅ Journey info correctly handles missing TransformationUtils")
+    finally:
+        # Restore original TransformationUtils
+        if original_utils is not None:
+            server_module.TransformationUtils = original_utils
+    
     print("\n📋 Integration test results:")
     for result in integration_results:
         print(f"  {result}")
@@ -267,7 +291,7 @@ def main():
     # Run integration tests
     try:
         integration_passed = asyncio.run(run_tool_integration_tests())
-        print(f"\n✅ Integration tests: {integration_passed}/3 passed")
+        print(f"\n✅ Integration tests: {integration_passed}/4 passed")
     except Exception as e:
         print(f"\n❌ Integration tests failed: {e}")
     

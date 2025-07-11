@@ -29,6 +29,19 @@ except ImportError:
     logger.warning("TransformationJobExecutor not available - raw_analysis tool will not work")
     TransformationJobExecutor = None
 
+# Import TransformationUtils for journey information
+try:
+    from .scripts.utils import TransformationUtils
+except ImportError:
+    try:
+        # Try alternative import path for development
+        import sys
+        sys.path.append('/opt/mycode/aws-mcp/scripts')
+        from utils import TransformationUtils
+    except ImportError:
+        logger.warning("TransformationUtils not available - journey-info tool will not work")
+        TransformationUtils = None
+
 from awslabs.tmf_oda_transformer_mcp_server.consts import (
     ANALYSIS_STATUS,
     COMPLIANCE_LEVELS,
@@ -100,6 +113,17 @@ mcp = FastMCP(
     Retrieves execution logs for a specific job step from S3 storage.
     Useful for debugging job execution issues and monitoring step-by-step progress.
     Provides detailed execution logs including timing, metrics, and error information.
+    
+    ### journey-info
+    Retrieves comprehensive information about TMF ODA transformation journeys.
+    Lists all journeys with their status and progress, or provides detailed information for a specific journey.
+    Includes journey status, stages, steps, job execution history, and system state overview.
+    Essential for monitoring and managing transformation processes.
+    
+    ### test-runner
+    Runs comprehensive verification tests for all TMF ODA transformer tools.
+    Executes test suite to verify tool functionality, parameter validation, and error handling.
+    Provides detailed results about system health and functionality.
     
     All tools provide detailed compliance assessments, transformation recommendations, and actionable insights
     for achieving TMF ODA compliance.
@@ -1092,6 +1116,246 @@ async def test_runner_tool(
             'error_details': str(e),
             'partial_results': test_results.get('tests_executed', [])
         }
+
+
+@mcp.tool(
+    name='journey-info',
+    description="""Retrieve comprehensive information about TMF ODA transformation journeys.
+    
+    This tool provides detailed information about transformation journeys including:
+    - List of all journeys with their current status and progress
+    - Detailed journey status with current jobs and aggregates
+    - All stages and steps for a specific journey
+    - Job execution history for stages
+    - Comprehensive overview of the transformation system state
+    
+    When no journey_id is provided, it lists all journeys.
+    When a journey_id is provided, it shows detailed information for that specific journey.
+    Optionally, you can also specify a stage_id to get job details for a specific stage.
+    """,
+)
+async def journey_info_tool(
+    ctx: Context,
+    journey_id: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="""Optional journey ID to get detailed information for a specific journey.
+            If not provided, lists all journeys.
+            Example: 'JRN-SAMPLE-001'"""
+        ),
+    ],
+    stage_id: Annotated[
+        Optional[str],
+        Field(
+            default=None,
+            description="""Optional stage ID to get job execution details for a specific stage.
+            Only used when journey_id is also provided.
+            Example: 'raw_analysis', 'stripped_schema'"""
+        ),
+    ],
+    include_stages: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="""Whether to include detailed stage information when querying a specific journey.
+            Set to false for faster response if stage details are not needed."""
+        ),
+    ],
+    include_job_history: Annotated[
+        bool,
+        Field(
+            default=True,
+            description="""Whether to include job execution history when querying specific stages.
+            Set to false for faster response if job history is not needed."""
+        ),
+    ],
+    job_limit: Annotated[
+        int,
+        Field(
+            default=10,
+            description="""Maximum number of job executions to retrieve per stage.
+            Applies when include_job_history is true."""
+        ),
+    ],
+) -> Dict[str, Any]:
+    """Retrieve comprehensive information about TMF ODA transformation journeys.
+    
+    Args:
+        ctx: MCP context for logging and state management
+        journey_id: Optional journey ID for detailed information
+        stage_id: Optional stage ID for specific stage job details
+        include_stages: Whether to include detailed stage information
+        include_job_history: Whether to include job execution history
+        job_limit: Maximum number of job executions per stage
+        
+    Returns:
+        Dict[str, Any]: Comprehensive journey information with status and details
+    """
+    logger.info(f'Retrieving journey information - journey_id: {journey_id}, stage_id: {stage_id}')
+    
+    # Check if TransformationUtils is available
+    if TransformationUtils is None:
+        error_msg = "TransformationUtils not available - cannot retrieve journey information"
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        raise Exception(error_msg)
+    
+    start_time = datetime.now()
+    
+    try:
+        # Initialize TransformationUtils
+        utils = TransformationUtils()
+        
+        # If no journey_id provided, list all journeys
+        if not journey_id:
+            logger.info('Listing all transformation journeys')
+            journeys = utils.list_journeys()
+            
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+            
+            # Build summary statistics
+            total_journeys = len(journeys)
+            status_counts = {}
+            for journey in journeys:
+                status = journey.get('status', 'unknown')
+                status_counts[status] = status_counts.get(status, 0) + 1
+            
+            result = {
+                'operation': 'list_all_journeys',
+                'status': 'success',
+                'timestamp': start_time.isoformat(),
+                'duration_seconds': duration,
+                'summary': {
+                    'total_journeys': total_journeys,
+                    'status_distribution': status_counts,
+                    'active_journeys': len([j for j in journeys if j.get('status') in ['running', 'pending']]),
+                    'completed_journeys': len([j for j in journeys if j.get('status') == 'completed']),
+                    'failed_journeys': len([j for j in journeys if j.get('status') == 'failed'])
+                },
+                'journeys': journeys,
+                'message': f'Retrieved {total_journeys} transformation journeys'
+            }
+            
+            logger.success(f'Successfully listed {total_journeys} journeys in {duration:.2f}s')
+            return result
+        
+        # Get detailed information for specific journey
+        logger.info(f'Getting detailed information for journey: {journey_id}')
+        
+        # Get journey status
+        journey_status = utils.get_journey_status(journey_id)
+        if not journey_status:
+            error_msg = f'Journey {journey_id} not found'
+            logger.error(error_msg)
+            await ctx.error(error_msg)
+            raise ValueError(error_msg)
+        
+        result = {
+            'operation': 'get_journey_details',
+            'journey_id': journey_id,
+            'status': 'success',
+            'timestamp': start_time.isoformat(),
+            'journey_status': journey_status
+        }
+        
+        # Get stages information if requested
+        if include_stages:
+            logger.info(f'Getting stages for journey: {journey_id}')
+            stages = utils.get_journey_stages(journey_id)
+            result['stages'] = {
+                'total_stages': len(stages),
+                'stages_list': stages
+            }
+            
+            # If specific stage_id provided, get detailed job information
+            if stage_id:
+                logger.info(f'Getting job details for stage: {stage_id}')
+                stage_jobs = utils.get_stage_jobs(journey_id, stage_id, limit=job_limit)
+                result['stage_details'] = {
+                    'stage_id': stage_id,
+                    'total_jobs': len(stage_jobs),
+                    'jobs': stage_jobs
+                }
+            elif include_job_history:
+                # Get job history for all stages
+                logger.info('Getting job history for all stages')
+                stage_job_summary = {}
+                for stage in stages:
+                    stage_id_current = stage['stageId']
+                    stage_jobs = utils.get_stage_jobs(journey_id, stage_id_current, limit=job_limit)
+                    stage_job_summary[stage_id_current] = {
+                        'total_jobs': len(stage_jobs),
+                        'recent_jobs': stage_jobs[:3] if stage_jobs else [],  # Show only 3 most recent
+                        'latest_status': stage_jobs[0]['status'] if stage_jobs else 'no_executions'
+                    }
+                result['stage_job_summary'] = stage_job_summary
+        
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        result['duration_seconds'] = duration
+        
+        # Build comprehensive summary
+        summary = {
+            'journey_name': journey_status.get('name', 'N/A'),
+            'current_status': journey_status.get('status', 'unknown'),
+            'overall_progress': journey_status.get('overallProgress', 0),
+            'current_stage': journey_status.get('currentStageId', 'N/A'),
+            'created_at': journey_status.get('createdAt', 'N/A')
+        }
+        
+        if include_stages:
+            summary['total_stages'] = len(result.get('stages', {}).get('stages_list', []))
+            
+            if 'stage_job_summary' in result:
+                total_jobs = sum(s['total_jobs'] for s in result['stage_job_summary'].values())
+                summary['total_job_executions'] = total_jobs
+                
+                # Count jobs by status across all stages
+                job_status_counts = {}
+                for stage_summary in result['stage_job_summary'].values():
+                    for job in stage_summary.get('recent_jobs', []):
+                        status = job.get('status', 'unknown')
+                        job_status_counts[status] = job_status_counts.get(status, 0) + 1
+                summary['job_status_distribution'] = job_status_counts
+        
+        result['summary'] = summary
+        
+        # Generate informative message
+        if stage_id:
+            stage_jobs_count = len(result.get('stage_details', {}).get('jobs', []))
+            message = f'Retrieved detailed information for journey {journey_id}, stage {stage_id} with {stage_jobs_count} job executions'
+        else:
+            stages_count = len(result.get('stages', {}).get('stages_list', []))
+            message = f'Retrieved comprehensive information for journey {journey_id} with {stages_count} stages'
+        
+        result['message'] = message
+        
+        logger.success(f'{message} in {duration:.2f}s')
+        return result
+        
+    except Exception as e:
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        error_msg = f'Failed to retrieve journey information: {str(e)}'
+        logger.error(error_msg)
+        await ctx.error(error_msg)
+        
+        # Return error result
+        error_result = {
+            'operation': 'get_journey_info',
+            'journey_id': journey_id,
+            'stage_id': stage_id,
+            'status': 'error',
+            'timestamp': start_time.isoformat(),
+            'duration_seconds': duration,
+            'error_message': str(e),
+            'message': error_msg
+        }
+        
+        return error_result
 
 
 # Helper functions for test execution
