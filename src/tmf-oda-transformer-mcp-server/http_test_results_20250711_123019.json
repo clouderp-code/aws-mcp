@@ -1,0 +1,27 @@
+{
+  "start_time": "2025-07-11T12:30:19.396267",
+  "connection_type": "http",
+  "base_url": "http://localhost:8000",
+  "timeout": 30,
+  "tests": {
+    "api_connectivity": true,
+    "health_check": true,
+    "tools_endpoint": true,
+    "tool_validation": {
+      "schema_analyzer": "\u2705 Validation working: HTTP 400: {'detail': 'Workspace directory path is required for schema analysis'}",
+      "db_analyzer": "\u2705 Validation working: HTTP 400: {'detail': 'Database connection string is required'}",
+      "raw_analysis": "\u2705 Correctly validates empty journey ID",
+      "stripped_schema": "\u2705 Correctly validates empty journey ID",
+      "get_job_logs": "\u2705 Correctly validates empty journey ID",
+      "test_runner": "\u2705 Test runner passed: 1/1 tests"
+    },
+    "comprehensive_workflow": true,
+    "performance_metrics": {
+      "health_response_time": 0.003921031951904297,
+      "test_runner_time": 0.006964921951293945,
+      "tools_listing_time": 0.0028519630432128906
+    }
+  },
+  "end_time": "2025-07-11T12:30:19.533002",
+  "duration_seconds": 0.136735
+}

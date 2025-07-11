@@ -22,6 +22,9 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional, Dict, Any
 
+# Import logger first so it can be used in try/except blocks
+from loguru import logger
+
 # Import transformation job executor
 try:
     from .scripts.job_executor import TransformationJobExecutor
@@ -75,7 +78,6 @@ from awslabs.tmf_oda_transformer_mcp_server.models import (
     SchemaFormat,
     TMFODAComponentType,
 )
-from loguru import logger
 from mcp.server.fastmcp import Context, FastMCP
 from pydantic import Field
 from typing import Annotated

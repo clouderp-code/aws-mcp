@@ -89,7 +89,7 @@ WORKDIR /app
 # Copy application code
 COPY --from=builder /build/awslabs/ ./awslabs/
 COPY docker-healthcheck.sh ./
-COPY http_wrapper.py ./
+COPY mcp_http_server.py ./
 
 # Set execute permissions on healthcheck script
 RUN chmod +x docker-healthcheck.sh
@@ -119,4 +119,4 @@ HEALTHCHECK --interval=60s --timeout=10s --start-period=30s --retries=3 \
 EXPOSE 8000
 
 # Use exec form for better signal handling
-ENTRYPOINT ["python", "http_wrapper.py"] 
+ENTRYPOINT ["python", "mcp_http_server.py"] 

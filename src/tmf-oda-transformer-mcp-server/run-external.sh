@@ -11,7 +11,7 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Configuration
-IMAGE_NAME="tmf-oda-transformer-mcp-server:optimized"
+IMAGE_NAME="tmf-oda-transformer-mcp-server:latest"
 CONTAINER_NAME="tmf-oda-mcp-server"
 HTTP_PORT="8000"
 HOST_IP=$(hostname -I | awk '{print $1}')
@@ -42,7 +42,7 @@ start_container() {
         docker rm "${CONTAINER_NAME}" >/dev/null 2>&1 || true
     fi
     
-    # Run container with HTTP wrapper
+    # Run container with MCP HTTP transport server
     docker run -d \
         --name "${CONTAINER_NAME}" \
         -p "${HTTP_PORT}:${HTTP_PORT}" \
@@ -51,7 +51,7 @@ start_container() {
         -e TMF_ODA_REFERENCE_PATH=/opt/tmf-oda-references \
         --restart unless-stopped \
         "${IMAGE_NAME}" \
-        python http_wrapper.py
+        python mcp_http_server.py
     
     if [ $? -eq 0 ]; then
         print_color $GREEN "✅ Container started successfully!"
