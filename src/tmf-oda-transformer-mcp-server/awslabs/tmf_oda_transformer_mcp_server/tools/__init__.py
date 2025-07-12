@@ -14,14 +14,14 @@
 
 """MCP Tools for TMF ODA Transformer."""
 
-from .analysis_tools import schema_analyzer_tool, db_analyzer_tool
+# from .analysis_tools import schema_analyzer_tool, db_analyzer_tool  # Commented out for focus on core execution tools
 from .execution_tools import raw_analysis_tool, stripped_schema_tool, run_jobs_tool
 from .management_tools import journeys_tool
 from .utility_tools import get_job_logs_tool, test_runner_tool
 
 __all__ = [
-    'schema_analyzer_tool',
-    'db_analyzer_tool',
+    # 'schema_analyzer_tool',  # Commented out for focus on core execution tools
+    # 'db_analyzer_tool',      # Commented out for focus on core execution tools
     'raw_analysis_tool',
     'stripped_schema_tool',
     'run_jobs_tool',

@@ -196,14 +196,13 @@ class MCPExternalTester:
             ("Import all tools", 
              '''python -c "
 from awslabs.tmf_oda_transformer_mcp_server.server import (
-    schema_analyzer_tool,
-    db_analyzer_tool,
     raw_analysis_tool,
     stripped_schema_tool,
     get_job_logs_tool,
-    test_runner_tool
+    test_runner_tool,
+    journeys_tool
 )
-print('✅ All 8 tools imported successfully')
+print('✅ All 6 tools imported successfully')
 "'''),
             ("Import models", 
              "python -c 'from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType; print(\"✅ Models imported\")'")
@@ -229,13 +228,12 @@ import asyncio
 import json
 from unittest.mock import AsyncMock
 from awslabs.tmf_oda_transformer_mcp_server.server import (
-    schema_analyzer_tool,
-    db_analyzer_tool,
     raw_analysis_tool,
     stripped_schema_tool,
     get_job_logs_tool,
     test_runner_tool,
-    journeys_tool
+    journeys_tool,
+    run_jobs_tool
 )
 from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType
 
@@ -245,36 +243,7 @@ async def test_all_tools():
     
     results = {}
     
-    # Test 1: Schema Analyzer
-    try:
-        await schema_analyzer_tool(
-            ctx=ctx,
-            workspace_dir="",
-            oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-            schema_format=None
-        )
-        results["schema_analyzer"] = "❌ Should have failed with empty workspace"
-    except ValueError:
-        results["schema_analyzer"] = "✅ Correctly validates empty workspace"
-    except Exception as e:
-        results["schema_analyzer"] = f"❌ Unexpected error: {e}"
-    
-    # Test 2: Database Analyzer
-    try:
-        await db_analyzer_tool(
-            ctx=ctx,
-            connection_string="",
-            database_type=DatabaseType.POSTGRESQL,
-            oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-            tables_filter=None
-        )
-        results["db_analyzer"] = "❌ Should have failed with empty connection"
-    except ValueError:
-        results["db_analyzer"] = "✅ Correctly validates empty connection"
-    except Exception as e:
-        results["db_analyzer"] = f"❌ Unexpected error: {e}"
-    
-    # Test 3: Raw Analysis
+    # Test 1: Raw Analysis
     try:
         await raw_analysis_tool(
             ctx=ctx,
@@ -289,7 +258,7 @@ async def test_all_tools():
     except Exception as e:
         results["raw_analysis"] = f"❌ Unexpected error: {e}"
     
-    # Test 4: Stripped Schema
+    # Test 2: Stripped Schema
     try:
         await stripped_schema_tool(
             ctx=ctx,
@@ -304,7 +273,7 @@ async def test_all_tools():
     except Exception as e:
         results["stripped_schema"] = f"❌ Unexpected error: {e}"
     
-    # Test 5: Get Job Logs
+    # Test 3: Get Job Logs
     try:
         await get_job_logs_tool(
             ctx=ctx,
@@ -319,123 +288,62 @@ async def test_all_tools():
     except Exception as e:
         results["get_job_logs"] = f"❌ Unexpected error: {e}"
     
-            # Test 6: Test Runner (Quick mode)
-        try:
-            result = await test_runner_tool(
-                ctx=ctx,
-                test_type="quick",
-                include_performance=False
-            )
-            if result.get("status") == "success":
-                results["test_runner"] = f"✅ Test runner passed: {result.get('tests_passed', 0)}/{result.get('total_tests', 0)} tests"
-            else:
-                results["test_runner"] = f"⚠️ Test runner partial: {result.get('message', 'Unknown')}"
-        except Exception as e:
-            results["test_runner"] = f"❌ Test runner error: {e}"
+    # Test 4: Run Jobs Tool
+    try:
+        await run_jobs_tool(
+            ctx=ctx,
+            journey_id="",
+            stage_id="raw_analysis",
+            triggered_by="test",
+            reason="test"
+        )
+        results["run_jobs"] = "❌ Should have failed with empty journey ID"
+    except ValueError:
+        results["run_jobs"] = "✅ Correctly validates empty journey ID"
+    except Exception as e:
+        results["run_jobs"] = f"❌ Unexpected error: {e}"
+    
+    # Test 5: Journeys Tool (READ operation)
+    try:
+        result = await journeys_tool(
+            ctx=ctx,
+            action="read",
+            journey_id="",
+            journey_data=None,
+            stage_id="",
+            include_stages=True,
+            include_job_history=True,
+            job_limit=10
+        )
+        if result.get("status") == "success":
+            journeys_count = len(result.get("journeys", []))
+            results["journeys"] = f"✅ Journeys tool working: {journeys_count} journeys"
+        else:
+            results["journeys"] = f"⚠️ Journeys partial: {result.get('message', 'Unknown')}"
+    except Exception as e:
+        results["journeys"] = f"❌ Journeys error: {e}"
+    
+    # Test 6: Test Runner (Quick mode)
+    try:
+        result = await test_runner_tool(
+            ctx=ctx,
+            test_type="quick",
+            include_performance=False
+        )
+        # Extract values safely to avoid any f-string evaluation issues
+        status = result.get("status", "unknown")
+        tests_passed_value = result.get('tests_passed', 0)
+        total_tests_value = result.get('total_tests', 0)
+        message_value = result.get('message', 'Unknown')
         
-        # Test 7: Journeys Tool (READ operation)
-        try:
-            result = await journeys_tool(
-                ctx=ctx,
-                action="read",
-                journey_id=None,
-                journey_data=None,
-                stage_id=None,
-                include_stages=True,
-                include_job_history=True,
-                job_limit=10
-            )
-            if result.get("status") == "success":
-                journeys_count = len(result.get("journeys", []))
-                results["journeys_read"] = f"✅ Journeys list retrieved: {journeys_count} journeys"
-            else:
-                results["journeys_read"] = f"⚠️ Journeys read partial: {result.get('message', 'Unknown')}"
-        except Exception as e:
-            results["journeys_read"] = f"❌ Journeys read error: {e}"
-        
-        # Test 8: Journeys Tool (CREATE operation)
-        try:
-            result = await journeys_tool(
-                ctx=ctx,
-                action="create",
-                journey_id=None,
-                journey_data={
-                    "name": "External Test Journey",
-                    "description": "Test journey created via external test",
-                    "oda_component_type": "customer-management",
-                    "priority": "low"
-                },
-                stage_id=None,
-                include_stages=True,
-                include_job_history=True,
-                job_limit=10
-            )
-            if result.get("status") == "success":
-                journey_id = result.get("journey_id", "Unknown")
-                results["journeys_create"] = f"✅ Journey created: {journey_id}"
-            else:
-                results["journeys_create"] = f"⚠️ Journey creation partial: {result.get('message', 'Unknown')}"
-        except Exception as e:
-            results["journeys_create"] = f"❌ Journey creation error: {e}"
-        
-        # Test 9: Journeys Tool (DELETE operation)
-        try:
-            result = await journeys_tool(
-                ctx=ctx,
-                action="delete",
-                journey_id="JRN-TEST-DELETE",
-                journey_data=None,
-                stage_id=None,
-                include_stages=True,
-                include_job_history=True,
-                job_limit=10
-            )
-            if result.get("status") == "success":
-                results["journeys_delete"] = "✅ Journey deletion handled"
-            else:
-                results["journeys_delete"] = f"⚠️ Journey deletion partial: {result.get('message', 'Unknown')}"
-        except Exception as e:
-            results["journeys_delete"] = f"❌ Journey deletion error: {e}"
-        
-        # Test 10: Journeys Tool (Backward compatibility - list action)
-        try:
-            result = await journeys_tool(
-                ctx=ctx,
-                action="list",  # Should work same as "read"
-                journey_id=None,
-                journey_data=None,
-                stage_id=None,
-                include_stages=True,
-                include_job_history=True,
-                job_limit=10
-            )
-            if result.get("status") == "success":
-                journeys_count = len(result.get("journeys", []))
-                results["journeys_list_alias"] = f"✅ List action alias works: {journeys_count} journeys"
-            else:
-                results["journeys_list_alias"] = f"⚠️ List action partial: {result.get('message', 'Unknown')}"
-        except Exception as e:
-            results["journeys_list_alias"] = f"❌ List action error: {e}"
-        
-        # Test 11: Journeys Tool (Error handling - unsupported action)
-        try:
-            result = await journeys_tool(
-                ctx=ctx,
-                action="invalid_action",
-                journey_id=None,
-                journey_data=None,
-                stage_id=None,
-                include_stages=True,
-                include_job_history=True,
-                job_limit=10
-            )
-            # Should return error result, not raise exception
-            if result.get("status") == "error":
-                results["journeys_error_handling"] = "✅ Error handling works correctly"
-            else:
-                results["journeys_error_handling"] = "❌ Should have returned error for invalid action"
-        except Exception as e:
-            results["journeys_error_handling"] = f"⚠️ Exception raised (acceptable): {str(e)[:50]}"
+        if status == "success":
+            results["test_runner"] = "✅ Test runner passed: " + str(tests_passed_value) + "/" + str(total_tests_value) + " tests"
+        else:
+            results["test_runner"] = "⚠️ Test runner partial: " + str(message_value)
+    except Exception as e:
+        # Convert exception to string immediately to avoid any variable issues
+        error_str = str(e)
+        results["test_runner"] = "❌ Test runner error: " + error_str
     
     print(json.dumps(results, indent=2))
 

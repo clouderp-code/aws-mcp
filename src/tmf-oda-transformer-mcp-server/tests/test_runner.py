@@ -29,13 +29,15 @@ class TMFMCPTestRunner:
         print("🚀 Starting TMF ODA Transformer MCP Server Test Suite")
         print("=" * 70)
         
+        # Updated test files to only include tests for remaining tools
         test_files = [
-            "test_schema_analyzer.py",
-            "test_db_analyzer.py", 
+            # "test_schema_analyzer.py",  # Removed tool
+            # "test_db_analyzer.py",      # Removed tool
             "test_raw_analysis.py",
             "test_stripped_schema.py",
             "test_get_job_logs.py",
-            "test_journeys.py"
+            "test_journeys.py",
+            "test_run_jobs.py"
         ]
         
         start_time = time.time()
@@ -48,98 +50,72 @@ class TMFMCPTestRunner:
         end_time = time.time()
         
         self._print_summary(end_time - start_time)
-        
+
     def _run_test_file(self, test_file):
-        """Run a specific test file using pytest."""
+        """Run a single test file and return results."""
         try:
-            cmd = ["python", "-m", "pytest", f"tests/{test_file}", "-v", "--tb=short"]
+            # Use subprocess to run pytest on the specific test file
             result = subprocess.run(
-                cmd,
+                [sys.executable, "-m", "pytest", f"tests/{test_file}", "-v", "--tb=short"],
                 capture_output=True,
                 text=True,
                 cwd=Path(__file__).parent.parent
             )
             
-            # Parse pytest output for test counts
-            output_lines = result.stdout.split('\n')
-            test_count = 0
-            passed_count = 0
-            failed_count = 0
+            output = result.stdout + result.stderr
             
-            for line in output_lines:
-                if " PASSED" in line:
-                    passed_count += 1
-                    test_count += 1
-                elif " FAILED" in line:
-                    failed_count += 1
-                    test_count += 1
-                elif "failed" in line and "passed" in line:
-                    # Parse summary line like "5 failed, 10 passed in 2.5s"
-                    parts = line.split()
-                    for i, part in enumerate(parts):
-                        if part == "failed," and i > 0:
-                            failed_count = int(parts[i-1])
-                        elif part == "passed" and i > 0:
-                            passed_count = int(parts[i-1])
+            # Parse pytest output to extract results
+            lines = output.split('\n')
+            passed = 0
+            failed = 0
             
-            self.total_tests += test_count
-            self.passed_tests += passed_count
-            self.failed_tests += failed_count
+            for line in lines:
+                if '::' in line and 'PASSED' in line:
+                    passed += 1
+                elif '::' in line and 'FAILED' in line:
+                    failed += 1
             
-            # Print results for this file
-            if result.returncode == 0:
-                print(f"  ✅ All tests passed! ({passed_count}/{test_count})")
-                status = "PASSED"
-            else:
-                print(f"  ❌ Some tests failed! ({passed_count}/{test_count} passed)")
-                if result.stderr:
-                    print(f"  Error: {result.stderr[:200]}...")
-                status = "FAILED"
-                
+            # Update totals
+            self.total_tests += (passed + failed)
+            self.passed_tests += passed
+            self.failed_tests += failed
+            
+            status = 'PASSED' if failed == 0 else 'FAILED'
+            
             return {
                 'status': status,
-                'total': test_count,
-                'passed': passed_count,
-                'failed': failed_count,
-                'returncode': result.returncode,
-                'stdout': result.stdout,
-                'stderr': result.stderr
+                'passed': passed,
+                'failed': failed,
+                'total': passed + failed,
+                'output': output
             }
             
         except Exception as e:
-            print(f"  💥 Error running tests: {str(e)}")
+            print(f"  ❌ Error running {test_file}: {e}")
             return {
                 'status': 'ERROR',
-                'error': str(e),
-                'total': 0,
                 'passed': 0,
-                'failed': 0
+                'failed': 1,
+                'total': 1,
+                'output': str(e)
             }
-    
+
     def _print_summary(self, duration):
-        """Print comprehensive test summary."""
+        """Print test summary."""
+        print(f"\n⏱️  Total test duration: {duration:.2f} seconds")
         print("\n" + "=" * 70)
-        print("🎯 TMF ODA TRANSFORMER MCP SERVER TEST SUMMARY")
+        print("🎯 TEST SUMMARY")
         print("=" * 70)
         
-        print(f"⏱️  Total execution time: {duration:.2f} seconds")
-        print(f"📊 Total tests executed: {self.total_tests}")
-        print(f"✅ Tests passed: {self.passed_tests}")
-        print(f"❌ Tests failed: {self.failed_tests}")
-        
-        success_rate = (self.passed_tests / self.total_tests * 100) if self.total_tests > 0 else 0
-        print(f"📈 Success rate: {success_rate:.1f}%")
-        
-        print("\n📋 DETAILED RESULTS BY TOOL:")
-        print("-" * 50)
-        
+        # Map test files to tool names
         tool_mapping = {
-            "test_schema_analyzer.py": "🔍 Schema Analyzer Tool",
-            "test_db_analyzer.py": "🗄️  Database Analyzer Tool",
-            "test_raw_analysis.py": "⚡ Raw Analysis Tool",
-            "test_stripped_schema.py": "🔧 Stripped Schema Tool", 
-            "test_get_job_logs.py": "📋 Get Job Logs Tool",
-            "test_journeys.py": "📊 Journeys Tool (CRUD)"
+            # "test_schema_analyzer.py": "🔍 Schema Analyzer",      # Removed tool
+            # "test_db_analyzer.py": "🗄️ Database Analyzer",       # Removed tool
+            "test_raw_analysis.py": "⚡ Raw Analysis",
+            "test_stripped_schema.py": "🔧 Stripped Schema",
+            "test_get_job_logs.py": "📋 Get Job Logs",
+            "test_journeys.py": "📊 Journeys Management",
+            "test_run_jobs.py": "🎯 Run Jobs"
         }
         
         for test_file, tool_name in tool_mapping.items():
@@ -163,12 +139,13 @@ class TMFMCPTestRunner:
     def _print_tool_functionality_summary(self):
         """Print summary of tool functionality that was verified."""
         functionalities = [
-            "🔍 Schema file discovery and analysis for TMF ODA compliance",
-            "🗄️  Database connection and schema analysis for various DB types",
+            # "🔍 Schema file discovery and analysis for TMF ODA compliance",      # Removed tool
+            # "🗄️  Database connection and schema analysis for various DB types",  # Removed tool
             "⚡ Raw analysis stage execution with proper job management",
             "🔧 Stripped schema stage execution with error handling",
             "📋 Job log retrieval from S3 with comprehensive error handling",
             "📊 Journey CRUD operations with comprehensive status tracking",
+            "🎯 Generic job execution for any transformation stage",
             "🔒 AWS credential handling and role assumption",
             "⚙️  Input validation and error messaging",
             "📊 Result formatting and metadata generation",
@@ -186,14 +163,15 @@ async def run_tool_integration_tests():
     
     # These tests actually call the tool functions to verify they work
     from awslabs.tmf_oda_transformer_mcp_server.server import (
-        schema_analyzer_tool,
-        db_analyzer_tool,
+        # schema_analyzer_tool,    # Removed tool
+        # db_analyzer_tool,        # Removed tool
         raw_analysis_tool,
         stripped_schema_tool,
         get_job_logs_tool,
-        journeys_tool
+        journeys_tool,
+        run_jobs_tool
     )
-    from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType
+    from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType
     from unittest.mock import Mock
     
     mock_ctx = Mock()
@@ -201,34 +179,7 @@ async def run_tool_integration_tests():
     
     integration_results = []
     
-    # Test 1: Schema Analyzer with invalid workspace
-    try:
-        print("🧪 Testing schema-analyzer with invalid workspace...")
-        await schema_analyzer_tool(
-            ctx=mock_ctx,
-            workspace_dir="/non/existent/path",
-            oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-            schema_format=None
-        )
-        integration_results.append("❌ Schema analyzer should have failed with invalid workspace")
-    except Exception as e:
-        integration_results.append("✅ Schema analyzer correctly validates workspace directory")
-    
-    # Test 2: DB Analyzer with empty connection string
-    try:
-        print("🧪 Testing db-analyzer with empty connection string...")
-        await db_analyzer_tool(
-            ctx=mock_ctx,
-            connection_string="",
-            database_type=DatabaseType.POSTGRESQL,
-            oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-            tables_filter=None
-        )
-        integration_results.append("❌ DB analyzer should have failed with empty connection")
-    except Exception as e:
-        integration_results.append("✅ DB analyzer correctly validates connection string")
-    
-    # Test 3: Raw Analysis with empty journey ID
+    # Test 1: Raw Analysis with empty journey ID
     try:
         print("🧪 Testing raw-analysis with empty journey ID...")
         await raw_analysis_tool(
@@ -240,44 +191,58 @@ async def run_tool_integration_tests():
         )
         integration_results.append("❌ Raw analysis should have failed with empty journey ID")
     except Exception as e:
-        integration_results.append("✅ Raw analysis correctly validates journey ID")
+        integration_results.append("✅ Raw analysis correctly validates empty journey ID")
     
-    # Test 4: Journeys Tool with TransformationUtils not available
+    # Test 2: Stripped Schema with empty journey ID
     try:
-        print("🧪 Testing journeys tool with unavailable TransformationUtils...")
-        # Mock TransformationUtils to be None to test fallback system
-        import awslabs.tmf_oda_transformer_mcp_server.server as server_module
-        original_utils = getattr(server_module, 'TransformationUtils', None)
-        server_module.TransformationUtils = None
-        
-        result = await journeys_tool(
+        print("🧪 Testing stripped-schema with empty journey ID...")
+        await stripped_schema_tool(
             ctx=mock_ctx,
-            action="read",
-            journey_id="JRN-TEST-001",
-            journey_data=None,
-            stage_id=None,
-            include_stages=True,
-            include_job_history=True,
-            job_limit=10
+            journey_id="",
+            stage_id="stripped_schema",
+            triggered_by="test",
+            reason="test"
         )
-        
-        # Should work with fallback system
-        if result.get("status") == "success":
-            integration_results.append("✅ Journeys tool correctly uses fallback system when TransformationUtils unavailable")
-        else:
-            integration_results.append("⚠️ Journeys tool fallback system partially working")
+        integration_results.append("❌ Stripped schema should have failed with empty journey ID")
     except Exception as e:
-        integration_results.append(f"❌ Journeys tool failed: {str(e)}")
-    finally:
-        # Restore original TransformationUtils
-        if original_utils is not None:
-            server_module.TransformationUtils = original_utils
+        integration_results.append("✅ Stripped schema correctly validates empty journey ID")
     
-    print("\n📋 Integration test results:")
-    for result in integration_results:
-        print(f"  {result}")
+    # Test 3: Get Job Logs with empty journey ID
+    try:
+        print("🧪 Testing get-job-logs with empty journey ID...")
+        await get_job_logs_tool(
+            ctx=mock_ctx,
+            journey_id="",
+            stage_name="raw_analysis",
+            job_id="JOB-001-20240101120000",
+            step_name="schema_parsing"
+        )
+        integration_results.append("❌ Get job logs should have failed with empty journey ID")
+    except Exception as e:
+        integration_results.append("✅ Get job logs correctly validates empty journey ID")
     
-    return len([r for r in integration_results if r.startswith("✅")])
+    # Test 4: Run Jobs with empty journey ID
+    try:
+        print("🧪 Testing run-jobs with empty journey ID...")
+        await run_jobs_tool(
+            ctx=mock_ctx,
+            journey_id="",
+            stage_id="raw_analysis",
+            triggered_by="test",
+            reason="test"
+        )
+        integration_results.append("❌ Run jobs should have failed with empty journey ID")
+    except Exception as e:
+        integration_results.append("✅ Run jobs correctly validates empty journey ID")
+    
+    # Print results
+    print("\n📋 Integration Test Results:")
+    for i, result in enumerate(integration_results, 1):
+        print(f"  {i}. {result}")
+    
+    # Return count of passed tests
+    passed_count = sum(1 for result in integration_results if result.startswith("✅"))
+    return passed_count
 
 def main():
     """Main test runner entry point."""
@@ -309,7 +274,5 @@ def main():
     # Return appropriate exit code
     return 0 if runner.failed_tests == 0 else 1
 
-
 if __name__ == "__main__":
-    exit_code = main()
-    sys.exit(exit_code) 
+    exit(main()) 

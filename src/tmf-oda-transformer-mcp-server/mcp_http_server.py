@@ -25,8 +25,6 @@ sys.path.insert(0, str(Path(__file__).parent))
 try:
     from awslabs.tmf_oda_transformer_mcp_server.server import (
         mcp,
-        schema_analyzer_tool,
-        db_analyzer_tool,
         raw_analysis_tool,
         stripped_schema_tool,
         get_job_logs_tool,
@@ -65,33 +63,6 @@ server_state = {
 
 # Tool registry with direct function references
 TOOLS = {
-    "schema-analyzer": {
-        "func": schema_analyzer_tool,
-        "description": "Analyze schema files for TMF ODA compliance",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "workspace_dir": {"type": "string", "description": "Directory path to analyze", "default": "/opt/mycode/aws-mcp"},
-                "oda_component_type": {"type": "string", "description": "TMF ODA component type", "default": "product-catalog-management"},
-                "schema_format": {"type": "string", "description": "Optional schema format filter", "default": None}
-            },
-            "required": []
-        }
-    },
-    "db-analyzer": {
-        "func": db_analyzer_tool,
-        "description": "Analyze database structures for TMF ODA compliance",
-        "inputSchema": {
-            "type": "object",
-            "properties": {
-                "connection_string": {"type": "string", "description": "Database connection string", "default": "postgresql://demo:demo@localhost:5432/tmf_demo"},
-                "database_type": {"type": "string", "description": "Database type", "default": "postgresql"},
-                "oda_component_type": {"type": "string", "description": "TMF ODA component type", "default": "product-catalog-management"},
-                "tables_filter": {"type": "string", "description": "Optional tables filter", "default": None}
-            },
-            "required": []
-        }
-    },
     "raw-analysis": {
         "func": raw_analysis_tool,
         "description": "Execute raw analysis stage of transformation",
@@ -99,11 +70,11 @@ TOOLS = {
             "type": "object",
             "properties": {
                 "journey_id": {"type": "string", "description": "Journey ID", "default": "JRN-DEMO-001"},
-                "stage_id": {"type": "string", "description": "Stage ID", "default": "raw_analysis"},
+                "stage_id": {"type": "string", "description": "Stage ID", "default": "raw_analysis", "enum": ["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"]},
                 "triggered_by": {"type": "string", "description": "Who triggered this", "default": "mcp-server"},
                 "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"}
             },
-            "required": []
+            "required": ["journey_id"]
         }
     },
     "stripped-schema": {
@@ -113,11 +84,11 @@ TOOLS = {
             "type": "object",
             "properties": {
                 "journey_id": {"type": "string", "description": "Journey ID", "default": "JRN-DEMO-001"},
-                "stage_id": {"type": "string", "description": "Stage ID", "default": "stripped_schema"},
+                "stage_id": {"type": "string", "description": "Stage ID", "default": "stripped_schema", "enum": ["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"]},
                 "triggered_by": {"type": "string", "description": "Who triggered this", "default": "mcp-server"},
                 "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"}
             },
-            "required": []
+            "required": ["journey_id"]
         }
     },
     "get-job-logs": {
@@ -131,7 +102,7 @@ TOOLS = {
                 "job_id": {"type": "string", "description": "Job ID", "default": "JOB-001-20240101120000"},
                 "step_name": {"type": "string", "description": "Step name", "default": "schema_parsing"}
             },
-            "required": []
+            "required": ["journey_id", "stage_name", "job_id", "step_name"]
         }
     },
     "test-runner": {
@@ -140,7 +111,7 @@ TOOLS = {
         "inputSchema": {
             "type": "object",
             "properties": {
-                "test_type": {"type": "string", "description": "Type of tests to run"},
+                "test_type": {"type": "string", "description": "Type of tests to run", "enum": ["quick", "comprehensive", "imports"]},
                 "include_performance": {"type": "boolean", "description": "Include performance tests"}
             },
             "required": []
@@ -168,11 +139,11 @@ TOOLS = {
             "type": "object",
             "properties": {
                 "journey_id": {"type": "string", "description": "Journey ID", "default": "JRN-DEMO-001"},
-                "stage_id": {"type": "string", "description": "Stage ID to execute", "default": "raw_analysis"},
+                "stage_id": {"type": "string", "description": "Stage ID to execute", "default": "raw_analysis", "enum": ["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"]},
                 "triggered_by": {"type": "string", "description": "Who triggered this", "default": "mcp-server"},
                 "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"}
             },
-            "required": []
+            "required": ["journey_id", "stage_id"]
         }
     }
 }
@@ -293,11 +264,9 @@ async def initialize_server(request: Request):
                 "instructions": """
 # TMF ODA Transformer MCP Server
 
-Provides tools to analyze schema files and databases for TMF ODA (TM Forum Open Digital Architecture) transformation compliance.
+Provides tools for TMF ODA (TM Forum Open Digital Architecture) transformation and journey management.
 
 Available tools:
-- schema-analyzer: Analyze schema files for TMF ODA compliance
-- db-analyzer: Analyze database structures for TMF ODA compliance  
 - raw-analysis: Execute raw analysis stage of transformation
 - stripped-schema: Execute stripped schema stage of transformation
 - get-job-logs: Retrieve job execution logs
@@ -372,6 +341,26 @@ async def call_tool(request: Request):
         if not tool_info:
             raise HTTPException(status_code=404, detail=f"Tool '{tool_name}' not found")
         
+        # Validate required parameters
+        required_params = tool_info["inputSchema"].get("required", [])
+        missing_required = [
+            param for param in required_params if param not in arguments
+        ]
+        if missing_required:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required parameters for tool '{tool_name}': {', '.join(missing_required)}"
+            )
+
+        # Validate enum values for string properties
+        for prop_name, prop_info in tool_info["inputSchema"]["properties"].items():
+            if prop_info.get("type") == "string" and "enum" in prop_info:
+                if prop_name in arguments and arguments[prop_name] not in prop_info["enum"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid value for parameter '{prop_name}' for tool '{tool_name}': must be one of {', '.join(prop_info['enum'])}"
+                    )
+
         # Reset context errors
         ctx.errors = []
         
@@ -501,6 +490,26 @@ async def call_tool_rest(tool_name: str, request: Request):
         # Reset context errors
         ctx.errors = []
         
+        # Validate required parameters
+        required_params = tool_info["inputSchema"].get("required", [])
+        missing_required = [
+            param for param in required_params if param not in data
+        ]
+        if missing_required:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Missing required parameters for tool '{tool_name}': {', '.join(missing_required)}"
+            )
+
+        # Validate enum values for string properties
+        for prop_name, prop_info in tool_info["inputSchema"]["properties"].items():
+            if prop_info.get("type") == "string" and "enum" in prop_info:
+                if prop_name in data and data[prop_name] not in prop_info["enum"]:
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Invalid value for parameter '{prop_name}' for tool '{tool_name}': must be one of {', '.join(prop_info['enum'])}"
+                    )
+
         # Call tool function
         tool_func = tool_info["func"]
         

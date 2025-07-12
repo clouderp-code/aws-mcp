@@ -1,53 +1,41 @@
 #!/usr/bin/env python3
 """
-Simple verification script that outputs results to a file.
-This avoids Cursor's terminal integration issues.
+Simple verification script for TMF ODA Transformer MCP Server.
+
+This script performs basic verification of the server components.
 """
 
 import sys
-import os
-import json
 import traceback
 from pathlib import Path
-from datetime import datetime
 
-# Add current directory to path
+# Add the current directory to Python path
 sys.path.insert(0, str(Path(__file__).parent))
 
-def write_result(message, success=True):
-    """Write result to output file and print."""
-    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    result = {
-        "timestamp": timestamp,
-        "message": message,
-        "success": success
-    }
-    
-    # Write to file
-    with open("verification_results.json", "a") as f:
-        f.write(json.dumps(result) + "\n")
-    
-    # Also print
-    status = "✅" if success else "❌"
-    print(f"{status} {message}")
+def write_result(message, success):
+    """Write a result message with appropriate formatting."""
+    icon = "✅" if success else "❌"
+    print(f"{icon} {message}")
 
 def test_imports():
-    """Test basic imports."""
-    write_result("Starting import verification...", True)
+    """Test that all required modules can be imported."""
+    write_result("Starting import tests...", True)
     
     try:
-        # Test server imports
+        # Test server module imports
         from awslabs.tmf_oda_transformer_mcp_server.server import (
-            schema_analyzer_tool,
-            db_analyzer_tool,
+            # schema_analyzer_tool,  # Removed tool
+            # db_analyzer_tool,      # Removed tool
             raw_analysis_tool,
             stripped_schema_tool,
             get_job_logs_tool,
+            journeys_tool,
+            run_jobs_tool,
             test_runner_tool
         )
         write_result("Server tools imported successfully", True)
         
-        # Test model imports
+        # Test models
         from awslabs.tmf_oda_transformer_mcp_server.models import (
             TMFODAComponentType,
             DatabaseType,
@@ -56,21 +44,20 @@ def test_imports():
         )
         write_result("Models imported successfully", True)
         
-        # Test scripts imports
-        from awslabs.tmf_oda_transformer_mcp_server.scripts import (
-            TransformationJobExecutor,
-            AWSClientManager
+        # Test services
+        from awslabs.tmf_oda_transformer_mcp_server.services import (
+            # SchemaAnalysisService,      # Removed service
+            # DatabaseAnalysisService,    # Removed service
+            JourneyService,
+            ValidationService
         )
-        write_result("Scripts imported successfully", True)
+        write_result("Services imported successfully", True)
         
-        write_result("All imports successful!", True)
         return True
         
-    except ImportError as e:
-        write_result(f"Import error: {e}", False)
-        return False
     except Exception as e:
-        write_result(f"Unexpected error: {e}", False)
+        write_result(f"Import failed: {e}", False)
+        write_result(f"Traceback: {traceback.format_exc()}", False)
         return False
 
 def test_tool_validation():
@@ -83,12 +70,16 @@ def test_tool_validation():
         
         # Import tools
         from awslabs.tmf_oda_transformer_mcp_server.server import (
-            schema_analyzer_tool,
-            db_analyzer_tool
+            # schema_analyzer_tool,  # Removed tool
+            # db_analyzer_tool,      # Removed tool
+            raw_analysis_tool,
+            stripped_schema_tool,
+            get_job_logs_tool,
+            run_jobs_tool
         )
         from awslabs.tmf_oda_transformer_mcp_server.models import (
             TMFODAComponentType,
-            DatabaseType
+            # DatabaseType               # Not needed anymore
         )
         
         # Create proper async mock context
@@ -96,37 +87,72 @@ def test_tool_validation():
         ctx.error = AsyncMock()
         
         async def test_validation():
-            # Test schema analyzer with empty workspace
+            # Test raw analysis with empty journey ID
             try:
-                await schema_analyzer_tool(
+                await raw_analysis_tool(
                     ctx=ctx,
-                    workspace_dir="",
-                    oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-                    schema_format=None
+                    journey_id="",
+                    stage_id="raw_analysis",
+                    triggered_by="test",
+                    reason="test"
                 )
-                write_result("Schema analyzer should have failed with empty workspace", False)
+                write_result("Raw analysis should have failed with empty journey ID", False)
                 return False
             except ValueError:
-                write_result("Schema analyzer correctly validates empty workspace", True)
+                write_result("Raw analysis correctly validates empty journey ID", True)
             except Exception as e:
-                write_result(f"Schema analyzer validation error: {e}", False)
+                write_result(f"Raw analysis validation error: {e}", False)
                 return False
             
-            # Test db analyzer with empty connection
+            # Test stripped schema with empty journey ID
             try:
-                await db_analyzer_tool(
+                await stripped_schema_tool(
                     ctx=ctx,
-                    connection_string="",
-                    database_type=DatabaseType.POSTGRESQL,
-                    oda_component_type=TMFODAComponentType.CUSTOMER_MANAGEMENT,
-                    tables_filter=None
+                    journey_id="",
+                    stage_id="stripped_schema",
+                    triggered_by="test",
+                    reason="test"
                 )
-                write_result("DB analyzer should have failed with empty connection", False)
+                write_result("Stripped schema should have failed with empty journey ID", False)
                 return False
             except ValueError:
-                write_result("DB analyzer correctly validates empty connection", True)
+                write_result("Stripped schema correctly validates empty journey ID", True)
             except Exception as e:
-                write_result(f"DB analyzer validation error: {e}", False)
+                write_result(f"Stripped schema validation error: {e}", False)
+                return False
+            
+            # Test get job logs with empty journey ID
+            try:
+                await get_job_logs_tool(
+                    ctx=ctx,
+                    journey_id="",
+                    stage_name="raw_analysis",
+                    job_id="JOB-001-20240101120000",
+                    step_name="schema_parsing"
+                )
+                write_result("Get job logs should have failed with empty journey ID", False)
+                return False
+            except ValueError:
+                write_result("Get job logs correctly validates empty journey ID", True)
+            except Exception as e:
+                write_result(f"Get job logs validation error: {e}", False)
+                return False
+            
+            # Test run jobs with empty journey ID
+            try:
+                await run_jobs_tool(
+                    ctx=ctx,
+                    journey_id="",
+                    stage_id="raw_analysis",
+                    triggered_by="test",
+                    reason="test"
+                )
+                write_result("Run jobs should have failed with empty journey ID", False)
+                return False
+            except ValueError:
+                write_result("Run jobs correctly validates empty journey ID", True)
+            except Exception as e:
+                write_result(f"Run jobs validation error: {e}", False)
                 return False
             
             return True
@@ -141,53 +167,60 @@ def test_tool_validation():
         write_result(f"Traceback: {traceback.format_exc()}", False)
         return False
 
+def test_basic_functionality():
+    """Test basic functionality without actual execution."""
+    write_result("Starting basic functionality tests...", True)
+    
+    try:
+        # Test that key classes can be instantiated
+        from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType
+        
+        # Test enum values
+        component_type = TMFODAComponentType.CUSTOMER_MANAGEMENT
+        write_result(f"Component type created: {component_type}", True)
+        
+        return True
+        
+    except Exception as e:
+        write_result(f"Basic functionality test failed: {e}", False)
+        return False
+
 def main():
     """Main verification function."""
-    # Clear previous results
-    if os.path.exists("verification_results.json"):
-        os.remove("verification_results.json")
+    print("🚀 TMF ODA Transformer MCP Server - Simple Verification")
+    print("=" * 60)
     
-    write_result("🚀 TMF ODA Transformer MCP Server - Simple Verification", True)
-    write_result("=" * 60, True)
-    
-    # Run tests
     tests = [
-        ("Import Tests", test_imports),
-        ("Tool Validation", test_tool_validation),
+        test_imports,
+        test_tool_validation,
+        test_basic_functionality
     ]
     
     results = []
-    for test_name, test_func in tests:
-        write_result(f"Running {test_name}...", True)
+    for test in tests:
         try:
-            result = test_func()
-            results.append((test_name, result))
+            result = test()
+            results.append(result)
         except Exception as e:
-            write_result(f"{test_name} failed with exception: {e}", False)
-            results.append((test_name, False))
+            write_result(f"Test {test.__name__} failed with exception: {e}", False)
+            results.append(False)
     
-    # Summary
-    write_result("=" * 60, True)
-    write_result("🎯 VERIFICATION SUMMARY", True)
-    write_result("=" * 60, True)
+    print("\n" + "=" * 60)
+    print("🎯 VERIFICATION SUMMARY")
+    print("=" * 60)
     
-    passed = sum(1 for _, result in results if result)
+    passed = sum(results)
     total = len(results)
     
-    for test_name, result in results:
-        status = "PASS" if result else "FAIL"
-        write_result(f"{status}: {test_name}", result)
-    
-    write_result(f"Results: {passed}/{total} tests passed", True)
-    write_result(f"Success rate: {passed/total*100:.1f}%", True)
+    print(f"✅ Tests passed: {passed}/{total}")
+    print(f"📈 Success rate: {passed/total*100:.1f}%")
     
     if passed == total:
-        write_result("🎉 ALL TESTS PASSED!", True)
-        write_result("✅ TMF ODA Transformer MCP Server is ready!", True)
+        print("\n🎉 ALL VERIFICATIONS PASSED!")
+        print("✅ TMF ODA Transformer MCP Server basic functionality verified!")
     else:
-        write_result(f"⚠️ {total - passed} test(s) failed.", False)
+        print(f"\n⚠️  {total - passed} verification(s) failed.")
     
-    write_result("Results written to verification_results.json", True)
     return passed == total
 
 if __name__ == "__main__":

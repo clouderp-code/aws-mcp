@@ -2,12 +2,10 @@
 """
 Comprehensive HTTP Test Suite for TMF ODA Transformer MCP Server
 
-This script provides comprehensive testing of all 8 available TMF ODA tools via HTTP REST API.
+This script provides comprehensive testing of all 6 available TMF ODA tools via HTTP REST API.
 Perfect for external UIs, CI/CD pipelines, and integration testing - no SSH or Docker access required!
 
-🔧 Tests All 8 Tools:
-- schema-analyzer: Analyze schema files for TMF ODA compliance
-- db-analyzer: Analyze database structures for TMF ODA compliance  
+🔧 Tests All 6 Tools:
 - raw-analysis: Execute raw analysis stage of transformation journey
 - stripped-schema: Execute stripped schema stage of transformation journey
 - get-job-logs: Retrieve execution logs for job steps
@@ -203,36 +201,7 @@ class TMFODAHttpTester:
         
         validation_results = {}
         
-        # Test 1: Schema Analyzer (should fail with empty workspace)
-        print_color(Colors.BLUE, "📋 Testing schema-analyzer validation...")
-        success, result = self.make_request('POST', '/tools/schema-analyzer', {
-            "workspace_dir": "",
-            "oda_component_type": "customer-management"
-        })
-        
-        if not success and "empty" in str(result.get('error', '')).lower():
-            validation_results["schema_analyzer"] = "✅ Correctly validates empty workspace"
-        elif not success:
-            validation_results["schema_analyzer"] = f"✅ Validation working: {result.get('error', 'Unknown error')}"
-        else:
-            validation_results["schema_analyzer"] = "❌ Should have failed with empty workspace"
-        
-        # Test 2: Database Analyzer (should fail with empty connection)
-        print_color(Colors.BLUE, "🗄️ Testing db-analyzer validation...")
-        success, result = self.make_request('POST', '/tools/db-analyzer', {
-            "connection_string": "",
-            "database_type": "postgresql",
-            "oda_component_type": "customer-management"
-        })
-        
-        if not success and "empty" in str(result.get('error', '')).lower():
-            validation_results["db_analyzer"] = "✅ Correctly validates empty connection"
-        elif not success:
-            validation_results["db_analyzer"] = f"✅ Validation working: {result.get('error', 'Unknown error')}"
-        else:
-            validation_results["db_analyzer"] = "❌ Should have failed with empty connection"
-        
-        # Test 3: Raw Analysis (should fail with empty journey ID)
+        # Test 1: Raw Analysis (should fail with empty journey ID)
         print_color(Colors.BLUE, "⚡ Testing raw-analysis validation...")
         success, result = self.make_request('POST', '/tools/raw-analysis', {
             "journey_id": "",
@@ -246,7 +215,7 @@ class TMFODAHttpTester:
         else:
             validation_results["raw_analysis"] = "❌ Should have failed with empty journey ID"
         
-        # Test 4: Stripped Schema (should fail with empty journey ID)
+        # Test 2: Stripped Schema (should fail with empty journey ID)
         print_color(Colors.BLUE, "🔧 Testing stripped-schema validation...")
         success, result = self.make_request('POST', '/tools/stripped-schema', {
             "journey_id": "",
@@ -260,7 +229,7 @@ class TMFODAHttpTester:
         else:
             validation_results["stripped_schema"] = "❌ Should have failed with empty journey ID"
         
-        # Test 5: Get Job Logs (should fail with empty parameters)
+        # Test 3: Get Job Logs (should fail with empty parameters)
         print_color(Colors.BLUE, "📋 Testing get-job-logs validation...")
         success, result = self.make_request('POST', '/tools/get-job-logs', {
             "journey_id": "",
@@ -276,7 +245,7 @@ class TMFODAHttpTester:
         else:
             validation_results["get_job_logs"] = "❌ Should have failed with empty journey ID"
         
-        # Test 6: Test Runner (should work with valid parameters)
+        # Test 4: Test Runner (should work with valid parameters)
         print_color(Colors.BLUE, "🧪 Testing test-runner...")
         success, result = self.make_request('POST', '/tools/test-runner', {
             "test_type": "quick",
@@ -316,68 +285,12 @@ class TMFODAHttpTester:
         return validation_results
     
     def test_all_tools_comprehensive(self) -> Dict[str, Any]:
-        """Test all 8 available tools comprehensively with realistic parameters."""
-        print_header("Comprehensive Tool Testing - All 8 Tools")
+        """Test all 6 available tools comprehensively with realistic parameters."""
+        print_header("Comprehensive Tool Testing - All 6 Tools")
         
         tool_results = {}
         
-        # Test 1: Schema Analyzer Tool
-        print_color(Colors.CYAN, "🔍 Testing schema-analyzer with realistic parameters...")
-        test_params = {
-            "workspace_dir": "/tmp",
-            "oda_component_type": "customer-management",
-            "schema_format": "json-schema"
-        }
-        
-        success, result = self.make_request('POST', '/tools/schema-analyzer', test_params)
-        tool_results["schema_analyzer"] = {
-            "success": success,
-            "params": test_params,
-            "result": result,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        if success:
-            print_color(Colors.GREEN, "✅ schema-analyzer: Success")
-            # Try to extract meaningful info
-            analysis_result = result.get('result', {})
-            if isinstance(analysis_result, dict):
-                total_files = analysis_result.get('total_files', 0)
-                compliance_score = analysis_result.get('compliance_score', 0)
-                print_color(Colors.BLUE, f"   📊 Files analyzed: {total_files}")
-                print_color(Colors.BLUE, f"   📈 Compliance score: {compliance_score}")
-        else:
-            print_color(Colors.RED, f"❌ schema-analyzer: {result.get('error', 'Unknown error')}")
-        
-        # Test 2: Database Analyzer Tool
-        print_color(Colors.CYAN, "🗄️ Testing db-analyzer with realistic parameters...")
-        test_params = {
-            "connection_string": "postgresql://testuser:testpass@localhost:5432/testdb",
-            "database_type": "postgresql",
-            "oda_component_type": "customer-management",
-            "tables_filter": "customer_*,order_*"
-        }
-        
-        success, result = self.make_request('POST', '/tools/db-analyzer', test_params)
-        tool_results["db_analyzer"] = {
-            "success": success,
-            "params": test_params,
-            "result": result,
-            "timestamp": datetime.now().isoformat()
-        }
-        
-        if success:
-            print_color(Colors.GREEN, "✅ db-analyzer: Success")
-            analysis_result = result.get('result', {})
-            if isinstance(analysis_result, dict):
-                total_tables = analysis_result.get('total_tables', 0)
-                compliance_score = analysis_result.get('compliance_score', 0)
-                print_color(Colors.BLUE, f"   📊 Tables analyzed: {total_tables}")
-                print_color(Colors.BLUE, f"   📈 Compliance score: {compliance_score}")
-        else:
-            print_color(Colors.RED, f"❌ db-analyzer: {result.get('error', 'Unknown error')}")
-        
-        # Test 3: Raw Analysis Tool
+        # Test 1: Raw Analysis Tool
         print_color(Colors.CYAN, "⚡ Testing raw-analysis with realistic parameters...")
         test_params = {
             "journey_id": "JRN-SAMPLE-001",
@@ -405,7 +318,7 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ raw-analysis: {result.get('error', 'Unknown error')}")
         
-        # Test 4: Stripped Schema Tool
+        # Test 2: Stripped Schema Tool
         print_color(Colors.CYAN, "🔧 Testing stripped-schema with realistic parameters...")
         test_params = {
             "journey_id": "JRN-SAMPLE-001",
@@ -433,7 +346,7 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ stripped-schema: {result.get('error', 'Unknown error')}")
         
-        # Test 5: Get Job Logs Tool
+        # Test 3: Get Job Logs Tool
         print_color(Colors.CYAN, "📋 Testing get-job-logs with realistic parameters...")
         test_params = {
             "journey_id": "JRN-SAMPLE-001",
@@ -461,7 +374,7 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ get-job-logs: {result.get('error', 'Unknown error')}")
         
-        # Test 6: Test Runner Tool
+        # Test 4: Test Runner Tool
         print_color(Colors.CYAN, "🧪 Testing test-runner with realistic parameters...")
         test_params = {
             "test_type": "comprehensive",
@@ -490,7 +403,7 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ test-runner: {result.get('error', 'Unknown error')}")
         
-        # Test 7: Journeys Tool (READ operation)
+        # Test 5: Journeys Tool (READ operation)
         print_color(Colors.CYAN, "🗺️ Testing journeys tool with READ operation...")
         test_params = {
             "action": "read",
@@ -530,7 +443,7 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ journeys: {result.get('error', 'Unknown error')}")
         
-        # Test 8: Run Jobs Tool
+        # Test 6: Run Jobs Tool
         print_color(Colors.CYAN, "🏃 Testing run-jobs with realistic parameters...")
         test_params = {
             "journey_id": "JRN-SAMPLE-001",
@@ -711,9 +624,8 @@ class TMFODAHttpTester:
         print_color(Colors.CYAN, "🧪 Testing missing required parameters...")
         
         missing_param_tests = [
-            {"tool": "schema-analyzer", "params": {"oda_component_type": "customer-management"}},  # Missing workspace_dir
-            {"tool": "db-analyzer", "params": {"database_type": "postgresql"}},  # Missing connection_string
             {"tool": "raw-analysis", "params": {"stage_id": "raw_analysis"}},  # Missing journey_id
+            {"tool": "stripped-schema", "params": {"stage_id": "stripped_schema"}},  # Missing journey_id
             {"tool": "get-job-logs", "params": {"journey_id": "JRN-001"}},  # Missing other required params
         ]
         
@@ -737,14 +649,13 @@ class TMFODAHttpTester:
         print_color(Colors.CYAN, "🧪 Testing invalid enum values...")
         
         invalid_enum_tests = [
-            {"tool": "schema-analyzer", "params": {
-                "workspace_dir": "/tmp",
-                "oda_component_type": "invalid-component-type"
+            {"tool": "raw-analysis", "params": {
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "invalid-stage-id"
             }},
-            {"tool": "db-analyzer", "params": {
-                "connection_string": "test://test",
-                "database_type": "invalid-db-type",
-                "oda_component_type": "customer-management"
+            {"tool": "stripped-schema", "params": {
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "invalid-stage-id"
             }},
         ]
         
@@ -895,13 +806,14 @@ class TMFODAClient:
         response = self.session.post(f"{{self.base_url}}/tools/test-runner", json=data)
         return response.json()
     
-    def analyze_schema(self, workspace_dir, oda_component_type="customer-management"):
-        """Analyze schema files."""
+    def execute_raw_analysis(self, journey_id, stage_id="raw_analysis"):
+        """Execute raw analysis stage."""
         data = {{
-            "workspace_dir": workspace_dir,
-            "oda_component_type": oda_component_type
+            "journey_id": journey_id,
+            "stage_id": stage_id,
+            "triggered_by": "api-client"
         }}
-        response = self.session.post(f"{{self.base_url}}/tools/schema-analyzer", json=data)
+        response = self.session.post(f"{{self.base_url}}/tools/raw-analysis", json=data)
         return response.json()
 
 # Usage example:
@@ -940,13 +852,14 @@ class TMFODAClient {{
         return await response.json();
     }}
     
-    async analyzeSchema(workspaceDir, odaComponentType = 'customer-management') {{
-        const response = await fetch(`${{this.baseUrl}}/tools/schema-analyzer`, {{
+    async executeRawAnalysis(journeyId, stageId = 'raw_analysis') {{
+        const response = await fetch(`${{this.baseUrl}}/tools/raw-analysis`, {{
             method: 'POST',
             headers: {{'Content-Type': 'application/json'}},
             body: JSON.stringify({{
-                workspace_dir: workspaceDir,
-                oda_component_type: odaComponentType
+                journey_id: journeyId,
+                stage_id: stageId,
+                triggered_by: 'api-client'
             }})
         }});
         return await response.json();
@@ -1068,22 +981,23 @@ curl -X POST {self.base_url}/tools/test-runner \\
   -H "Content-Type: application/json" \\
   -d '{{"test_type": "quick", "include_performance": false}}'
 
-# Analyze schema (with valid path)
-curl -X POST {self.base_url}/tools/schema-analyzer \\
+# Execute raw analysis
+curl -X POST {self.base_url}/tools/raw-analysis \\
   -H "Content-Type: application/json" \\
   -d '{{
-    "workspace_dir": "/path/to/schemas",
-    "oda_component_type": "customer-management",
-    "schema_format": "json-schema"
+    "journey_id": "JRN-SAMPLE-001",
+    "stage_id": "raw_analysis",
+    "triggered_by": "curl-test"
   }}'
 
-# Check database (with valid connection)
-curl -X POST {self.base_url}/tools/db-analyzer \\
+# Get job logs
+curl -X POST {self.base_url}/tools/get-job-logs \\
   -H "Content-Type: application/json" \\
   -d '{{
-    "connection_string": "postgresql://user:pass@host:5432/db",
-    "database_type": "postgresql",
-    "oda_component_type": "customer-management"
+    "journey_id": "JRN-SAMPLE-001",
+    "stage_name": "raw_analysis",
+    "job_id": "JOB-001-20240101120000",
+    "step_name": "schema_parsing"
   }}'
 ''')
     
@@ -1244,7 +1158,7 @@ curl -X POST {self.base_url}/tools/db-analyzer \\
                 print_color(Colors.YELLOW, "ℹ️ Run without --quick-test for comprehensive tool testing")
             else:
                 print_color(Colors.GREEN, "✅ TMF ODA MCP Server HTTP API is fully functional!")
-                print_color(Colors.GREEN, "✅ All 8 tools are working correctly!")
+                print_color(Colors.GREEN, "✅ All 6 tools are working correctly!")
                 print_color(Colors.GREEN, "✅ Parameter validation is working!")
                 print_color(Colors.GREEN, "✅ Error handling is robust!")
         elif passed_tests > total_tests * 0.8:
@@ -1272,7 +1186,7 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic comprehensive testing (all 8 tools)
+  # Basic comprehensive testing (all 6 tools)
   python3 test-http-access.py
   
   # Quick connectivity test only
