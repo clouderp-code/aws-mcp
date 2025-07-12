@@ -29,14 +29,14 @@ class TMFMCPTestRunner:
         print("🚀 Starting TMF ODA Transformer MCP Server Test Suite")
         print("=" * 70)
         
-            test_files = [
-        "test_schema_analyzer.py",
-        "test_db_analyzer.py", 
-        "test_raw_analysis.py",
-        "test_stripped_schema.py",
-        "test_get_job_logs.py",
-        "test_journeys.py"
-    ]
+        test_files = [
+            "test_schema_analyzer.py",
+            "test_db_analyzer.py", 
+            "test_raw_analysis.py",
+            "test_stripped_schema.py",
+            "test_get_job_logs.py",
+            "test_journeys.py"
+        ]
         
         start_time = time.time()
         

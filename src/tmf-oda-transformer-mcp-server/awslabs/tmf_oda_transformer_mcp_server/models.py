@@ -18,7 +18,7 @@ from datetime import datetime
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 
 class ComplianceLevel(str, Enum):
@@ -189,11 +189,37 @@ class DatabaseAnalysisReport(BaseModel):
     results: List[DatabaseAnalysisResult] = Field(description="Individual table analysis results")
     summary: Dict[str, Union[int, float]] = Field(description="Summary statistics")
 
-    @validator('connection_string')
+    @field_validator('connection_string')
+    @classmethod
     def sanitize_connection_string(cls, v):
         """Remove sensitive information from connection string."""
         # Remove password from connection string for security
         import re
         sanitized = re.sub(r'password=[^;]*', 'password=***', v, flags=re.IGNORECASE)
         sanitized = re.sub(r':[^@]*@', ':***@', sanitized)
-        return sanitized 
+        return sanitized
+
+
+class JourneyCreateData(BaseModel):
+    """Model for creating new journeys."""
+    name: str = Field(description="Human-readable name for the journey")
+    description: Optional[str] = Field(default="", description="Optional description of the journey")
+    oda_component_type: TMFODAComponentType = Field(description="Target TMF ODA component type")
+    source_type: str = Field(default="database", description="Source type (database, schema, api)")
+    stages: Optional[List[str]] = Field(
+        default=["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"],
+        description="List of stage IDs for this journey"
+    )
+    priority: str = Field(default="medium", description="Journey priority (low, medium, high)")
+    source_schema_name: Optional[str] = Field(default=None, description="Source schema name")
+    source_schema_id: Optional[str] = Field(default=None, description="Source schema ID")
+
+
+class JourneyUpdateData(BaseModel):
+    """Model for updating existing journeys."""
+    name: Optional[str] = Field(default=None, description="Updated journey name")
+    description: Optional[str] = Field(default=None, description="Updated description")
+    status: Optional[str] = Field(default=None, description="Updated status (pending, running, completed, failed)")
+    overall_progress: Optional[int] = Field(default=None, description="Updated progress percentage (0-100)")
+    current_stage: Optional[str] = Field(default=None, description="Updated current stage ID")
+    priority: Optional[str] = Field(default=None, description="Updated priority") 

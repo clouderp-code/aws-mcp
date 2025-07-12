@@ -11,7 +11,7 @@ from awslabs.tmf_oda_transformer_mcp_server.server import stripped_schema_tool
 class TestStrippedSchema:
     """Test cases for the stripped-schema tool."""
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_success(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test successful stripped schema execution."""
         # Configure the mock executor
@@ -52,7 +52,7 @@ class TestStrippedSchema:
 
     async def test_stripped_schema_default_parameters(self, mock_context, sample_journey_id):
         """Test stripped schema with default parameters."""
-        with patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor') as mock_executor_class:
+        with patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor') as mock_executor_class:
             mock_executor = Mock()
             mock_executor.start_job_execution.return_value = "JOB-002-20240101120000"
             mock_executor_class.return_value = mock_executor
@@ -74,7 +74,7 @@ class TestStrippedSchema:
 
     async def test_stripped_schema_executor_not_available(self, mock_context, sample_journey_id):
         """Test stripped schema when TransformationJobExecutor is not available."""
-        with patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor', None):
+        with patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor', None):
             with pytest.raises(Exception, match="TransformationJobExecutor not available"):
                 await stripped_schema_tool(
                     ctx=mock_context,
@@ -125,7 +125,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_called_once_with("Stage ID cannot be empty")
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_executor_start_job_failure(self, mock_executor_class, mock_context, sample_journey_id):
         """Test stripped schema when job execution start fails."""
         mock_executor = Mock()
@@ -149,7 +149,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_called_once()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_executor_execute_job_failure(self, mock_executor_class, mock_context, sample_journey_id):
         """Test stripped schema when job execution fails."""
         mock_executor = Mock()
@@ -174,7 +174,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_called_once()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_custom_stage_id(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test stripped schema with custom stage ID."""
         mock_executor_class.return_value = mock_transformation_job_executor
@@ -200,7 +200,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_timing_measurement(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that stripped schema measures execution time correctly."""
         import time
@@ -230,7 +230,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_job_id_format(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that job ID format is correct."""
         expected_job_id = "JOB-002-20240101120000"
@@ -251,7 +251,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     @patch.dict('os.environ', {'AWS_ROLE_ARN': 'arn:aws:iam::123456789012:role/TestRole'})
     async def test_stripped_schema_with_aws_role(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test stripped schema with AWS role ARN configured."""
@@ -273,7 +273,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_result_message_format(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that result message is properly formatted."""
         expected_job_id = "JOB-002-20240101120000"
@@ -296,7 +296,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_sequential_after_raw_analysis(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test stripped schema as second stage after raw analysis."""
         mock_executor_class.return_value = mock_transformation_job_executor
@@ -316,7 +316,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_different_journey_id(self, mock_executor_class, mock_context, mock_transformation_job_executor):
         """Test stripped schema with different journey ID format."""
         journey_id = "JRN-CUSTOMER-ANALYSIS-2024"
@@ -337,7 +337,7 @@ class TestStrippedSchema:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_stripped_schema_error_recovery(self, mock_executor_class, mock_context, sample_journey_id):
         """Test error handling and recovery in stripped schema execution."""
         mock_executor = Mock()

@@ -237,6 +237,9 @@ class TestJourneys:
         mock_utils = Mock()
         mock_utils_class.return_value = mock_utils
         
+        # Mock the create_journey method to return the expected journey ID
+        mock_utils.create_journey.return_value = 'JRN-CUSTOM-001'
+        
         journey_data = {
             'name': 'Customer Management Migration',
             'description': 'Migrate legacy customer data to TMF ODA',
@@ -415,9 +418,21 @@ class TestJourneys:
             }
             mock_jobs = {'raw_analysis': [], 'stripped_schema': []}
             
+            # Ensure the mock has all the expected methods
             mock_manager.get_journey_status.return_value = mock_journey
             mock_manager._load_journeys.return_value = {journey_id: mock_journey}
             mock_manager._load_jobs.return_value = {journey_id: mock_jobs}
+            mock_manager._save_journeys.return_value = None
+            mock_manager._save_jobs.return_value = None
+            
+            # Ensure hasattr checks pass
+            mock_manager._load_journeys = Mock(return_value={journey_id: mock_journey})
+            mock_manager._load_jobs = Mock(return_value={journey_id: mock_jobs})
+            mock_manager._save_journeys = Mock()
+            mock_manager._save_jobs = Mock()
+            
+            # Ensure the mock DOESN'T have a delete_journey method so it uses the fallback path
+            del mock_manager.delete_journey
             
             result = await journeys_tool(
                 ctx=mock_context,

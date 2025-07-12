@@ -11,7 +11,7 @@ from awslabs.tmf_oda_transformer_mcp_server.server import run_jobs_tool
 class TestRunJobs:
     """Test cases for the run-jobs tool."""
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_success(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test successful job execution."""
         # Configure the mock executor
@@ -50,7 +50,7 @@ class TestRunJobs:
         # Verify context was not called with errors
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_stripped_schema(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test running stripped schema stage."""
         mock_executor_class.return_value = mock_transformation_job_executor
@@ -76,7 +76,7 @@ class TestRunJobs:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_custom_stage(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test running a custom stage."""
         mock_executor_class.return_value = mock_transformation_job_executor
@@ -104,7 +104,7 @@ class TestRunJobs:
 
     async def test_run_jobs_default_parameters(self, mock_context, sample_journey_id):
         """Test run jobs with default parameters."""
-        with patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor') as mock_executor_class:
+        with patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor') as mock_executor_class:
             mock_executor = Mock()
             mock_executor.start_job_execution.return_value = "JOB-001-20240101120000"
             mock_executor_class.return_value = mock_executor
@@ -128,7 +128,7 @@ class TestRunJobs:
 
     async def test_run_jobs_executor_not_available(self, mock_context, sample_journey_id):
         """Test run jobs when TransformationJobExecutor is not available."""
-        with patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor', None):
+        with patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor', None):
             with pytest.raises(Exception, match="TransformationJobExecutor not available"):
                 await run_jobs_tool(
                     ctx=mock_context,
@@ -192,7 +192,7 @@ class TestRunJobs:
         
         mock_context.error.assert_called_once_with("Stage ID cannot be empty")
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_executor_start_job_failure(self, mock_executor_class, mock_context, sample_journey_id):
         """Test run jobs when job execution start fails."""
         mock_executor = Mock()
@@ -217,7 +217,7 @@ class TestRunJobs:
         
         mock_context.error.assert_called_once()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_executor_execute_job_failure(self, mock_executor_class, mock_context, sample_journey_id):
         """Test run jobs when job execution fails."""
         mock_executor = Mock()
@@ -243,7 +243,7 @@ class TestRunJobs:
         
         mock_context.error.assert_called_once()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_timing_measurement(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that run jobs measures execution time correctly."""
         import time
@@ -273,7 +273,7 @@ class TestRunJobs:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_job_id_format(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that job ID format is correct."""
         expected_job_id = "JOB-001-20240101120000"
@@ -294,7 +294,7 @@ class TestRunJobs:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     @patch.dict('os.environ', {'AWS_ROLE_ARN': 'arn:aws:iam::123456789012:role/TestRole'})
     async def test_run_jobs_with_aws_role(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test run jobs with AWS role ARN configured."""
@@ -316,7 +316,7 @@ class TestRunJobs:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_result_message_format(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that result message is properly formatted."""
         expected_job_id = "JOB-001-20240101120000"
@@ -340,7 +340,7 @@ class TestRunJobs:
         
         mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_multiple_stage_types(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test run jobs with various stage types."""
         mock_executor_class.return_value = mock_transformation_job_executor
@@ -369,7 +369,7 @@ class TestRunJobs:
             
             mock_context.error.assert_not_called()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_error_message_includes_stage(self, mock_executor_class, mock_context, sample_journey_id):
         """Test that error messages include the stage ID for better debugging."""
         mock_executor = Mock()
@@ -393,7 +393,7 @@ class TestRunJobs:
         
         mock_context.error.assert_called_once()
 
-    @patch('awslabs.tmf_oda_transformer_mcp_server.server.TransformationJobExecutor')
+    @patch('awslabs.tmf_oda_transformer_mcp_server.scripts.job_executor.TransformationJobExecutor')
     async def test_run_jobs_concurrent_execution_simulation(self, mock_executor_class, mock_context, sample_journey_id, mock_transformation_job_executor):
         """Test that run jobs can handle concurrent-like execution calls."""
         import asyncio
