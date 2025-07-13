@@ -2,7 +2,7 @@
 import boto3
 import sys
 import traceback
-from datetime import datetime
+from datetime import datetime, timezone
 
 
 def print_with_flush(message):
@@ -12,7 +12,7 @@ def print_with_flush(message):
 
 
 def create_transformation_table():
-    """Create the TransformationSystem DynamoDB table"""
+    """Create the TransformationSystem DynamoDB table with Second Brain rules support"""
     print_with_flush('🔧 Starting DynamoDB table creation...')
 
     try:
@@ -36,6 +36,33 @@ def create_transformation_table():
         print_with_flush('✅ DynamoDB client created successfully')
     except Exception as e:
         print_with_flush(f'❌ Failed to create DynamoDB client: {str(e)}')
+        traceback.print_exc()
+        return False
+
+    # First, check if table already exists
+    try:
+        print_with_flush('🔍 Checking if TransformationSystem table exists...')
+        response = dynamodb.describe_table(TableName='TransformationSystem')
+        print_with_flush('✅ Table already exists and is ready!')
+        print_with_flush(f'🕐 Table Status: {response["Table"]["TableStatus"]}')
+        
+        # Check if table supports Second Brain rules (has the right structure)
+        table_name = response["Table"]["TableName"]
+        gsi_names = [gsi["IndexName"] for gsi in response["Table"].get("GlobalSecondaryIndexes", [])]
+        
+        if "GSI1" in gsi_names:
+            print_with_flush('✅ Table structure supports Second Brain rules')
+        else:
+            print_with_flush('⚠️  Table exists but may not support all Second Brain features')
+        
+        return True
+        
+    except dynamodb.exceptions.ResourceNotFoundException:
+        print_with_flush('📋 Table does not exist, creating new table...')
+        # Continue with table creation
+        pass
+    except Exception as e:
+        print_with_flush(f'❌ Error checking table existence: {str(e)}')
         traceback.print_exc()
         return False
 
@@ -63,10 +90,17 @@ def create_transformation_table():
         ],
         'BillingMode': 'PAY_PER_REQUEST',
         'StreamSpecification': {'StreamEnabled': True, 'StreamViewType': 'NEW_AND_OLD_IMAGES'},
+        'Tags': [
+            {'Key': 'Service', 'Value': 'TMF-ODA-Transformer'},
+            {'Key': 'Component', 'Value': 'DataStore'},
+            {'Key': 'Purpose', 'Value': 'TransformationJourneys'},
+            {'Key': 'Features', 'Value': 'SecondBrainRules'},
+            {'Key': 'Environment', 'Value': 'Production'},
+        ],
     }
 
     try:
-        print_with_flush('📋 Table definition prepared, attempting to create table...')
+        print_with_flush('📋 Table definition prepared with Second Brain rules support...')
         response = dynamodb.create_table(**table_definition)
         print_with_flush(
             f'✅ Table creation initiated: {response["TableDescription"]["TableName"]}'
@@ -82,7 +116,7 @@ def create_transformation_table():
         return True
 
     except dynamodb.exceptions.ResourceInUseException:
-        print_with_flush('⚠️  Table already exists')
+        print_with_flush('⚠️  Table already exists (from creation attempt)')
         return True
     except Exception as e:
         print_with_flush(f'❌ Error creating table: {str(e)}')
@@ -122,7 +156,7 @@ def create_s3_buckets():
 
     for bucket_name in bucket_names:
         try:
-            print_with_flush(f'�� Creating S3 bucket: {bucket_name}...')
+            print_with_flush(f'📦 Creating S3 bucket: {bucket_name}...')
             s3.create_bucket(Bucket=bucket_name)
             print_with_flush(f'✅ Created S3 bucket: {bucket_name}')
         except s3.exceptions.BucketAlreadyExists:
@@ -134,9 +168,146 @@ def create_s3_buckets():
     return True
 
 
+def create_sample_second_brain_rules(journey_id):
+    """Create sample Second Brain rules for the journey"""
+    sample_rules = [
+        {
+            'PK': f'JOURNEY#{journey_id}',
+            'SK': 'RULE#raw_analysis#000#rule-raw_analysis-sample-001',
+            'EntityType': 'SecondBrainRule',
+            'GSI1PK': f'JOURNEY#{journey_id}#RULES',
+            'GSI1SK': 'raw_analysis#high#000',
+            'CreatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'UpdatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'Data': {
+                'ruleId': 'rule-raw_analysis-sample-001',
+                'journeyId': journey_id,
+                'stageId': 'raw_analysis',
+                'title': 'Customer data should map to TMF629 Customer entity',
+                'description': 'Tables containing customer information should be mapped to TMF629 Customer Management API',
+                'type': 'field_mapping',
+                'priority': 'high',
+                'scope': 'global',
+                'status': 'active',
+                'context': {
+                    'appliesTo': ['tables'],
+                    'conditions': [
+                        {
+                            'field': 'table_name',
+                            'operator': 'contains',
+                            'value': ['customer', 'client', 'user']
+                        }
+                    ]
+                },
+                'content': {
+                    'naturalLanguage': 'When analyzing customer-related tables, ensure they map to TMF629 Customer entity. Look for customer_id, customer_name, and customer_email fields.',
+                    'jsonRule': {
+                        'conditions': {
+                            'table_patterns': ['*customer*', '*client*', '*user*'],
+                            'field_indicators': ['customer_id', 'customer_name', 'customer_email']
+                        },
+                        'actions': {
+                            'map_to_tmf': 'TMF629_Customer',
+                            'validate_fields': ['id', 'name', 'email'],
+                            'entity_type': 'customer'
+                        }
+                    }
+                },
+                'metadata': {
+                    'createdBy': 'system',
+                    'version': '1.0',
+                    'tags': ['raw_analysis', 'field_mapping', 'high'],
+                    'applicableStages': ['raw_analysis'],
+                    'ruleEngine': 'second_brain_v1'
+                }
+            }
+        },
+        {
+            'PK': f'JOURNEY#{journey_id}',
+            'SK': 'RULE#raw_analysis#001#rule-raw_analysis-contextual-001',
+            'EntityType': 'SecondBrainRule',
+            'GSI1PK': f'JOURNEY#{journey_id}#RULES',
+            'GSI1SK': 'raw_analysis#medium#001',
+            'CreatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'UpdatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'Data': {
+                'ruleId': 'rule-raw_analysis-contextual-001',
+                'journeyId': journey_id,
+                'stageId': 'raw_analysis',
+                'title': 'Focus on core business entities first',
+                'description': 'Prioritize identification of Customer, Product, Order, and Service entities during schema analysis',
+                'type': 'contextual_recommendations',
+                'priority': 'medium',
+                'scope': 'global',
+                'status': 'active',
+                'context': {
+                    'appliesTo': ['analysis_process'],
+                    'conditions': []
+                },
+                'content': {
+                    'naturalLanguage': 'During schema analysis, focus on identifying core business entities first: Customer, Product, Order, Service. These are the foundation for TMF mapping.',
+                    'jsonRule': {
+                        'priority_entities': ['customer', 'product', 'order', 'service'],
+                        'analysis_order': ['entities', 'relationships', 'constraints'],
+                        'focus_areas': ['primary_keys', 'foreign_keys']
+                    }
+                },
+                'metadata': {
+                    'createdBy': 'system',
+                    'version': '1.0',
+                    'tags': ['raw_analysis', 'contextual_recommendations', 'medium'],
+                    'applicableStages': ['raw_analysis'],
+                    'ruleEngine': 'second_brain_v1'
+                }
+            }
+        },
+        {
+            'PK': f'JOURNEY#{journey_id}',
+            'SK': 'RULE#stripped_schema#000#rule-stripped_schema-data-001',
+            'EntityType': 'SecondBrainRule',
+            'GSI1PK': f'JOURNEY#{journey_id}#RULES',
+            'GSI1SK': 'stripped_schema#critical#000',
+            'CreatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'UpdatedAt': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z'),
+            'Data': {
+                'ruleId': 'rule-stripped_schema-data-001',
+                'journeyId': journey_id,
+                'stageId': 'stripped_schema',
+                'title': 'Preserve TMF-relevant tables during stripping',
+                'description': 'When creating stripped schema, preserve all tables relevant to TMF APIs',
+                'type': 'data_interpretation',
+                'priority': 'critical',
+                'scope': 'global',
+                'status': 'active',
+                'context': {
+                    'appliesTo': ['tables', 'schema_stripping'],
+                    'conditions': []
+                },
+                'content': {
+                    'naturalLanguage': 'During schema stripping, preserve tables related to Customer, Product, Order, Service entities. Remove audit, log, and temporary tables.',
+                    'jsonRule': {
+                        'preserve_patterns': ['*customer*', '*product*', '*order*', '*service*'],
+                        'remove_patterns': ['*audit*', '*log*', '*temp*', '*backup*'],
+                        'preserve_relationships': ['customer_product', 'customer_order', 'order_product']
+                    }
+                },
+                'metadata': {
+                    'createdBy': 'system',
+                    'version': '1.0',
+                    'tags': ['stripped_schema', 'data_interpretation', 'critical'],
+                    'applicableStages': ['stripped_schema'],
+                    'ruleEngine': 'second_brain_v1'
+                }
+            }
+        }
+    ]
+    
+    return sample_rules
+
+
 def seed_sample_journey():
-    """Create a sample transformation journey"""
-    print_with_flush('🌱 Starting sample journey creation...')
+    """Create a sample transformation journey with Second Brain rules"""
+    print_with_flush('🌱 Starting sample journey creation with Second Brain rules...')
 
     try:
         print_with_flush('🔗 Creating DynamoDB resource...')
@@ -164,11 +335,11 @@ def seed_sample_journey():
         return None
 
     journey_id = 'JRN-SAMPLE-001'
-    timestamp = datetime.utcnow().isoformat() + 'Z'
+    timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
 
     print_with_flush(f'📝 Creating sample journey with ID: {journey_id}')
 
-    # 1. Journey Metadata
+    # 1. Journey Metadata with Second Brain configuration
     journey_item = {
         'PK': f'JOURNEY#{journey_id}',
         'SK': 'METADATA',
@@ -180,10 +351,11 @@ def seed_sample_journey():
         'Data': {
             'journeyId': journey_id,
             'name': 'Sample Customer Management Transformation',
-            'description': 'Example transformation for testing',
+            'description': 'Example transformation for testing with Second Brain AI assistance',
             'status': 'pending',
             'createdBy': 'system',
             'priority': 'medium',
+            'odaComponentType': 'customer-management',
             'source': {
                 'type': 'schema-based',
                 'schemaId': 'schema-sample-001',
@@ -196,6 +368,8 @@ def seed_sample_journey():
                 'tmfSpecVersion': '4.0.0',
                 'outputFormat': 'json',
                 'retryAttempts': 3,
+                'secondBrainEnabled': True,
+                'ruleEngineVersion': 'v1.0',
             },
             'currentStageIndex': 0,
             'currentStageId': 'raw_analysis',
@@ -209,16 +383,27 @@ def seed_sample_journey():
                 'totalLogs': 0,
                 'totalErrors': 0,
                 'totalWarnings': 0,
+                'totalRules': 3,
+                'activeRules': 3,
             },
             'stageSummary': {
-                'raw_analysis': {'totalExecutions': 0, 'lastStatus': 'pending'},
-                'stripped_schema': {'totalExecutions': 0, 'lastStatus': 'pending'},
-                'tmf_mapping': {'totalExecutions': 0, 'lastStatus': 'pending'},
+                'raw_analysis': {'totalExecutions': 0, 'lastStatus': 'pending', 'rulesCount': 2},
+                'stripped_schema': {'totalExecutions': 0, 'lastStatus': 'pending', 'rulesCount': 1},
+                'tmf_mapping': {'totalExecutions': 0, 'lastStatus': 'pending', 'rulesCount': 0},
+            },
+            'secondBrainConfig': {
+                'enabled': True,
+                'ruleTypes': ['field_mapping', 'contextual_recommendations', 'data_interpretation', 'validation_rules'],
+                'priorityLevels': ['low', 'medium', 'high', 'critical'],
+                'scopes': ['global', 'project', 'stage'],
+                'defaultScope': 'global',
+                'autoApplyRules': True,
+                'customRulesEnabled': True,
             },
         },
     }
 
-    # 2. Stage Definitions
+    # 2. Stage Definitions with Second Brain integration
     stages = [
         {
             'PK': f'JOURNEY#{journey_id}',
@@ -229,10 +414,13 @@ def seed_sample_journey():
             'Data': {
                 'stageId': 'raw_analysis',
                 'name': 'Raw Input Analysis',
-                'description': 'Analyze the raw customer database schema',
+                'description': 'Analyze the raw customer database schema with AI guidance',
                 'order': 0,
                 'canSkip': False,
                 'estimatedDuration': '10m',
+                'status': 'pending',
+                'secondBrainEnabled': True,
+                'ruleTypes': ['field_mapping', 'contextual_recommendations', 'data_interpretation'],
                 'steps': [
                     {
                         'id': 'schema_parsing',
@@ -240,6 +428,8 @@ def seed_sample_journey():
                         'description': 'Parse SQL schema files',
                         'order': 0,
                         'estimatedDuration': '3m',
+                        'aiAssisted': True,
+                        'applicableRules': ['field_mapping', 'contextual_recommendations'],
                     },
                     {
                         'id': 'relationship_discovery',
@@ -247,6 +437,8 @@ def seed_sample_journey():
                         'description': 'Identify table relationships',
                         'order': 1,
                         'estimatedDuration': '4m',
+                        'aiAssisted': True,
+                        'applicableRules': ['contextual_recommendations'],
                     },
                     {
                         'id': 'data_type_analysis',
@@ -254,6 +446,8 @@ def seed_sample_journey():
                         'description': 'Analyze column data types',
                         'order': 2,
                         'estimatedDuration': '3m',
+                        'aiAssisted': True,
+                        'applicableRules': ['data_interpretation'],
                     },
                 ],
             },
@@ -267,10 +461,13 @@ def seed_sample_journey():
             'Data': {
                 'stageId': 'stripped_schema',
                 'name': 'Create Stripped Schema',
-                'description': 'Create TMF-focused simplified schema',
+                'description': 'Create TMF-focused simplified schema with AI assistance',
                 'order': 1,
                 'canSkip': False,
                 'estimatedDuration': '8m',
+                'status': 'pending',
+                'secondBrainEnabled': True,
+                'ruleTypes': ['data_interpretation', 'field_mapping'],
                 'steps': [
                     {
                         'id': 'tmf_relevance_filtering',
@@ -278,6 +475,8 @@ def seed_sample_journey():
                         'description': 'Filter tables for TMF relevance',
                         'order': 0,
                         'estimatedDuration': '4m',
+                        'aiAssisted': True,
+                        'applicableRules': ['data_interpretation'],
                     },
                     {
                         'id': 'simplified_schema_creation',
@@ -285,11 +484,16 @@ def seed_sample_journey():
                         'description': 'Generate simplified schema',
                         'order': 1,
                         'estimatedDuration': '4m',
+                        'aiAssisted': True,
+                        'applicableRules': ['field_mapping'],
                     },
                 ],
             },
         },
     ]
+
+    # 3. Create sample Second Brain rules
+    sample_rules = create_sample_second_brain_rules(journey_id)
 
     try:
         # Insert journey
@@ -301,7 +505,26 @@ def seed_sample_journey():
         print_with_flush('📋 Inserting stage definitions...')
         for stage in stages:
             table.put_item(Item=stage)
-            print_with_flush(f'✅ Created stage: {stage["Data"]["name"]}')
+            stage_name = stage["Data"]["name"]
+            step_count = len(stage["Data"]["steps"])
+            ai_steps = sum(1 for step in stage["Data"]["steps"] if step.get("aiAssisted", False))
+            print_with_flush(f'✅ Created stage: {stage_name} ({step_count} steps, {ai_steps} AI-assisted)')
+
+        # Insert sample Second Brain rules
+        print_with_flush('🧠 Inserting sample Second Brain rules...')
+        for rule in sample_rules:
+            table.put_item(Item=rule)
+        
+        rules_by_type = {}
+        for rule in sample_rules:
+            rule_type = rule['Data']['type']
+            if rule_type not in rules_by_type:
+                rules_by_type[rule_type] = 0
+            rules_by_type[rule_type] += 1
+        
+        print_with_flush(f'✅ Created {len(sample_rules)} sample Second Brain rules:')
+        for rule_type, count in rules_by_type.items():
+            print_with_flush(f'   • {rule_type}: {count} rules')
 
         return journey_id
 
@@ -313,7 +536,7 @@ def seed_sample_journey():
 
 def main():
     """Main function with comprehensive error handling"""
-    print_with_flush('🚀 Setting up Transformation System Infrastructure...')
+    print_with_flush('🚀 Setting up Transformation System Infrastructure with Second Brain...')
     print_with_flush('=' * 60)
 
     # Test AWS credentials and region
@@ -371,7 +594,7 @@ def main():
     print_with_flush('=' * 60)
 
     # Create sample journey
-    print_with_flush('🌱 Step 3: Creating sample journey...')
+    print_with_flush('🌱 Step 3: Creating sample journey with Second Brain...')
     journey_id = seed_sample_journey()
     if journey_id:
         print_with_flush(f'✅ Sample journey created: {journey_id}')
@@ -380,7 +603,14 @@ def main():
         return False
 
     print_with_flush('=' * 60)
-    print_with_flush('🎉 Infrastructure setup complete!')
+    print_with_flush('🎉 Infrastructure setup complete with Second Brain!')
+    print_with_flush('🧠 Features enabled:')
+    print_with_flush('   • JSON-based rules system')
+    print_with_flush('   • AI-assisted stage processing')
+    print_with_flush('   • Contextual recommendations')
+    print_with_flush('   • Field mapping intelligence')
+    print_with_flush('   • Data interpretation guidance')
+    print_with_flush('   • Validation rules automation')
     print_with_flush('=' * 60)
 
     return True
