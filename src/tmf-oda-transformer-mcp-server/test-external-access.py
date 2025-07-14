@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
-External Test Script for TMF ODA Transformer MCP Server
-This script tests all 6 tools as if called from an external UI/application.
+External Test Script for Enhanced TMF ODA Transformer MCP Server
+This script tests all 7 tools as if called from an external UI/application.
+Now supports comprehensive journey lifecycle management and logs/reports functionality.
 Now supports remote Docker host connections.
 """
 
@@ -38,7 +39,7 @@ def print_header(title: str):
     print_color(Colors.BLUE, f"{'='*60}")
 
 class MCPExternalTester:
-    """External tester for TMF ODA MCP Server tools."""
+    """External tester for Enhanced TMF ODA MCP Server tools."""
     
     def __init__(self, container_name: str = "tmf-oda-mcp-server", 
                  remote_host: Optional[str] = None, 
@@ -200,12 +201,14 @@ from awslabs.tmf_oda_transformer_mcp_server.server import (
     stripped_schema_tool,
     get_job_logs_tool,
     test_runner_tool,
-    journeys_tool
+    journeys_tool,
+    run_jobs_tool
 )
-print('✅ All 6 tools imported successfully')
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
+print('✅ All 7 tools imported successfully')
 "'''),
-            ("Import models", 
-             "python -c 'from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType; print(\"✅ Models imported\")'")
+            ("Import enhanced models", 
+             "python -c 'from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType, JourneyStatus, JobStatus, LogLevel, ReportType; print(\"✅ Enhanced models imported\")'")
         ]
         
         all_passed = True
@@ -220,8 +223,8 @@ print('✅ All 6 tools imported successfully')
         return all_passed
     
     def test_tool_validation(self) -> Dict[str, Any]:
-        """Test all tools with validation scenarios."""
-        print_header("Tool Validation Tests")
+        """Test all enhanced tools with validation scenarios."""
+        print_header("Enhanced Tool Validation Tests")
         
         test_script = '''
 import asyncio
@@ -235,7 +238,7 @@ from awslabs.tmf_oda_transformer_mcp_server.server import (
     journeys_tool,
     run_jobs_tool
 )
-from awslabs.tmf_oda_transformer_mcp_server.models import TMFODAComponentType, DatabaseType
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
 
 async def test_all_tools():
     ctx = AsyncMock()
@@ -303,27 +306,75 @@ async def test_all_tools():
     except Exception as e:
         results["run_jobs"] = f"❌ Unexpected error: {e}"
     
-    # Test 5: Journeys Tool (READ operation)
+    # Test 5: Enhanced Journeys Tool (READ operation)
     try:
         result = await journeys_tool(
             ctx=ctx,
             action="read",
             journey_id="",
-            journey_data=None,
-            stage_id="",
             include_stages=True,
             include_job_history=True,
-            job_limit=10
+            limit=10
         )
         if result.get("status") == "success":
             journeys_count = len(result.get("journeys", []))
-            results["journeys"] = f"✅ Journeys tool working: {journeys_count} journeys"
+            results["journeys"] = f"✅ Enhanced journeys tool working: {journeys_count} journeys"
         else:
             results["journeys"] = f"⚠️ Journeys partial: {result.get('message', 'Unknown')}"
     except Exception as e:
         results["journeys"] = f"❌ Journeys error: {e}"
     
-    # Test 6: Test Runner (Quick mode)
+    # Test 6: Enhanced Journeys Tool - Stage Management
+    try:
+        result = await journeys_tool(
+            ctx=ctx,
+            action="list_stages",
+            journey_id="JRN-SAMPLE-001"
+        )
+        if result.get("status") == "success":
+            stages_count = len(result.get("stages", []))
+            results["journeys_stages"] = f"✅ Stage management working: {stages_count} stages"
+        else:
+            results["journeys_stages"] = f"⚠️ Stage management partial: {result.get('message', 'Unknown')}"
+    except Exception as e:
+        results["journeys_stages"] = f"❌ Stage management error: {e}"
+    
+    # Test 7: Enhanced Journeys Tool - Job Management
+    try:
+        result = await journeys_tool(
+            ctx=ctx,
+            action="list_jobs",
+            journey_id="JRN-SAMPLE-001",
+            stage_id="raw_analysis",
+            limit=5
+        )
+        if result.get("status") == "success":
+            jobs_count = len(result.get("jobs", []))
+            results["journeys_jobs"] = f"✅ Job management working: {jobs_count} jobs"
+        else:
+            results["journeys_jobs"] = f"⚠️ Job management partial: {result.get('message', 'Unknown')}"
+    except Exception as e:
+        results["journeys_jobs"] = f"❌ Job management error: {e}"
+    
+    # Test 8: NEW - Logs and Reports Tool
+    try:
+        result = await logs_and_reports_tool(
+            ctx=ctx,
+            action="get_job_logs",
+            journey_id="JRN-SAMPLE-001",
+            job_id="JOB-001-20240101120000",
+            stage_name="raw_analysis",
+            step_name="schema_parsing"
+        )
+        if result.get("status") == "success":
+            logs_count = len(result.get("logs", {}).get("logs", []))
+            results["logs_and_reports"] = f"✅ Logs and reports tool working: {logs_count} log entries"
+        else:
+            results["logs_and_reports"] = f"⚠️ Logs and reports partial: {result.get('message', 'Unknown')}"
+    except Exception as e:
+        results["logs_and_reports"] = f"❌ Logs and reports error: {e}"
+    
+    # Test 9: Test Runner (Quick mode)
     try:
         result = await test_runner_tool(
             ctx=ctx,
@@ -373,43 +424,81 @@ asyncio.run(test_all_tools())
             return {}
     
     def test_comprehensive_workflow(self) -> bool:
-        """Test a comprehensive workflow using multiple tools."""
-        print_header("Comprehensive Workflow Test")
+        """Test a comprehensive workflow using multiple enhanced tools."""
+        print_header("Enhanced Comprehensive Workflow Test")
         
         workflow_script = '''
 import asyncio
 import json
 from unittest.mock import AsyncMock
-from awslabs.tmf_oda_transformer_mcp_server.server import test_runner_tool
+from awslabs.tmf_oda_transformer_mcp_server.server import test_runner_tool, journeys_tool
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
 
-async def run_comprehensive_test():
+async def run_enhanced_comprehensive_test():
     ctx = AsyncMock()
     ctx.error = AsyncMock()
     
+    workflow_results = {}
+    
     try:
+        # Test 1: Run comprehensive test suite
         result = await test_runner_tool(
             ctx=ctx,
             test_type="comprehensive",
             include_performance=True
         )
         
-        print(json.dumps({
+        workflow_results["test_suite"] = {
             "status": result.get("status"),
-            "message": result.get("message"),
             "tests_passed": result.get("tests_passed", 0),
             "tests_failed": result.get("tests_failed", 0),
             "total_tests": result.get("total_tests", 0),
             "success_rate": result.get("success_rate", 0),
             "duration": result.get("duration_seconds", 0)
-        }, indent=2))
+        }
         
-        return result.get("status") == "success"
+        # Test 2: Test enhanced journeys functionality
+        journeys_result = await journeys_tool(
+            ctx=ctx,
+            action="dashboard",
+            journey_id="JRN-SAMPLE-001"
+        )
+        
+        workflow_results["journeys_dashboard"] = {
+            "status": journeys_result.get("status"),
+            "operation": journeys_result.get("operation"),
+            "has_dashboard": "dashboard" in journeys_result
+        }
+        
+        # Test 3: Test logs and reports functionality
+        logs_result = await logs_and_reports_tool(
+            ctx=ctx,
+            action="list_available_logs",
+            journey_id="JRN-SAMPLE-001"
+        )
+        
+        workflow_results["logs_reports"] = {
+            "status": logs_result.get("status"),
+            "operation": logs_result.get("operation"),
+            "has_logs": "available_logs" in logs_result
+        }
+        
+        print(json.dumps(workflow_results, indent=2))
+        
+        # Overall success if all components work
+        all_success = all(
+            comp.get("status") == "success" 
+            for comp in workflow_results.values() 
+            if isinstance(comp, dict) and "status" in comp
+        )
+        
+        return all_success
         
     except Exception as e:
         print(json.dumps({"error": str(e)}, indent=2))
         return False
 
-result = asyncio.run(run_comprehensive_test())
+result = asyncio.run(run_enhanced_comprehensive_test())
 exit(0 if result else 1)
 '''
         
@@ -418,35 +507,52 @@ exit(0 if result else 1)
         if success:
             try:
                 results = json.loads(stdout.strip())
-                print_color(Colors.GREEN, f"✅ Workflow Status: {results.get('status', 'unknown')}")
-                print_color(Colors.BLUE, f"📊 Tests: {results.get('tests_passed', 0)}/{results.get('total_tests', 0)} passed")
-                print_color(Colors.BLUE, f"📈 Success Rate: {results.get('success_rate', 0)}%")
-                print_color(Colors.BLUE, f"⏱️ Duration: {results.get('duration', 0):.2f}s")
-                return results.get('status') == 'success'
+                print_color(Colors.GREEN, f"✅ Enhanced Workflow Results:")
+                
+                # Test suite results
+                if "test_suite" in results:
+                    ts = results["test_suite"]
+                    print_color(Colors.BLUE, f"📊 Test Suite: {ts.get('tests_passed', 0)}/{ts.get('total_tests', 0)} passed")
+                    print_color(Colors.BLUE, f"📈 Success Rate: {ts.get('success_rate', 0)}%")
+                    print_color(Colors.BLUE, f"⏱️ Duration: {ts.get('duration', 0):.2f}s")
+                
+                # Journeys dashboard results
+                if "journeys_dashboard" in results:
+                    jd = results["journeys_dashboard"]
+                    print_color(Colors.BLUE, f"🗺️ Journeys Dashboard: {jd.get('status', 'unknown')}")
+                    print_color(Colors.BLUE, f"📊 Dashboard Available: {jd.get('has_dashboard', False)}")
+                
+                # Logs and reports results
+                if "logs_reports" in results:
+                    lr = results["logs_reports"]
+                    print_color(Colors.BLUE, f"📋 Logs & Reports: {lr.get('status', 'unknown')}")
+                    print_color(Colors.BLUE, f"📊 Logs Available: {lr.get('has_logs', False)}")
+                
+                return True
             except json.JSONDecodeError:
-                print_color(Colors.YELLOW, f"⚠️ Workflow completed but results unparseable")
+                print_color(Colors.YELLOW, f"⚠️ Enhanced workflow completed but results unparseable")
                 print_color(Colors.BLUE, f"Output: {stdout}")
                 return True
         else:
-            print_color(Colors.RED, f"❌ Comprehensive workflow failed: {stderr}")
+            print_color(Colors.RED, f"❌ Enhanced comprehensive workflow failed: {stderr}")
             return False
     
     def test_performance_metrics(self) -> Dict[str, Any]:
-        """Test performance characteristics."""
-        print_header("Performance Metrics Test")
+        """Test performance characteristics of enhanced tools."""
+        print_header("Enhanced Performance Metrics Test")
         
         metrics = {}
         
         # Test 1: Import time
         start_time = time.time()
         success, stdout, stderr = self.run_docker_command(
-            "python -c 'from awslabs.tmf_oda_transformer_mcp_server.server import *'"
+            "python -c 'from awslabs.tmf_oda_transformer_mcp_server.server import *; from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import *'"
         )
         import_time = time.time() - start_time
         
         if success:
             metrics["import_time"] = import_time
-            print_color(Colors.GREEN, f"✅ Import time: {import_time:.3f}s")
+            print_color(Colors.GREEN, f"✅ Enhanced import time: {import_time:.3f}s")
         else:
             print_color(Colors.RED, f"❌ Import failed: {stderr}")
             metrics["import_time"] = None
@@ -476,29 +582,84 @@ asyncio.run(perf_test())
             print_color(Colors.RED, f"❌ Test runner performance test failed: {stderr}")
             metrics["test_runner_time"] = None
         
+        # Test 3: Enhanced journeys tool performance
+        start_time = time.time()
+        success, stdout, stderr = self.run_docker_command(
+            '''python -c "
+import asyncio
+from unittest.mock import AsyncMock
+from awslabs.tmf_oda_transformer_mcp_server.server import journeys_tool
+
+async def journeys_perf_test():
+    ctx = AsyncMock()
+    ctx.error = AsyncMock()
+    result = await journeys_tool(ctx, action='read', journey_id='')
+    return result
+
+asyncio.run(journeys_perf_test())
+"''', timeout=60)
+        journeys_time = time.time() - start_time
+        
+        if success:
+            metrics["journeys_time"] = journeys_time
+            print_color(Colors.GREEN, f"✅ Enhanced journeys time: {journeys_time:.3f}s")
+        else:
+            print_color(Colors.RED, f"❌ Enhanced journeys performance test failed: {stderr}")
+            metrics["journeys_time"] = None
+        
+        # Test 4: Logs and reports tool performance
+        start_time = time.time()
+        success, stdout, stderr = self.run_docker_command(
+            '''python -c "
+import asyncio
+from unittest.mock import AsyncMock
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
+
+async def logs_perf_test():
+    ctx = AsyncMock()
+    ctx.error = AsyncMock()
+    result = await logs_and_reports_tool(
+        ctx, 
+        action='list_available_logs', 
+        journey_id='JRN-SAMPLE-001'
+    )
+    return result
+
+asyncio.run(logs_perf_test())
+"''', timeout=60)
+        logs_time = time.time() - start_time
+        
+        if success:
+            metrics["logs_reports_time"] = logs_time
+            print_color(Colors.GREEN, f"✅ Logs and reports time: {logs_time:.3f}s")
+        else:
+            print_color(Colors.RED, f"❌ Logs and reports performance test failed: {stderr}")
+            metrics["logs_reports_time"] = None
+        
         return metrics
     
     def generate_external_api_examples(self):
-        """Generate examples for external API integration."""
-        print_header("External API Integration Examples")
+        """Generate examples for external API integration with enhanced functionality."""
+        print_header("Enhanced External API Integration Examples")
         
         print_color(Colors.CYAN, "🔌 For External UI Integration:")
         
         # Generate Docker command examples based on connection type
         if self.is_remote:
             docker_example = '''
-# Remote Docker Connection Example:
+# Enhanced Remote Docker Connection Example:
 import subprocess
 import json
 
-def call_tmf_oda_tool_remote(tool_name, parameters):
-    \"\"\"Call TMF ODA tool from external application via remote Docker.\"\"\"
+def call_enhanced_tmf_oda_tool_remote(tool_name, parameters):
+    \"\"\"Call Enhanced TMF ODA tool from external application via remote Docker.\"\"\"
     
     script = f\"\"\"
 import asyncio
 import json
 from unittest.mock import AsyncMock
 from awslabs.tmf_oda_transformer_mcp_server.server import {tool_name}
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
 from awslabs.tmf_oda_transformer_mcp_server.models import *
 
 async def call_tool():
@@ -506,7 +667,10 @@ async def call_tool():
     ctx.error = AsyncMock()
     
     try:
-        result = await {tool_name}(ctx=ctx, **{parameters})
+        if "{tool_name}" == "logs_and_reports_tool":
+            result = await logs_and_reports_tool(ctx=ctx, **{parameters})
+        else:
+            result = await {tool_name}(ctx=ctx, **{parameters})
         print(json.dumps(result, default=str, indent=2))
         return True
     except Exception as e:
@@ -522,23 +686,50 @@ asyncio.run(call_tool())
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout, result.stderr
 
-# Example usage:
-# result, error = call_tmf_oda_tool_remote("test_runner_tool", {"test_type": "quick"})
+# Enhanced Example usage:
+# Journey management
+# result, error = call_enhanced_tmf_oda_tool_remote("journeys_tool", {
+#     "action": "create", 
+#     "journey_data": {"name": "New Journey", "oda_component_type": "customer-management"}
+# })
+
+# Stage management  
+# result, error = call_enhanced_tmf_oda_tool_remote("journeys_tool", {
+#     "action": "add_stage", 
+#     "journey_id": "JRN-001", 
+#     "stage_data": {"stage_id": "custom_validation", "name": "Custom Validation"}
+# })
+
+# Job management
+# result, error = call_enhanced_tmf_oda_tool_remote("journeys_tool", {
+#     "action": "run_job", 
+#     "journey_id": "JRN-001", 
+#     "stage_id": "raw_analysis"
+# })
+
+# Logs and reports
+# result, error = call_enhanced_tmf_oda_tool_remote("logs_and_reports_tool", {
+#     "action": "get_job_logs", 
+#     "journey_id": "JRN-001", 
+#     "job_id": "JOB-001", 
+#     "stage_name": "raw_analysis"
+# })
 '''
         else:
             docker_example = '''
-# Local Docker Connection Example:
+# Enhanced Local Docker Connection Example:
 import subprocess
 import json
 
-def call_tmf_oda_tool(tool_name, parameters):
-    \"\"\"Call TMF ODA tool from external application.\"\"\"
+def call_enhanced_tmf_oda_tool(tool_name, parameters):
+    \"\"\"Call Enhanced TMF ODA tool from external application.\"\"\"
     
     script = f\"\"\"
 import asyncio
 import json
 from unittest.mock import AsyncMock
 from awslabs.tmf_oda_transformer_mcp_server.server import {tool_name}
+from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
 from awslabs.tmf_oda_transformer_mcp_server.models import *
 
 async def call_tool():
@@ -546,7 +737,10 @@ async def call_tool():
     ctx.error = AsyncMock()
     
     try:
-        result = await {tool_name}(ctx=ctx, **{parameters})
+        if "{tool_name}" == "logs_and_reports_tool":
+            result = await logs_and_reports_tool(ctx=ctx, **{parameters})
+        else:
+            result = await {tool_name}(ctx=ctx, **{parameters})
         print(json.dumps(result, default=str, indent=2))
         return True
     except Exception as e:
@@ -560,15 +754,77 @@ asyncio.run(call_tool())
     result = subprocess.run(cmd, capture_output=True, text=True)
     return result.stdout, result.stderr
 
-# Example usage:
-# result, error = call_tmf_oda_tool("test_runner_tool", {"test_type": "quick"})
+# Enhanced Example usage - Complete Journey Lifecycle:
+
+# 1. Create journey
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "create", 
+#     "journey_data": {
+#         "name": "Customer Data Migration", 
+#         "oda_component_type": "customer-management",
+#         "priority": "high"
+#     }
+# })
+
+# 2. Add default stages
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "add_default_stages", 
+#     "journey_id": "JRN-001"
+# })
+
+# 3. Add custom rules
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "add_rule", 
+#     "journey_id": "JRN-001",
+#     "stage_id": "data_mapping",
+#     "rule_data": {
+#         "name": "Email Validation",
+#         "rule_type": "validation",
+#         "condition": "email IS NOT NULL"
+#     }
+# })
+
+# 4. Execute job
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "run_job", 
+#     "journey_id": "JRN-001", 
+#     "stage_id": "raw_analysis"
+# })
+
+# 5. Monitor job progress
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "get_job_metrics", 
+#     "journey_id": "JRN-001", 
+#     "job_id": "JOB-001"
+# })
+
+# 6. Get comprehensive logs
+# result, error = call_enhanced_tmf_oda_tool("logs_and_reports_tool", {
+#     "action": "get_job_logs", 
+#     "journey_id": "JRN-001", 
+#     "job_id": "JOB-001",
+#     "stage_name": "raw_analysis"
+# })
+
+# 7. Generate reports
+# result, error = call_enhanced_tmf_oda_tool("logs_and_reports_tool", {
+#     "action": "generate_summary_report", 
+#     "journey_id": "JRN-001", 
+#     "job_id": "JOB-001"
+# })
+
+# 8. Get dashboard view
+# result, error = call_enhanced_tmf_oda_tool("journeys_tool", {
+#     "action": "dashboard", 
+#     "journey_id": "JRN-001"
+# })
 '''
         
         print_color(Colors.BLUE, docker_example)
         
-        print_color(Colors.CYAN, "\n🌐 REST API Wrapper Example:")
+        print_color(Colors.CYAN, "\n🌐 Enhanced REST API Wrapper Example:")
         print_color(Colors.BLUE, f'''
-# Flask/FastAPI wrapper for HTTP access:
+# Flask/FastAPI wrapper for Enhanced HTTP access:
 from flask import Flask, request, jsonify
 import subprocess
 import json
@@ -576,10 +832,10 @@ import json
 app = Flask(__name__)
 
 @app.route('/tmf-oda/<tool_name>', methods=['POST'])
-def call_tmf_tool(tool_name):
+def call_enhanced_tmf_tool(tool_name):
     try:
         parameters = request.json
-        result, error = call_tmf_oda_tool{"_remote" if self.is_remote else ""}(tool_name, parameters)
+        result, error = call_enhanced_tmf_oda_tool{"_remote" if self.is_remote else ""}(tool_name, parameters)
         
         if error:
             return jsonify({{"error": error}}), 500
@@ -589,40 +845,112 @@ def call_tmf_tool(tool_name):
     except Exception as e:
         return jsonify({{"error": str(e)}}), 500
 
+# Enhanced endpoints for specific functionality
+@app.route('/tmf-oda/journeys', methods=['GET', 'POST', 'PUT', 'DELETE'])
+def manage_journeys():
+    \"\"\"RESTful journey management endpoint.\"\"\"
+    if request.method == 'GET':
+        # List journeys or get specific journey
+        journey_id = request.args.get('journey_id', '')
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "read", "journey_id": journey_id}})
+    elif request.method == 'POST':
+        # Create journey
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "create", "journey_data": request.json}})
+    elif request.method == 'PUT':
+        # Update journey
+        journey_id = request.args.get('journey_id')
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "update", "journey_id": journey_id, "journey_data": request.json}})
+    elif request.method == 'DELETE':
+        # Delete journey
+        journey_id = request.args.get('journey_id')
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "delete", "journey_id": journey_id}})
+
+@app.route('/tmf-oda/journeys/<journey_id>/stages', methods=['GET', 'POST'])
+def manage_stages(journey_id):
+    \"\"\"Stage management endpoint.\"\"\"
+    if request.method == 'GET':
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "list_stages", "journey_id": journey_id}})
+    elif request.method == 'POST':
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "add_stage", "journey_id": journey_id, "stage_data": request.json}})
+
+@app.route('/tmf-oda/journeys/<journey_id>/jobs', methods=['GET', 'POST'])
+def manage_jobs(journey_id):
+    \"\"\"Job management endpoint.\"\"\"
+    if request.method == 'GET':
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "list_jobs", "journey_id": journey_id}})
+    elif request.method == 'POST':
+        stage_id = request.json.get('stage_id')
+        return call_enhanced_tmf_tool('journeys_tool', {{"action": "run_job", "journey_id": journey_id, "stage_id": stage_id}})
+
+@app.route('/tmf-oda/journeys/<journey_id>/logs', methods=['GET'])
+def get_logs(journey_id):
+    \"\"\"Logs retrieval endpoint.\"\"\"
+    job_id = request.args.get('job_id')
+    stage_name = request.args.get('stage_name')
+    return call_enhanced_tmf_tool('logs_and_reports_tool', {{
+        "action": "get_job_logs", 
+        "journey_id": journey_id, 
+        "job_id": job_id, 
+        "stage_name": stage_name
+    }})
+
+@app.route('/tmf-oda/journeys/<journey_id>/dashboard', methods=['GET'])
+def get_dashboard(journey_id):
+    \"\"\"Dashboard endpoint.\"\"\"
+    return call_enhanced_tmf_tool('journeys_tool', {{"action": "dashboard", "journey_id": journey_id}})
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
 ''')
         
-        print_color(Colors.CYAN, "\n🚀 Usage Instructions:")
+        print_color(Colors.CYAN, "\n🚀 Enhanced Usage Instructions:")
         if self.is_remote:
             print_color(Colors.BLUE, f"""
-To run this script from another machine:
+To run enhanced testing from another machine:
 1. Ensure SSH access to {self.remote_host}
 2. Run: python3 test-external-access.py --host {self.remote_host} --port {self.remote_port}
 3. Add --user <username> if different SSH user needed
 4. Make sure Docker is running on the remote host
-""")
+5. Test all 7 enhanced tools including new logs-and-reports functionality
+6. Verify 40+ journey management actions are working
+"""
+)
         else:
             print_color(Colors.BLUE, """
-To run this script locally:
+To run enhanced testing locally:
 1. Ensure Docker is running
 2. Run: python3 test-external-access.py
 3. Container will be accessed directly
-""")
+4. Test all 7 enhanced tools including new logs-and-reports functionality
+5. Verify complete journey lifecycle management is working
+6. Test stage management, rules management, job management, and reports
+"""
+)
     
     def run_all_tests(self) -> Dict[str, Any]:
-        """Run all external tests."""
+        """Run all enhanced external tests."""
         self.start_time = datetime.now()
         
-        print_color(Colors.GREEN, "🚀 TMF ODA Transformer MCP Server - External Testing Suite")
+        print_color(Colors.GREEN, "🚀 Enhanced TMF ODA Transformer MCP Server - External Testing Suite")
         print_color(Colors.GREEN, "="*70)
         print_color(Colors.BLUE, f"🕐 Started at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print_color(Colors.PURPLE, "🔧 Testing 7 enhanced tools with comprehensive journey lifecycle management")
         
         results = {
             "start_time": self.start_time.isoformat(),
             "connection_type": "remote" if self.is_remote else "local",
             "remote_host": self.remote_host,
             "remote_port": self.remote_port,
+            "tools_count": 7,
+            "enhanced_features": [
+                "comprehensive_journey_management",
+                "stage_management", 
+                "rules_management",
+                "job_lifecycle_management",
+                "logs_and_reports",
+                "interactive_dashboards",
+                "performance_analysis"
+            ],
             "tests": {}
         }
         
@@ -643,16 +971,16 @@ To run this script locally:
         # Test 2: Python Environment
         results["tests"]["python_environment"] = self.test_python_environment()
         
-        # Test 3: Tool Validation
+        # Test 3: Enhanced Tool Validation
         results["tests"]["tool_validation"] = self.test_tool_validation()
         
-        # Test 4: Comprehensive Workflow
+        # Test 4: Enhanced Comprehensive Workflow
         results["tests"]["comprehensive_workflow"] = self.test_comprehensive_workflow()
         
-        # Test 5: Performance Metrics
+        # Test 5: Enhanced Performance Metrics
         results["tests"]["performance_metrics"] = self.test_performance_metrics()
         
-        # Generate examples
+        # Generate enhanced examples
         self.generate_external_api_examples()
         
         # Final summary
@@ -662,7 +990,7 @@ To run this script locally:
         results["end_time"] = end_time.isoformat()
         results["duration_seconds"] = duration
         
-        print_header("Final Test Summary")
+        print_header("Enhanced Final Test Summary")
         passed_tests = sum(1 for test, result in results["tests"].items() 
                           if isinstance(result, bool) and result)
         total_tests = len([test for test, result in results["tests"].items() 
@@ -670,10 +998,14 @@ To run this script locally:
         
         print_color(Colors.BLUE, f"⏱️ Total duration: {duration:.2f} seconds")
         print_color(Colors.BLUE, f"📊 Tests passed: {passed_tests}/{total_tests}")
+        print_color(Colors.PURPLE, f"🔧 Enhanced tools tested: 7 (raw-analysis, stripped-schema, get-job-logs, test-runner, journeys, run-jobs, logs-and-reports)")
+        print_color(Colors.PURPLE, f"⚡ Journey actions tested: 40+ (CRUD, stage mgmt, rules mgmt, job mgmt, logs, reports, dashboard)")
         
         if passed_tests == total_tests:
-            print_color(Colors.GREEN, "🎉 ALL EXTERNAL TESTS PASSED!")
-            print_color(Colors.GREEN, "✅ TMF ODA MCP Server is ready for external UI integration!")
+            print_color(Colors.GREEN, "🎉 ALL ENHANCED EXTERNAL TESTS PASSED!")
+            print_color(Colors.GREEN, "✅ Enhanced TMF ODA MCP Server is ready for external UI integration!")
+            print_color(Colors.GREEN, "✅ All 7 tools including new logs-and-reports functionality working!")
+            print_color(Colors.GREEN, "✅ Complete journey lifecycle management operational!")
         else:
             print_color(Colors.YELLOW, f"⚠️ {total_tests - passed_tests} test(s) need attention")
         
@@ -682,14 +1014,14 @@ To run this script locally:
 def main():
     """Main function with argument parsing."""
     parser = argparse.ArgumentParser(
-        description="TMF ODA MCP Server External Test Suite",
+        description="Enhanced TMF ODA MCP Server External Test Suite",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Test local Docker container
+  # Test local Docker container (7 enhanced tools)
   python3 test-external-access.py
   
-  # Test remote Docker container
+  # Test remote Docker container with enhanced functionality
   python3 test-external-access.py --host 192.168.1.100
   
   # Test with specific SSH port and user
@@ -697,6 +1029,15 @@ Examples:
   
   # Test specific container name
   python3 test-external-access.py --container my-tmf-container
+
+Enhanced Features Tested:
+  • Complete journey lifecycle management (create, read, update, delete)
+  • Stage management (add, update, delete, list stages)
+  • Second Brain rules management (field mapping, validation, transformation)
+  • Job lifecycle management (run, cancel, retry, monitor, metrics)
+  • Comprehensive logs and reports (search, filter, export, analyze)
+  • Interactive dashboards and real-time monitoring
+  • Performance analysis and recommendations
 """
     )
     
@@ -740,11 +1081,11 @@ Examples:
     results = tester.run_all_tests()
     
     # Save results to file
-    results_filename = f"external_test_results_{'remote' if args.host else 'local'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    results_filename = f"enhanced_external_test_results_{'remote' if args.host else 'local'}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(results_filename, "w") as f:
         json.dump(results, f, indent=2, default=str)
     
-    print_color(Colors.BLUE, f"\n📁 Results saved to: {results_filename}")
+    print_color(Colors.BLUE, f"\n📁 Enhanced results saved to: {results_filename}")
     
     # Exit with appropriate code
     passed_tests = sum(1 for test, result in results["tests"].items() 

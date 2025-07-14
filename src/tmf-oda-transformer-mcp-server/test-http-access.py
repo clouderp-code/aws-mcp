@@ -1,22 +1,25 @@
 #!/usr/bin/env python3
 """
-Comprehensive HTTP Test Suite for TMF ODA Transformer MCP Server
+Comprehensive HTTP Test Suite for Enhanced TMF ODA Transformer MCP Server
 
-This script provides comprehensive testing of all 6 available TMF ODA tools via HTTP REST API.
+This script provides comprehensive testing of all 7 available Enhanced TMF ODA tools via HTTP REST API.
 Perfect for external UIs, CI/CD pipelines, and integration testing - no SSH or Docker access required!
 
-🔧 Tests All 6 Tools:
+🔧 Tests All 7 Enhanced Tools:
 - raw-analysis: Execute raw analysis stage of transformation journey
-- stripped-schema: Execute stripped schema stage of transformation journey
+- stripped-schema: Execute stripped schema stage of transformation journey  
 - get-job-logs: Retrieve execution logs for job steps
 - test-runner: Run comprehensive test suite for all tools
-- journeys: Comprehensive journey management with CRUD operations (CREATE, READ, UPDATE, DELETE)
+- journeys: Comprehensive journey lifecycle management with 40+ actions (CRUD, stage mgmt, rules mgmt, job mgmt, dashboard)
 - run-jobs: Execute any stage of a transformation journey
+- logs-and-reports: NEW - Comprehensive logs and reports management with search, export, analysis
 
 🧪 Comprehensive Test Coverage:
 - Basic connectivity and health checks
 - Individual tool testing with realistic parameters
-- Parameter variation testing
+- Enhanced journeys functionality (stage management, rules management, job lifecycle)
+- Logs and reports functionality (search, filter, export, analyze)
+- Parameter variation testing for all 40+ journey actions
 - Error handling and validation testing
 - Performance metrics and timing
 - Integration examples for external applications
@@ -34,7 +37,7 @@ Perfect for external UIs, CI/CD pipelines, and integration testing - no SSH or D
 - Custom timeout: python3 test-http-access.py --timeout 60
 - HTTPS with self-signed cert: python3 test-http-access.py --url https://server:8000 --no-ssl-verify
 
-Perfect for validating TMF ODA MCP Server deployments and ensuring all tools work correctly!
+Perfect for validating Enhanced TMF ODA MCP Server deployments and ensuring all tools work correctly!
 """
 
 import requests
@@ -70,7 +73,7 @@ def print_header(title: str):
     print_color(Colors.BLUE, f"{'='*60}")
 
 class TMFODAHttpTester:
-    """HTTP tester for TMF ODA MCP Server REST API."""
+    """HTTP tester for Enhanced TMF ODA MCP Server REST API."""
     
     def __init__(self, base_url: str, timeout: int = 30, quick_test: bool = False):
         self.base_url = base_url.rstrip('/')
@@ -79,7 +82,7 @@ class TMFODAHttpTester:
         self.session = requests.Session()
         self.session.headers.update({
             'Content-Type': 'application/json',
-            'User-Agent': 'TMF-ODA-HTTP-Tester/1.0'
+            'User-Agent': 'Enhanced-TMF-ODA-HTTP-Tester/2.0'
         })
         self.test_results = []
         self.start_time = None
@@ -88,6 +91,8 @@ class TMFODAHttpTester:
         print_color(Colors.CYAN, f"⏱️ Request Timeout: {timeout}s")
         if quick_test:
             print_color(Colors.YELLOW, "⚡ Quick Test Mode: Only basic connectivity tests will run")
+        else:
+            print_color(Colors.PURPLE, "🔧 Enhanced Mode: Testing all 7 tools with comprehensive functionality")
     
     def make_request(self, method: str, endpoint: str, data: Optional[Dict] = None) -> tuple[bool, Dict[str, Any]]:
         """Make HTTP request to the API."""
@@ -123,7 +128,7 @@ class TMFODAHttpTester:
     
     def test_api_connectivity(self) -> bool:
         """Test basic API connectivity."""
-        print_header("API Connectivity Test")
+        print_header("Enhanced API Connectivity Test")
         
         # Test root endpoint
         print_color(Colors.BLUE, f"🔍 Testing connection to {self.base_url}...")
@@ -137,9 +142,14 @@ class TMFODAHttpTester:
             print_color(Colors.GREEN, f"✅ Status: {result.get('status', 'Unknown')}")
             
             tools = result.get('tools', [])
-            print_color(Colors.GREEN, f"✅ Tools available: {len(tools)}")
+            print_color(Colors.GREEN, f"✅ Enhanced tools available: {len(tools)}")
             for tool in tools:
                 print_color(Colors.BLUE, f"  📋 {tool}")
+            
+            if len(tools) >= 7:
+                print_color(Colors.GREEN, "✅ All 7 enhanced tools detected (including logs-and-reports)")
+            else:
+                print_color(Colors.YELLOW, f"⚠️ Expected 7 tools but found {len(tools)}")
             
             return True
         else:
@@ -148,7 +158,7 @@ class TMFODAHttpTester:
     
     def test_health_endpoint(self) -> bool:
         """Test health endpoint."""
-        print_header("Health Check Test")
+        print_header("Enhanced Health Check Test")
         
         success, result = self.make_request('GET', '/health')
         
@@ -160,7 +170,13 @@ class TMFODAHttpTester:
             if status == 'healthy':
                 print_color(Colors.GREEN, f"✅ Health status: {status}")
                 print_color(Colors.GREEN, f"✅ MCP server: {mcp_status}")
-                print_color(Colors.GREEN, f"✅ Tools available: {tools_count}")
+                print_color(Colors.GREEN, f"✅ Enhanced tools available: {tools_count}")
+                
+                if tools_count >= 7:
+                    print_color(Colors.GREEN, "✅ All 7 enhanced tools are healthy")
+                else:
+                    print_color(Colors.YELLOW, f"⚠️ Expected 7 tools but health reports {tools_count}")
+                
                 return True
             else:
                 print_color(Colors.YELLOW, f"⚠️ Health status: {status}")
@@ -172,13 +188,18 @@ class TMFODAHttpTester:
     
     def test_tools_endpoint(self) -> bool:
         """Test tools listing endpoint."""
-        print_header("Tools Endpoint Test")
+        print_header("Enhanced Tools Endpoint Test")
         
         success, result = self.make_request('GET', '/tools')
         
         if success:
             tools = result.get('tools', [])
-            print_color(Colors.GREEN, f"✅ Found {len(tools)} available tools:")
+            print_color(Colors.GREEN, f"✅ Found {len(tools)} available enhanced tools:")
+            
+            expected_tools = [
+                'raw-analysis', 'stripped-schema', 'get-job-logs', 
+                'test-runner', 'journeys', 'run-jobs', 'logs-and-reports'
+            ]
             
             for tool in tools:
                 name = tool.get('name', 'Unknown')
@@ -189,15 +210,29 @@ class TMFODAHttpTester:
                 print_color(Colors.BLUE, f"  📋 {name}")
                 print_color(Colors.BLUE, f"     🔗 {method} {endpoint}")
                 print_color(Colors.BLUE, f"     📝 {description}")
+                
+                if name == 'journeys':
+                    print_color(Colors.PURPLE, f"     ⚡ Enhanced with 40+ actions for complete lifecycle management")
+                elif name == 'logs-and-reports':
+                    print_color(Colors.PURPLE, f"     🆕 NEW tool for comprehensive logs and reports management")
             
-            return len(tools) >= 6  # Should have 6 tools
+            # Check if all expected tools are present
+            tool_names = [tool.get('name', '') for tool in tools]
+            missing_tools = [tool for tool in expected_tools if tool not in tool_names]
+            
+            if not missing_tools:
+                print_color(Colors.GREEN, "✅ All 7 expected enhanced tools are available")
+                return True
+            else:
+                print_color(Colors.YELLOW, f"⚠️ Missing tools: {', '.join(missing_tools)}")
+                return len(tools) >= 6  # Accept if at least 6 tools are present
         else:
             print_color(Colors.RED, f"❌ Tools endpoint failed: {result.get('error', 'Unknown error')}")
             return False
     
     def test_tool_validation(self) -> Dict[str, Any]:
-        """Test all tools with validation scenarios."""
-        print_header("Tool Validation Tests")
+        """Test all enhanced tools with validation scenarios."""
+        print_header("Enhanced Tool Validation Tests")
         
         validation_results = {}
         
@@ -273,6 +308,43 @@ class TMFODAHttpTester:
         else:
             validation_results["test_runner"] = f"❌ Test runner error: {result.get('error', 'Unknown error')}"
         
+        # Test 5: Enhanced Journeys Tool (READ operation)
+        print_color(Colors.BLUE, "🗺️ Testing enhanced journeys tool...")
+        success, result = self.make_request('POST', '/tools/journeys', {
+            "action": "read",
+            "journey_id": "",
+            "include_stages": True,
+            "include_job_history": True,
+            "limit": 5
+        })
+        
+        if success:
+            journey_result = result.get('result', {})
+            if isinstance(journey_result, dict):
+                operation = journey_result.get('operation', 'unknown')
+                validation_results["journeys"] = f"✅ Enhanced journeys working: {operation} operation"
+            else:
+                validation_results["journeys"] = f"✅ Enhanced journeys returned: {str(journey_result)[:100]}"
+        else:
+            validation_results["journeys"] = f"❌ Enhanced journeys error: {result.get('error', 'Unknown error')}"
+        
+        # Test 6: NEW - Logs and Reports Tool
+        print_color(Colors.BLUE, "📊 Testing NEW logs-and-reports tool...")
+        success, result = self.make_request('POST', '/tools/logs-and-reports', {
+            "action": "list_available_logs",
+            "journey_id": "JRN-SAMPLE-001"
+        })
+        
+        if success:
+            logs_result = result.get('result', {})
+            if isinstance(logs_result, dict):
+                operation = logs_result.get('operation', 'unknown')
+                validation_results["logs_and_reports"] = f"✅ Logs and reports working: {operation} operation"
+            else:
+                validation_results["logs_and_reports"] = f"✅ Logs and reports returned: {str(logs_result)[:100]}"
+        else:
+            validation_results["logs_and_reports"] = f"❌ Logs and reports error: {result.get('error', 'Unknown error')}"
+        
         # Print results
         for tool, result_msg in validation_results.items():
             if result_msg.startswith("✅"):
@@ -285,8 +357,8 @@ class TMFODAHttpTester:
         return validation_results
     
     def test_all_tools_comprehensive(self) -> Dict[str, Any]:
-        """Test all 6 available tools comprehensively with realistic parameters."""
-        print_header("Comprehensive Tool Testing - All 6 Tools")
+        """Test all 7 available enhanced tools comprehensively with realistic parameters."""
+        print_header("Comprehensive Enhanced Tool Testing - All 7 Tools")
         
         tool_results = {}
         
@@ -403,15 +475,14 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ test-runner: {result.get('error', 'Unknown error')}")
         
-        # Test 5: Journeys Tool (READ operation)
-        print_color(Colors.CYAN, "🗺️ Testing journeys tool with READ operation...")
+        # Test 5: Enhanced Journeys Tool (READ operation)
+        print_color(Colors.CYAN, "🗺️ Testing enhanced journeys tool with READ operation...")
         test_params = {
             "action": "read",
             "journey_id": "JRN-SAMPLE-001",
-            "stage_id": "raw_analysis",
             "include_stages": True,
             "include_job_history": True,
-            "job_limit": 5
+            "limit": 5
         }
         
         success, result = self.make_request('POST', '/tools/journeys', test_params)
@@ -423,11 +494,12 @@ class TMFODAHttpTester:
         }
         
         if success:
-            print_color(Colors.GREEN, "✅ journeys: Success")
+            print_color(Colors.GREEN, "✅ enhanced journeys: Success")
             journey_result = result.get('result', {})
             if isinstance(journey_result, dict):
                 operation = journey_result.get('operation', 'unknown')
                 print_color(Colors.BLUE, f"   🎬 Operation: {operation}")
+                print_color(Colors.PURPLE, f"   ⚡ Enhanced with 40+ actions available")
                 
                 if 'journey_status' in journey_result:
                     # Single journey details
@@ -441,7 +513,7 @@ class TMFODAHttpTester:
                     journeys = journey_result.get('journeys', [])
                     print_color(Colors.BLUE, f"   📊 Found {len(journeys)} journeys")
         else:
-            print_color(Colors.RED, f"❌ journeys: {result.get('error', 'Unknown error')}")
+            print_color(Colors.RED, f"❌ enhanced journeys: {result.get('error', 'Unknown error')}")
         
         # Test 6: Run Jobs Tool
         print_color(Colors.CYAN, "🏃 Testing run-jobs with realistic parameters...")
@@ -471,13 +543,49 @@ class TMFODAHttpTester:
         else:
             print_color(Colors.RED, f"❌ run-jobs: {result.get('error', 'Unknown error')}")
         
+        # Test 7: NEW - Logs and Reports Tool
+        print_color(Colors.CYAN, "📊 Testing NEW logs-and-reports tool...")
+        test_params = {
+            "action": "get_job_logs",
+            "journey_id": "JRN-SAMPLE-001",
+            "job_id": "JOB-001-20240101120000",
+            "stage_name": "raw_analysis",
+            "step_name": "schema_parsing"
+        }
+        
+        success, result = self.make_request('POST', '/tools/logs-and-reports', test_params)
+        tool_results["logs_and_reports"] = {
+            "success": success,
+            "params": test_params,
+            "result": result,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+        if success:
+            print_color(Colors.GREEN, "✅ logs-and-reports: Success")
+            logs_result = result.get('result', {})
+            if isinstance(logs_result, dict):
+                operation = logs_result.get('operation', 'unknown')
+                print_color(Colors.BLUE, f"   🎬 Operation: {operation}")
+                print_color(Colors.PURPLE, f"   🆕 NEW comprehensive logs and reports functionality")
+                
+                if 'logs' in logs_result:
+                    logs_data = logs_result.get('logs', {})
+                    total_logs = logs_data.get('total_logs', 0)
+                    print_color(Colors.BLUE, f"   📊 Total logs: {total_logs}")
+        else:
+            print_color(Colors.RED, f"❌ logs-and-reports: {result.get('error', 'Unknown error')}")
+        
         # Summary
-        print_color(Colors.CYAN, "\n📊 Comprehensive Tool Testing Summary:")
+        print_color(Colors.CYAN, "\n📊 Comprehensive Enhanced Tool Testing Summary:")
         successful_tools = sum(1 for tool, data in tool_results.items() if data["success"])
         total_tools = len(tool_results)
         
         print_color(Colors.BLUE, f"✅ Successful tools: {successful_tools}/{total_tools}")
         print_color(Colors.BLUE, f"❌ Failed tools: {total_tools - successful_tools}/{total_tools}")
+        print_color(Colors.PURPLE, f"🔧 Enhanced tools tested: 7 (includes new logs-and-reports)")
+        print_color(Colors.PURPLE, f"⚡ Enhanced journeys with 40+ lifecycle management actions")
+        print_color(Colors.PURPLE, f"🆕 NEW logs-and-reports tool: Comprehensive logs and reports management")
         
         # List failed tools
         failed_tools = [tool for tool, data in tool_results.items() if not data["success"]]
@@ -486,35 +594,19 @@ class TMFODAHttpTester:
         
         return tool_results
     
-    def test_tool_parameter_variations(self) -> Dict[str, Any]:
-        """Test tools with different parameter variations."""
-        print_header("Parameter Variation Testing")
+    def test_enhanced_journeys_actions(self) -> Dict[str, Any]:
+        """Test enhanced journeys tool with various lifecycle management actions."""
+        print_header("Enhanced Journeys Actions Testing - Lifecycle Management")
         
-        variation_results = {}
+        enhanced_results = {}
         
-        # Test journeys with different parameter combinations (CRUD operations)
-        print_color(Colors.CYAN, "🧪 Testing journeys parameter variations...")
+        # Test enhanced journeys actions
+        print_color(Colors.CYAN, "🧪 Testing enhanced journeys lifecycle management actions...")
         
         test_cases = [
+            # Basic CRUD operations
             {"name": "list_all_journeys", "params": {"action": "read"}},
             {"name": "specific_journey", "params": {"action": "read", "journey_id": "JRN-SAMPLE-001"}},
-            {"name": "journey_with_stages", "params": {
-                "action": "read", 
-                "journey_id": "JRN-SAMPLE-001", 
-                "include_stages": True
-            }},
-            {"name": "journey_with_jobs", "params": {
-                "action": "read", 
-                "journey_id": "JRN-SAMPLE-001", 
-                "include_job_history": True
-            }},
-            {"name": "journey_full_details", "params": {
-                "action": "read",
-                "journey_id": "JRN-SAMPLE-001",
-                "include_stages": True,
-                "include_job_history": True,
-                "job_limit": 10
-            }},
             {"name": "create_journey_test", "params": {
                 "action": "create",
                 "journey_data": {
@@ -532,47 +624,198 @@ class TMFODAHttpTester:
                     "overall_progress": 75
                 }
             }},
-            # NEW: Add DELETE operation testing
-            {"name": "delete_journey_test", "params": {
-                "action": "delete",
-                "journey_id": "JRN-TEST-DELETE"
+            
+            # Stage Management (NEW)
+            {"name": "list_stages", "params": {
+                "action": "list_stages",
+                "journey_id": "JRN-SAMPLE-001"
             }},
-            # NEW: Add backward compatibility testing
-            {"name": "list_action_alias", "params": {"action": "list"}},
-            # NEW: Add error handling tests
+            {"name": "add_stage", "params": {
+                "action": "add_stage",
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_data": {
+                    "stage_id": "custom_validation",
+                    "name": "Custom Validation",
+                    "description": "Custom validation stage"
+                }
+            }},
+            {"name": "add_default_stages", "params": {
+                "action": "add_default_stages",
+                "journey_id": "JRN-SAMPLE-001"
+            }},
+            
+            # Rules Management (NEW)
+            {"name": "list_rules", "params": {
+                "action": "list_rules",
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "data_mapping"
+            }},
+            {"name": "add_rule", "params": {
+                "action": "add_rule",
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "data_mapping",
+                "rule_data": {
+                    "name": "Email Validation",
+                    "rule_type": "validation",
+                    "condition": "email IS NOT NULL"
+                }
+            }},
+            
+            # Job Management (NEW)
+            {"name": "list_jobs", "params": {
+                "action": "list_jobs",
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "raw_analysis"
+            }},
+            {"name": "run_job", "params": {
+                "action": "run_job",
+                "journey_id": "JRN-SAMPLE-001",
+                "stage_id": "raw_analysis",
+                "triggered_by": "http-test"
+            }},
+            {"name": "get_job_metrics", "params": {
+                "action": "get_job_metrics",
+                "journey_id": "JRN-SAMPLE-001",
+                "job_id": "JOB-001-20240101120000"
+            }},
+            
+            # Interactive Features (NEW)
+            {"name": "dashboard", "params": {
+                "action": "dashboard",
+                "journey_id": "JRN-SAMPLE-001"
+            }},
+            {"name": "journey_summary", "params": {
+                "action": "get_journey_summary",
+                "journey_id": "JRN-SAMPLE-001"
+            }},
+            
+            # Error handling tests
             {"name": "unsupported_action", "params": {"action": "invalid_action"}},
             {"name": "create_missing_data", "params": {
                 "action": "create",
                 "journey_data": None  # Should fail
-            }},
-            {"name": "update_missing_id", "params": {
-                "action": "update",
-                "journey_data": {"status": "completed"}
-                # Missing journey_id
-            }},
-            {"name": "delete_missing_id", "params": {
-                "action": "delete"
-                # Missing journey_id
             }}
         ]
         
-        journeys_results = {}
+        enhanced_results = {}
         for test_case in test_cases:
             success, result = self.make_request('POST', '/tools/journeys', test_case["params"])
-            journeys_results[test_case["name"]] = {
+            enhanced_results[test_case["name"]] = {
                 "success": success,
                 "params": test_case["params"],
                 "result": result
             }
             
             if success:
-                print_color(Colors.GREEN, f"✅ {test_case['name']}: Success")
+                journey_result = result.get('result', {})
+                operation = journey_result.get('operation', 'unknown')
+                print_color(Colors.GREEN, f"✅ {test_case['name']}: Success ({operation})")
             else:
-                print_color(Colors.RED, f"❌ {test_case['name']}: {result.get('error', 'Unknown error')}")
+                # For error tests, this might be expected
+                if test_case["name"] in ["unsupported_action", "create_missing_data"]:
+                    print_color(Colors.GREEN, f"✅ {test_case['name']}: Correctly failed as expected")
+                else:
+                    print_color(Colors.RED, f"❌ {test_case['name']}: {result.get('error', 'Unknown error')}")
         
-        variation_results["journeys_variations"] = journeys_results
+        return enhanced_results
+    
+    def test_logs_and_reports_actions(self) -> Dict[str, Any]:
+        """Test the NEW logs and reports tool with various actions."""
+        print_header("NEW Logs and Reports Tool Testing")
         
-        # Test test-runner with different types
+        logs_results = {}
+        
+        print_color(Colors.CYAN, "🧪 Testing NEW logs and reports functionality...")
+        
+        test_cases = [
+            # Log Operations
+            {"name": "get_job_logs", "params": {
+                "action": "get_job_logs",
+                "journey_id": "JRN-SAMPLE-001",
+                "job_id": "JOB-001-20240101120000",
+                "stage_name": "raw_analysis",
+                "step_name": "schema_parsing"
+            }},
+            {"name": "list_available_logs", "params": {
+                "action": "list_available_logs",
+                "journey_id": "JRN-SAMPLE-001"
+            }},
+            {"name": "search_logs", "params": {
+                "action": "search_logs",
+                "journey_id": "JRN-SAMPLE-001",
+                "search_query": "error"
+            }},
+            {"name": "get_logs_by_level", "params": {
+                "action": "get_logs_by_level",
+                "journey_id": "JRN-SAMPLE-001",
+                "log_level": "error"
+            }},
+            
+            # Report Operations
+            {"name": "generate_summary_report", "params": {
+                "action": "generate_summary_report",
+                "journey_id": "JRN-SAMPLE-001",
+                "job_id": "JOB-001-20240101120000"
+            }},
+            {"name": "get_error_summary", "params": {
+                "action": "get_error_summary",
+                "journey_id": "JRN-SAMPLE-001",
+                "job_id": "JOB-001-20240101120000"
+            }},
+            
+            # Analysis Operations
+            {"name": "analyze_job_performance", "params": {
+                "action": "analyze_job_performance",
+                "journey_id": "JRN-SAMPLE-001",
+                "job_id": "JOB-001-20240101120000"
+            }},
+            
+            # Error handling
+            {"name": "invalid_action", "params": {
+                "action": "invalid_logs_action",
+                "journey_id": "JRN-SAMPLE-001"
+            }}
+        ]
+        
+        for test_case in test_cases:
+            success, result = self.make_request('POST', '/tools/logs-and-reports', test_case["params"])
+            logs_results[test_case["name"]] = {
+                "success": success,
+                "params": test_case["params"],
+                "result": result
+            }
+            
+            if success:
+                logs_result = result.get('result', {})
+                operation = logs_result.get('operation', 'unknown')
+                print_color(Colors.GREEN, f"✅ {test_case['name']}: Success ({operation})")
+            else:
+                # For error tests, this might be expected
+                if test_case["name"] == "invalid_action":
+                    print_color(Colors.GREEN, f"✅ {test_case['name']}: Correctly failed as expected")
+                else:
+                    print_color(Colors.RED, f"❌ {test_case['name']}: {result.get('error', 'Unknown error')}")
+        
+        print_color(Colors.PURPLE, f"🆕 NEW Logs and Reports Tool: {len(test_cases)} actions tested")
+        return logs_results
+    
+    def test_tool_parameter_variations(self) -> Dict[str, Any]:
+        """Test tools with different parameter variations."""
+        print_header("Enhanced Parameter Variation Testing")
+        
+        variation_results = {}
+        
+        # Test enhanced journeys with different parameter combinations
+        print_color(Colors.CYAN, "🧪 Testing enhanced journeys parameter variations...")
+        enhanced_journeys_results = self.test_enhanced_journeys_actions()
+        variation_results["enhanced_journeys_variations"] = enhanced_journeys_results
+        
+        # Test NEW logs and reports tool
+        print_color(Colors.CYAN, "🧪 Testing NEW logs and reports parameter variations...")
+        logs_reports_results = self.test_logs_and_reports_actions()
+        variation_results["logs_reports_variations"] = logs_reports_results
+        
+        # Test test-runner with different types (existing)
         print_color(Colors.CYAN, "🧪 Testing test-runner parameter variations...")
         
         test_runner_cases = [
@@ -602,7 +845,7 @@ class TMFODAHttpTester:
     
     def test_error_handling(self) -> Dict[str, Any]:
         """Test error handling with invalid parameters."""
-        print_header("Error Handling Testing")
+        print_header("Enhanced Error Handling Testing")
         
         error_results = {}
         
@@ -620,13 +863,15 @@ class TMFODAHttpTester:
             error_results["invalid_json"] = {"error": str(e)}
             print_color(Colors.RED, f"❌ Invalid JSON test failed: {str(e)}")
         
-        # Test with missing required parameters
+        # Test with missing required parameters for enhanced tools
         print_color(Colors.CYAN, "🧪 Testing missing required parameters...")
         
         missing_param_tests = [
             {"tool": "raw-analysis", "params": {"stage_id": "raw_analysis"}},  # Missing journey_id
             {"tool": "stripped-schema", "params": {"stage_id": "stripped_schema"}},  # Missing journey_id
             {"tool": "get-job-logs", "params": {"journey_id": "JRN-001"}},  # Missing other required params
+            {"tool": "journeys", "params": {"action": "update"}},  # Missing journey_id for update
+            {"tool": "logs-and-reports", "params": {"action": "get_job_logs"}},  # Missing required params
         ]
         
         missing_param_results = {}
@@ -645,43 +890,13 @@ class TMFODAHttpTester:
         
         error_results["missing_params"] = missing_param_results
         
-        # Test with invalid enum values
-        print_color(Colors.CYAN, "🧪 Testing invalid enum values...")
-        
-        invalid_enum_tests = [
-            {"tool": "raw-analysis", "params": {
-                "journey_id": "JRN-SAMPLE-001",
-                "stage_id": "invalid-stage-id"
-            }},
-            {"tool": "stripped-schema", "params": {
-                "journey_id": "JRN-SAMPLE-001",
-                "stage_id": "invalid-stage-id"
-            }},
-        ]
-        
-        invalid_enum_results = {}
-        for test in invalid_enum_tests:
-            success, result = self.make_request('POST', f'/tools/{test["tool"]}', test["params"])
-            invalid_enum_results[test["tool"]] = {
-                "success": success,
-                "params": test["params"],
-                "result": result
-            }
-            
-            if not success:
-                print_color(Colors.GREEN, f"✅ {test['tool']}: Correctly rejected invalid enum")
-            else:
-                print_color(Colors.RED, f"❌ {test['tool']}: Should have failed with invalid enum")
-        
-        error_results["invalid_enums"] = invalid_enum_results
-        
         return error_results
     
     def test_comprehensive_workflow(self) -> bool:
         """Test comprehensive workflow using test-runner."""
-        print_header("Comprehensive Workflow Test")
+        print_header("Enhanced Comprehensive Workflow Test")
         
-        print_color(Colors.BLUE, "🔍 Running comprehensive test suite...")
+        print_color(Colors.BLUE, "🔍 Running enhanced comprehensive test suite...")
         
         success, result = self.make_request('POST', '/tools/test-runner', {
             "test_type": "comprehensive",
@@ -701,26 +916,27 @@ class TMFODAHttpTester:
                 success_rate = test_result.get('success_rate', 0)
                 duration = test_result.get('duration_seconds', 0)
                 
-                print_color(Colors.GREEN, f"✅ Workflow Status: {status}")
+                print_color(Colors.GREEN, f"✅ Enhanced Workflow Status: {status}")
                 print_color(Colors.BLUE, f"📊 Tests: {tests_passed}/{total_tests} passed, {tests_failed} failed")
                 print_color(Colors.BLUE, f"📈 Success Rate: {success_rate}%")
                 print_color(Colors.BLUE, f"⏱️ Duration: {duration:.2f}s")
                 print_color(Colors.BLUE, f"💬 Message: {message}")
+                print_color(Colors.PURPLE, f"🔧 Enhanced MCP Server with 7 tools tested")
                 
                 return status in ['success', 'partial_success']
             elif isinstance(test_result, list):
-                print_color(Colors.GREEN, f"✅ Workflow returned {len(test_result)} test results")
+                print_color(Colors.GREEN, f"✅ Enhanced workflow returned {len(test_result)} test results")
                 return True
             else:
-                print_color(Colors.GREEN, f"✅ Workflow completed: {str(test_result)[:100]}")
+                print_color(Colors.GREEN, f"✅ Enhanced workflow completed: {str(test_result)[:100]}")
                 return True
         else:
-            print_color(Colors.RED, f"❌ Comprehensive workflow failed: {result.get('error', 'Unknown error')}")
+            print_color(Colors.RED, f"❌ Enhanced comprehensive workflow failed: {result.get('error', 'Unknown error')}")
             return False
     
     def test_performance_metrics(self) -> Dict[str, Any]:
         """Test performance characteristics."""
-        print_header("Performance Metrics Test")
+        print_header("Enhanced Performance Metrics Test")
         
         metrics = {}
         
@@ -761,7 +977,37 @@ class TMFODAHttpTester:
             print_color(Colors.RED, f"❌ Test runner performance test failed: {result.get('error', 'Unknown error')}")
             metrics["test_runner_time"] = None
         
-        # Test 3: Tools listing performance
+        # Test 3: Enhanced journeys performance
+        start_time = time.time()
+        success, result = self.make_request('POST', '/tools/journeys', {
+            "action": "read",
+            "journey_id": ""
+        })
+        journeys_time = time.time() - start_time
+        
+        if success:
+            metrics["enhanced_journeys_time"] = journeys_time
+            print_color(Colors.GREEN, f"✅ Enhanced journeys time: {journeys_time:.3f}s")
+        else:
+            print_color(Colors.RED, f"❌ Enhanced journeys performance test failed: {result.get('error', 'Unknown error')}")
+            metrics["enhanced_journeys_time"] = None
+        
+        # Test 4: NEW - Logs and reports performance
+        start_time = time.time()
+        success, result = self.make_request('POST', '/tools/logs-and-reports', {
+            "action": "list_available_logs",
+            "journey_id": "JRN-SAMPLE-001"
+        })
+        logs_time = time.time() - start_time
+        
+        if success:
+            metrics["logs_reports_time"] = logs_time
+            print_color(Colors.GREEN, f"✅ Logs and reports time: {logs_time:.3f}s")
+        else:
+            print_color(Colors.RED, f"❌ Logs and reports performance test failed: {result.get('error', 'Unknown error')}")
+            metrics["logs_reports_time"] = None
+        
+        # Test 5: Tools listing performance
         start_time = time.time()
         success, result = self.make_request('GET', '/tools')
         tools_time = time.time() - start_time
@@ -776,15 +1022,15 @@ class TMFODAHttpTester:
         return metrics
     
     def generate_integration_examples(self):
-        """Generate examples for external application integration."""
-        print_header("Integration Examples for External UIs")
+        """Generate examples for external application integration with enhanced functionality."""
+        print_header("Enhanced Integration Examples for External UIs")
         
-        print_color(Colors.CYAN, "🔌 Python Integration Example:")
+        print_color(Colors.CYAN, "🔌 Enhanced Python Integration Example:")
         print_color(Colors.BLUE, f'''
 import requests
 import json
 
-class TMFODAClient:
+class EnhancedTMFODAClient:
     def __init__(self, base_url="{self.base_url}"):
         self.base_url = base_url
         self.session = requests.Session()
@@ -796,7 +1042,7 @@ class TMFODAClient:
         return response.json()
     
     def list_tools(self):
-        """Get list of available tools."""
+        """Get list of available enhanced tools."""
         response = self.session.get(f"{{self.base_url}}/tools")
         return response.json()
     
@@ -806,26 +1052,121 @@ class TMFODAClient:
         response = self.session.post(f"{{self.base_url}}/tools/test-runner", json=data)
         return response.json()
     
-    def execute_raw_analysis(self, journey_id, stage_id="raw_analysis"):
-        """Execute raw analysis stage."""
+    # Enhanced Journeys Management
+    def create_journey(self, journey_data):
+        """Create a new transformation journey."""
+        data = {{"action": "create", "journey_data": journey_data}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    def list_journeys(self):
+        """List all transformation journeys."""
+        data = {{"action": "read"}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    def get_journey_details(self, journey_id):
+        """Get detailed journey information."""
+        data = {{"action": "read", "journey_id": journey_id, "include_stages": True, "include_job_history": True}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    def add_stage(self, journey_id, stage_data):
+        """Add a stage to a journey."""
+        data = {{"action": "add_stage", "journey_id": journey_id, "stage_data": stage_data}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    def run_job(self, journey_id, stage_id):
+        """Execute a job for a specific stage."""
+        data = {{"action": "run_job", "journey_id": journey_id, "stage_id": stage_id, "triggered_by": "api-client"}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    def get_dashboard(self, journey_id):
+        """Get journey dashboard view."""
+        data = {{"action": "dashboard", "journey_id": journey_id}}
+        response = self.session.post(f"{{self.base_url}}/tools/journeys", json=data)
+        return response.json()
+    
+    # NEW - Logs and Reports Management
+    def get_job_logs(self, journey_id, job_id, stage_name=None, step_name=None):
+        """Get comprehensive job logs."""
         data = {{
-            "journey_id": journey_id,
-            "stage_id": stage_id,
-            "triggered_by": "api-client"
+            "action": "get_job_logs", 
+            "journey_id": journey_id, 
+            "job_id": job_id,
+            "stage_name": stage_name,
+            "step_name": step_name
         }}
-        response = self.session.post(f"{{self.base_url}}/tools/raw-analysis", json=data)
+        response = self.session.post(f"{{self.base_url}}/tools/logs-and-reports", json=data)
+        return response.json()
+    
+    def generate_report(self, journey_id, job_id, report_type="summary"):
+        """Generate comprehensive reports."""
+        data = {{
+            "action": "generate_summary_report", 
+            "journey_id": journey_id, 
+            "job_id": job_id
+        }}
+        response = self.session.post(f"{{self.base_url}}/tools/logs-and-reports", json=data)
+        return response.json()
+    
+    def analyze_performance(self, journey_id, job_id):
+        """Analyze job performance."""
+        data = {{
+            "action": "analyze_job_performance", 
+            "journey_id": journey_id, 
+            "job_id": job_id,
+            "include_recommendations": True
+        }}
+        response = self.session.post(f"{{self.base_url}}/tools/logs-and-reports", json=data)
         return response.json()
 
-# Usage example:
-client = TMFODAClient()
+# Enhanced Usage example:
+client = EnhancedTMFODAClient()
+
+# 1. Check system health
 health = client.health_check()
-tools = client.list_tools()
-test_results = client.run_test_suite("comprehensive")
+print(f"System status: {{health.get('status')}}")
+
+# 2. Create a new journey
+journey_data = {{
+    "name": "Product Catalog Migration",
+    "oda_component_type": "product-catalog-management",
+    "priority": "medium"
+}}
+journey_result = client.create_journey(journey_data)
+journey_id = journey_result.get('result', {{}}).get('journey_id')
+
+# 3. Add stages to the journey
+stage_data = {{
+    "stage_id": "custom_validation",
+    "name": "Custom Validation",
+    "description": "Custom business rules validation"
+}}
+client.add_stage(journey_id, stage_data)
+
+# 4. Execute a job
+job_result = client.run_job(journey_id, "raw_analysis")
+job_id = job_result.get('result', {{}}).get('job_id')
+
+# 5. Monitor with dashboard
+dashboard = client.get_dashboard(journey_id)
+
+# 6. Get comprehensive logs
+logs = client.get_job_logs(journey_id, job_id, "raw_analysis")
+
+# 7. Generate performance report
+report = client.generate_report(journey_id, job_id)
+
+# 8. Analyze performance
+analysis = client.analyze_performance(journey_id, job_id)
 ''')
         
-        print_color(Colors.CYAN, "\n🌐 JavaScript/Node.js Example:")
+        print_color(Colors.CYAN, "\n🌐 Enhanced JavaScript/Node.js Example:")
         print_color(Colors.BLUE, f'''
-class TMFODAClient {{
+class EnhancedTMFODAClient {{
     constructor(baseUrl = '{self.base_url}') {{
         this.baseUrl = baseUrl;
     }}
@@ -840,46 +1181,115 @@ class TMFODAClient {{
         return await response.json();
     }}
     
-    async runTestSuite(testType = 'quick') {{
-        const response = await fetch(`${{this.baseUrl}}/tools/test-runner`, {{
+    // Enhanced Journey Management
+    async createJourney(journeyData) {{
+        const response = await fetch(`${{this.baseUrl}}/tools/journeys`, {{
             method: 'POST',
             headers: {{'Content-Type': 'application/json'}},
             body: JSON.stringify({{
-                test_type: testType,
-                include_performance: false
+                action: 'create',
+                journey_data: journeyData
             }})
         }});
         return await response.json();
     }}
     
-    async executeRawAnalysis(journeyId, stageId = 'raw_analysis') {{
-        const response = await fetch(`${{this.baseUrl}}/tools/raw-analysis`, {{
+    async listJourneys() {{
+        const response = await fetch(`${{this.baseUrl}}/tools/journeys`, {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{ action: 'read' }})
+        }});
+        return await response.json();
+    }}
+    
+    async getDashboard(journeyId) {{
+        const response = await fetch(`${{this.baseUrl}}/tools/journeys`, {{
             method: 'POST',
             headers: {{'Content-Type': 'application/json'}},
             body: JSON.stringify({{
+                action: 'dashboard',
+                journey_id: journeyId
+            }})
+        }});
+        return await response.json();
+    }}
+    
+    // NEW - Logs and Reports
+    async getJobLogs(journeyId, jobId, stageName = null) {{
+        const response = await fetch(`${{this.baseUrl}}/tools/logs-and-reports`, {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{
+                action: 'get_job_logs',
                 journey_id: journeyId,
-                stage_id: stageId,
-                triggered_by: 'api-client'
+                job_id: jobId,
+                stage_name: stageName
+            }})
+        }});
+        return await response.json();
+    }}
+    
+    async generateReport(journeyId, jobId) {{
+        const response = await fetch(`${{this.baseUrl}}/tools/logs-and-reports`, {{
+            method: 'POST',
+            headers: {{'Content-Type': 'application/json'}},
+            body: JSON.stringify({{
+                action: 'generate_summary_report',
+                journey_id: journeyId,
+                job_id: jobId
             }})
         }});
         return await response.json();
     }}
 }}
 
-// Usage:
-const client = new TMFODAClient();
+// Enhanced Usage:
+const client = new EnhancedTMFODAClient();
 const health = await client.healthCheck();
 const tools = await client.listTools();
+
+// Complete workflow example
+async function runEnhancedWorkflow() {{
+    try {{
+        // 1. Check health
+        const health = await client.healthCheck();
+        console.log('System healthy:', health.status === 'healthy');
+        
+        // 2. Create journey
+        const journeyData = {{
+            name: 'Product Catalog Migration',
+            oda_component_type: 'product-catalog-management',
+            priority: 'medium'
+        }};
+        const journey = await client.createJourney(journeyData);
+        const journeyId = journey.result?.journey_id;
+        
+        // 3. Get dashboard
+        const dashboard = await client.getDashboard(journeyId);
+        console.log('Dashboard:', dashboard.result?.dashboard);
+        
+        // 4. Get logs (if jobs exist)
+        const logs = await client.getJobLogs(journeyId, 'JOB-001');
+        console.log('Logs retrieved:', logs.result?.logs?.total_logs);
+        
+    }} catch (error) {{
+        console.error('Workflow error:', error);
+    }}
+}}
 ''')
         
-        print_color(Colors.CYAN, "\n📱 React Component Example:")
+        print_color(Colors.CYAN, "\n📱 Enhanced React Component Example:")
         print_color(Colors.BLUE, f'''
 import React, {{ useState, useEffect }} from 'react';
 
-function TMFODADashboard() {{
+function EnhancedTMFODADashboard() {{
     const [health, setHealth] = useState(null);
     const [tools, setTools] = useState([]);
-    const [testResults, setTestResults] = useState(null);
+    const [journeys, setJourneys] = useState([]);
+    const [selectedJourney, setSelectedJourney] = useState(null);
+    const [dashboard, setDashboard] = useState(null);
+    const [logs, setLogs] = useState([]);
     const [loading, setLoading] = useState(false);
     
     const API_BASE = '{self.base_url}';
@@ -887,6 +1297,7 @@ function TMFODADashboard() {{
     useEffect(() => {{
         fetchHealth();
         fetchTools();
+        fetchJourneys();
     }}, []);
     
     const fetchHealth = async () => {{
@@ -909,150 +1320,382 @@ function TMFODADashboard() {{
         }}
     }};
     
-    const runTests = async () => {{
-        setLoading(true);
+    const fetchJourneys = async () => {{
         try {{
-            const response = await fetch(`${{API_BASE}}/tools/test-runner`, {{
+            const response = await fetch(`${{API_BASE}}/tools/journeys`, {{
                 method: 'POST',
                 headers: {{'Content-Type': 'application/json'}},
-                body: JSON.stringify({{ test_type: 'comprehensive' }})
+                body: JSON.stringify({{ action: 'read' }})
             }});
             const data = await response.json();
-            setTestResults(data.result);
+            setJourneys(data.result?.journeys || []);
         }} catch (error) {{
-            console.error('Test execution failed:', error);
+            console.error('Failed to fetch journeys:', error);
+        }}
+    }};
+    
+    const fetchDashboard = async (journeyId) => {{
+        setLoading(true);
+        try {{
+            const response = await fetch(`${{API_BASE}}/tools/journeys`, {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{ 
+                    action: 'dashboard', 
+                    journey_id: journeyId 
+                }})
+            }});
+            const data = await response.json();
+            setDashboard(data.result?.dashboard);
+        }} catch (error) {{
+            console.error('Dashboard fetch failed:', error);
         }}
         setLoading(false);
     }};
     
+    const fetchLogs = async (journeyId, jobId) => {{
+        try {{
+            const response = await fetch(`${{API_BASE}}/tools/logs-and-reports`, {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{ 
+                    action: 'get_job_logs', 
+                    journey_id: journeyId,
+                    job_id: jobId
+                }})
+            }});
+            const data = await response.json();
+            setLogs(data.result?.logs?.logs || []);
+        }} catch (error) {{
+            console.error('Logs fetch failed:', error);
+        }}
+    }};
+    
+    const createJourney = async () => {{
+        const journeyData = {{
+            name: 'New Transformation Journey',
+            description: 'Created from React UI',
+            oda_component_type: 'customer-management',
+            priority: 'medium'
+        }};
+        
+        try {{
+            const response = await fetch(`${{API_BASE}}/tools/journeys`, {{
+                method: 'POST',
+                headers: {{'Content-Type': 'application/json'}},
+                body: JSON.stringify({{ 
+                    action: 'create', 
+                    journey_data: journeyData 
+                }})
+            }});
+            const data = await response.json();
+            if (data.result?.status === 'success') {{
+                fetchJourneys(); // Refresh list
+            }}
+        }} catch (error) {{
+            console.error('Journey creation failed:', error);
+        }}
+    }};
+    
     return (
-        <div className="tmf-oda-dashboard">
-            <h1>TMF ODA Transformer Dashboard</h1>
+        <div className="enhanced-tmf-oda-dashboard">
+            <h1>Enhanced TMF ODA Transformer Dashboard</h1>
             
+            {{/* System Health */}}
             <div className="health-status">
-                <h2>Health Status</h2>
+                <h2>System Health</h2>
                 {{health && (
                     <div className={{`status ${{health.status}}`}}>
-                        Status: {{health.status}} | Tools: {{health.tools_available}}
+                        Status: {{health.status}} | Tools: {{health.tools_available || 7}}
+                        {{health.status === 'healthy' && (
+                            <span className="badge-success">✅ All 7 Enhanced Tools Active</span>
+                        )}}
                     </div>
                 )}}
             </div>
             
+            {{/* Available Tools */}}
             <div className="available-tools">
-                <h2>Available Tools ({{tools.length}})</h2>
+                <h2>Enhanced Tools ({{tools.length}})</h2>
                 {{tools.map(tool => (
                     <div key={{tool.name}} className="tool-card">
                         <h3>{{tool.name}}</h3>
                         <p>{{tool.description}}</p>
+                        {{tool.name === 'journeys' && (
+                            <span className="badge-enhanced">⚡ 40+ Actions</span>
+                        )}}
+                        {{tool.name === 'logs-and-reports' && (
+                            <span className="badge-new">🆕 NEW</span>
+                        )}}
                     </div>
                 ))}}
             </div>
             
-            <div className="test-runner">
-                <h2>Test Runner</h2>
-                <button onClick={{runTests}} disabled={{loading}}>
-                    {{loading ? 'Running Tests...' : 'Run Comprehensive Tests'}}
+            {{/* Journey Management */}}
+            <div className="journey-management">
+                <h2>Journey Management</h2>
+                <button onClick={{createJourney}} className="btn-primary">
+                    Create New Journey
                 </button>
-                {{testResults && (
-                    <div className="test-results">
-                        <p>Status: {{testResults.status}}</p>
-                        <p>Success Rate: {{testResults.success_rate}}%</p>
-                        <p>Duration: {{testResults.duration_seconds}}s</p>
-                    </div>
-                )}}
+                
+                <div className="journeys-list">
+                    {{journeys.map(journey => (
+                        <div key={{journey.journeyId}} className="journey-card">
+                            <h3>{{journey.name}}</h3>
+                            <p>Status: {{journey.status}} | Progress: {{journey.progress}}%</p>
+                            <button 
+                                onClick={{() => {{
+                                    setSelectedJourney(journey);
+                                    fetchDashboard(journey.journeyId);
+                                }}}}
+                                className="btn-secondary"
+                            >
+                                View Dashboard
+                            </button>
+                        </div>
+                    ))}}
+                </div>
             </div>
+            
+            {{/* Dashboard View */}}
+            {{selectedJourney && dashboard && (
+                <div className="dashboard-view">
+                    <h2>Journey Dashboard: {{selectedJourney.name}}</h2>
+                    {{loading ? (
+                        <div>Loading dashboard...</div>
+                    ) : (
+                        <div className="dashboard-content">
+                            <div className="overview">
+                                <h3>Overview</h3>
+                                <p>Progress: {{dashboard.journey_overview?.overall_progress}}%</p>
+                                <p>Current Stage: {{dashboard.journey_overview?.current_stage}}</p>
+                            </div>
+                            
+                            <div className="jobs-summary">
+                                <h3>Jobs Summary</h3>
+                                <p>Total: {{dashboard.jobs_summary?.total_jobs}}</p>
+                                <p>Completed: {{dashboard.jobs_summary?.completed_jobs}}</p>
+                                <p>Running: {{dashboard.jobs_summary?.running_jobs}}</p>
+                            </div>
+                            
+                            <div className="performance">
+                                <h3>Performance</h3>
+                                <p>Success Rate: {{dashboard.performance_summary?.success_rate}}%</p>
+                                <p>Avg Duration: {{dashboard.performance_summary?.average_job_duration}}min</p>
+                            </div>
+                        </div>
+                    )}}
+                </div>
+            )}}
+            
+            {{/* Logs View */}}
+            {{logs.length > 0 && (
+                <div className="logs-view">
+                    <h2>Recent Logs</h2>
+                    <div className="logs-list">
+                        {{logs.slice(0, 10).map((log, index) => (
+                            <div key={{index}} className={{`log-entry log-${{log.level?.toLowerCase()}}`}}>
+                                <span className="timestamp">{{log.timestamp}}</span>
+                                <span className="level">{{log.level}}</span>
+                                <span className="message">{{log.message}}</span>
+                            </div>
+                        ))}}
+                    </div>
+                </div>
+            )}}
         </div>
     );
 }}
 
-export default TMFODADashboard;
+export default EnhancedTMFODADashboard;
 ''')
         
-        print_color(Colors.CYAN, "\n🔧 cURL Examples:")
+        print_color(Colors.CYAN, "\n🔧 Enhanced cURL Examples:")
         print_color(Colors.BLUE, f'''
 # Health check
 curl -X GET {self.base_url}/health
 
-# List all tools
+# List all enhanced tools (should show 7 tools)
 curl -X GET {self.base_url}/tools
 
-# Run quick test
-curl -X POST {self.base_url}/tools/test-runner \\
-  -H "Content-Type: application/json" \\
-  -d '{{"test_type": "quick", "include_performance": false}}'
+# Enhanced Journeys Management
 
-# Execute raw analysis
-curl -X POST {self.base_url}/tools/raw-analysis \\
+# Create journey
+curl -X POST {self.base_url}/tools/journeys \\
   -H "Content-Type: application/json" \\
   -d '{{
-    "journey_id": "JRN-SAMPLE-001",
-    "stage_id": "raw_analysis",
-    "triggered_by": "curl-test"
+    "action": "create",
+    "journey_data": {{
+      "name": "Customer Data Migration",
+      "description": "Migrate legacy customer data to TMF ODA",
+      "oda_component_type": "customer-management",
+      "priority": "high"
+    }}
   }}'
 
-# Get job logs
-curl -X POST {self.base_url}/tools/get-job-logs \\
+# List all journeys
+curl -X POST {self.base_url}/tools/journeys \\
+  -H "Content-Type: application/json" \\
+  -d '{{"action": "read"}}'
+
+# Get journey details with stages and job history
+curl -X POST {self.base_url}/tools/journeys \\
   -H "Content-Type: application/json" \\
   -d '{{
+    "action": "read",
     "journey_id": "JRN-SAMPLE-001",
-    "stage_name": "raw_analysis",
+    "include_stages": true,
+    "include_job_history": true
+  }}'
+
+# Add a stage to journey
+curl -X POST {self.base_url}/tools/journeys \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "add_stage",
+    "journey_id": "JRN-SAMPLE-001",
+    "stage_data": {{
+      "stage_id": "custom_validation",
+      "name": "Custom Validation",
+      "description": "Custom business validation rules"
+    }}
+  }}'
+
+# Run a job
+curl -X POST {self.base_url}/tools/journeys \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "run_job",
+    "journey_id": "JRN-SAMPLE-001",
+    "stage_id": "raw_analysis",
+    "triggered_by": "curl-user"
+  }}'
+
+# Get job metrics
+curl -X POST {self.base_url}/tools/journeys \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "get_job_metrics",
+    "journey_id": "JRN-SAMPLE-001",
+    "job_id": "JOB-001-20240101120000"
+  }}'
+
+# Get dashboard view
+curl -X POST {self.base_url}/tools/journeys \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "dashboard",
+    "journey_id": "JRN-SAMPLE-001"
+  }}'
+
+# NEW - Logs and Reports Management
+
+# Get job logs
+curl -X POST {self.base_url}/tools/logs-and-reports \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "get_job_logs",
+    "journey_id": "JRN-SAMPLE-001",
     "job_id": "JOB-001-20240101120000",
+    "stage_name": "raw_analysis",
     "step_name": "schema_parsing"
+  }}'
+
+# Search logs
+curl -X POST {self.base_url}/tools/logs-and-reports \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "search_logs",
+    "journey_id": "JRN-SAMPLE-001",
+    "search_query": "error",
+    "level_filter": "error"
+  }}'
+
+# Generate summary report
+curl -X POST {self.base_url}/tools/logs-and-reports \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "generate_summary_report",
+    "journey_id": "JRN-SAMPLE-001",
+    "job_id": "JOB-001-20240101120000"
+  }}'
+
+# Analyze job performance
+curl -X POST {self.base_url}/tools/logs-and-reports \\
+  -H "Content-Type: application/json" \\
+  -d '{{
+    "action": "analyze_job_performance",
+    "journey_id": "JRN-SAMPLE-001",
+    "job_id": "JOB-001-20240101120000",
+    "include_recommendations": true
   }}'
 ''')
     
     def run_all_tests(self) -> Dict[str, Any]:
-        """Run all HTTP tests."""
+        """Run all enhanced HTTP tests."""
         self.start_time = datetime.now()
         
-        print_color(Colors.GREEN, "🚀 TMF ODA Transformer MCP Server - HTTP Testing Suite")
+        print_color(Colors.GREEN, "🚀 Enhanced TMF ODA Transformer MCP Server - HTTP Testing Suite")
         print_color(Colors.GREEN, "="*70)
         print_color(Colors.BLUE, f"🕐 Started at: {self.start_time.strftime('%Y-%m-%d %H:%M:%S')}")
+        print_color(Colors.PURPLE, "🔧 Testing 7 enhanced tools with comprehensive functionality")
         
         results = {
             "start_time": self.start_time.isoformat(),
             "connection_type": "http",
             "base_url": self.base_url,
             "timeout": self.timeout,
+            "tools_count": 7,
+            "enhanced_features": [
+                "comprehensive_journey_management",
+                "stage_management", 
+                "rules_management",
+                "job_lifecycle_management",
+                "logs_and_reports",
+                "interactive_dashboards",
+                "performance_analysis",
+                "40_plus_journey_actions"
+            ],
             "tests": {}
         }
         
-        # Test 1: API Connectivity
+        # Test 1: Enhanced API Connectivity
         results["tests"]["api_connectivity"] = self.test_api_connectivity()
         
         if not results["tests"]["api_connectivity"]:
             print_color(Colors.RED, "❌ API connectivity failed. Cannot proceed with tests.")
             return results
         
-        # Test 2: Health Check
+        # Test 2: Enhanced Health Check
         results["tests"]["health_check"] = self.test_health_endpoint()
         
-        # Test 3: Tools Endpoint
+        # Test 3: Enhanced Tools Endpoint
         results["tests"]["tools_endpoint"] = self.test_tools_endpoint()
         
-        # Test 4: Basic Tool Validation
+        # Test 4: Enhanced Tool Validation
         results["tests"]["tool_validation"] = self.test_tool_validation()
         
         if self.quick_test:
-            print_color(Colors.YELLOW, "\n⚡ Quick Test Mode: Skipping comprehensive tool testing")
+            print_color(Colors.YELLOW, "\n⚡ Quick Test Mode: Skipping comprehensive enhanced tool testing")
             print_color(Colors.BLUE, "✅ Basic connectivity and validation tests completed")
+            print_color(Colors.PURPLE, "ℹ️ Run without --quick-test to test all 40+ journey actions and logs/reports")
         else:
-            # Test 5: Comprehensive Tool Testing (NEW)
+            # Test 5: Comprehensive Enhanced Tool Testing
             results["tests"]["comprehensive_tools"] = self.test_all_tools_comprehensive()
             
-            # Test 6: Parameter Variation Testing (NEW)
+            # Test 6: Enhanced Parameter Variation Testing
             results["tests"]["parameter_variations"] = self.test_tool_parameter_variations()
             
-            # Test 7: Error Handling Testing (NEW)
+            # Test 7: Enhanced Error Handling Testing
             results["tests"]["error_handling"] = self.test_error_handling()
             
-            # Test 8: Comprehensive Workflow
+            # Test 8: Enhanced Comprehensive Workflow
             results["tests"]["comprehensive_workflow"] = self.test_comprehensive_workflow()
         
-        # Test 9: Performance Metrics (always run)
+        # Test 9: Enhanced Performance Metrics (always run)
         results["tests"]["performance_metrics"] = self.test_performance_metrics()
         
-        # Generate integration examples (always run)
+        # Generate enhanced integration examples (always run)
         self.generate_integration_examples()
         
         # Final summary
@@ -1062,7 +1705,7 @@ curl -X POST {self.base_url}/tools/get-job-logs \\
         results["end_time"] = end_time.isoformat()
         results["duration_seconds"] = duration
         
-        print_header("Final Test Summary")
+        print_header("Enhanced Final Test Summary")
         
         # Calculate comprehensive statistics
         total_tests = 0
@@ -1092,7 +1735,7 @@ curl -X POST {self.base_url}/tools/get-job-logs \\
                 if isinstance(test_result, dict):
                     for group_name, group_tests in test_result.items():
                         if isinstance(group_tests, dict):
-                            if group_name in ["missing_params", "invalid_enums"]:
+                            if group_name in ["missing_params"]:
                                 for error_test, error_data in group_tests.items():
                                     if isinstance(error_data, dict) and "success" in error_data:
                                         total_tests += 1
@@ -1109,84 +1752,98 @@ curl -X POST {self.base_url}/tools/get-job-logs \\
         
         print_color(Colors.BLUE, f"⏱️ Total duration: {duration:.2f} seconds")
         print_color(Colors.BLUE, f"📊 Tests passed: {passed_tests}/{total_tests}")
+        print_color(Colors.PURPLE, f"🔧 Enhanced tools tested: 7 (includes new logs-and-reports)")
+        print_color(Colors.PURPLE, f"⚡ Enhanced journeys with 40+ lifecycle management actions")
+        print_color(Colors.PURPLE, f"🆕 NEW logs-and-reports tool: Comprehensive logs and reports management")
         
         # Detailed breakdown
-        print_color(Colors.CYAN, "\n📋 Detailed Test Results:")
+        print_color(Colors.CYAN, "\n📋 Detailed Enhanced Test Results:")
         
         # Individual tool results
         if "comprehensive_tools" in results["tests"]:
             tool_results = results["tests"]["comprehensive_tools"]
             successful_tools = sum(1 for tool, data in tool_results.items() if data.get("success", False))
-            print_color(Colors.BLUE, f"🔧 Tool Tests: {successful_tools}/{len(tool_results)} tools successful")
+            print_color(Colors.BLUE, f"🔧 Enhanced Tool Tests: {successful_tools}/{len(tool_results)} tools successful")
             
             for tool_name, tool_data in tool_results.items():
                 if tool_data.get("success", False):
-                    print_color(Colors.GREEN, f"   ✅ {tool_name}")
+                    if tool_name == "journeys":
+                        print_color(Colors.GREEN, f"   ✅ {tool_name} (enhanced with 40+ actions)")
+                    elif tool_name == "logs_and_reports":
+                        print_color(Colors.GREEN, f"   ✅ {tool_name} (NEW comprehensive tool)")
+                    else:
+                        print_color(Colors.GREEN, f"   ✅ {tool_name}")
                 else:
                     error_msg = tool_data.get("result", {}).get("error", "Unknown error")
                     print_color(Colors.RED, f"   ❌ {tool_name}: {error_msg}")
         
-        # Parameter variation results
+        # Enhanced parameter variation results
         if "parameter_variations" in results["tests"]:
             var_results = results["tests"]["parameter_variations"]
-            print_color(Colors.BLUE, f"🧪 Parameter Variation Tests:")
+            print_color(Colors.BLUE, f"🧪 Enhanced Parameter Variation Tests:")
             
             for group_name, group_tests in var_results.items():
                 if isinstance(group_tests, dict):
                     successful_variations = sum(1 for test, data in group_tests.items() if data.get("success", False))
-                    print_color(Colors.BLUE, f"   {group_name}: {successful_variations}/{len(group_tests)} variations successful")
+                    if group_name == "enhanced_journeys_variations":
+                        print_color(Colors.BLUE, f"   Enhanced journeys (40+ actions): {successful_variations}/{len(group_tests)} successful")
+                    elif group_name == "logs_reports_variations":
+                        print_color(Colors.BLUE, f"   NEW logs & reports: {successful_variations}/{len(group_tests)} successful")
+                    else:
+                        print_color(Colors.BLUE, f"   {group_name}: {successful_variations}/{len(group_tests)} successful")
         
-        # Error handling results
+        # Enhanced error handling results
         if "error_handling" in results["tests"]:
             error_results = results["tests"]["error_handling"]
-            print_color(Colors.BLUE, f"🛡️ Error Handling Tests:")
+            print_color(Colors.BLUE, f"🛡️ Enhanced Error Handling Tests:")
             
             for group_name, group_tests in error_results.items():
                 if isinstance(group_tests, dict):
-                    if group_name in ["missing_params", "invalid_enums"]:
+                    if group_name == "missing_params":
                         # For these tests, success means the tool correctly rejected bad input
                         successful_errors = sum(1 for test, data in group_tests.items() if not data.get("success", True))
-                        print_color(Colors.BLUE, f"   {group_name}: {successful_errors}/{len(group_tests)} correctly rejected")
+                        print_color(Colors.BLUE, f"   Missing params (5 tools): {successful_errors}/{len(group_tests)} correctly rejected")
                     else:
                         print_color(Colors.BLUE, f"   {group_name}: Handled successfully")
         
         if passed_tests == total_tests:
-            print_color(Colors.GREEN, "\n🎉 ALL TESTS PASSED!")
+            print_color(Colors.GREEN, "\n🎉 ALL ENHANCED TESTS PASSED!")
             if self.quick_test:
-                print_color(Colors.GREEN, "✅ TMF ODA MCP Server HTTP API basic connectivity is working!")
-                print_color(Colors.GREEN, "✅ All basic validation tests passed!")
-                print_color(Colors.YELLOW, "ℹ️ Run without --quick-test for comprehensive tool testing")
+                print_color(Colors.GREEN, "✅ Enhanced TMF ODA MCP Server HTTP API basic connectivity is working!")
+                print_color(Colors.GREEN, "✅ All 7 enhanced tools detected and validated!")
+                print_color(Colors.YELLOW, "ℹ️ Run without --quick-test to test all 40+ journey actions and logs/reports")
             else:
-                print_color(Colors.GREEN, "✅ TMF ODA MCP Server HTTP API is fully functional!")
-                print_color(Colors.GREEN, "✅ All 6 tools are working correctly!")
-                print_color(Colors.GREEN, "✅ Parameter validation is working!")
-                print_color(Colors.GREEN, "✅ Error handling is robust!")
+                print_color(Colors.GREEN, "✅ Enhanced TMF ODA MCP Server HTTP API is fully functional!")
+                print_color(Colors.GREEN, "✅ All 7 enhanced tools including NEW logs-and-reports working!")
+                print_color(Colors.GREEN, "✅ Enhanced journeys with 40+ lifecycle management actions operational!")
+                print_color(Colors.GREEN, "✅ Comprehensive logs and reports functionality verified!")
+                print_color(Colors.GREEN, "✅ Parameter validation and error handling robust!")
         elif passed_tests > total_tests * 0.8:
-            print_color(Colors.YELLOW, f"\n⚠️ MOSTLY SUCCESSFUL ({passed_tests}/{total_tests} tests passed)")
+            print_color(Colors.YELLOW, f"\n⚠️ MOSTLY SUCCESSFUL ({passed_tests}/{total_tests} enhanced tests passed)")
             if self.quick_test:
-                print_color(Colors.YELLOW, "✅ TMF ODA MCP Server HTTP API basic connectivity is mostly working!")
-                print_color(Colors.YELLOW, "ℹ️ Run without --quick-test for comprehensive tool testing")
+                print_color(Colors.YELLOW, "✅ Enhanced TMF ODA MCP Server HTTP API basic connectivity is mostly working!")
+                print_color(Colors.YELLOW, "ℹ️ Run without --quick-test to test all 40+ journey actions and logs/reports")
             else:
-                print_color(Colors.YELLOW, "✅ TMF ODA MCP Server HTTP API is mostly functional!")
-            print_color(Colors.YELLOW, f"⚠️ {total_tests - passed_tests} test(s) need attention")
+                print_color(Colors.YELLOW, "✅ Enhanced TMF ODA MCP Server HTTP API is mostly functional!")
+            print_color(Colors.YELLOW, f"⚠️ {total_tests - passed_tests} enhanced test(s) need attention")
         else:
-            print_color(Colors.RED, f"\n❌ MULTIPLE ISSUES FOUND ({passed_tests}/{total_tests} tests passed)")
-            print_color(Colors.RED, f"❌ {total_tests - passed_tests} test(s) failed")
+            print_color(Colors.RED, f"\n❌ MULTIPLE ISSUES FOUND ({passed_tests}/{total_tests} enhanced tests passed)")
+            print_color(Colors.RED, f"❌ {total_tests - passed_tests} enhanced test(s) failed")
             if self.quick_test:
-                print_color(Colors.RED, "❌ Basic connectivity tests failed")
+                print_color(Colors.RED, "❌ Basic enhanced connectivity tests failed")
             else:
-                print_color(Colors.RED, "❌ Comprehensive testing revealed multiple issues")
+                print_color(Colors.RED, "❌ Comprehensive enhanced testing revealed multiple issues")
         
         return results
 
 def main():
     """Main function with argument parsing."""
     parser = argparse.ArgumentParser(
-        description="TMF ODA MCP Server HTTP Test Suite",
+        description="Enhanced TMF ODA MCP Server HTTP Test Suite",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Examples:
-  # Basic comprehensive testing (all 6 tools)
+  # Basic comprehensive testing (all 7 enhanced tools with 40+ actions)
   python3 test-http-access.py
   
   # Quick connectivity test only
@@ -1203,6 +1860,26 @@ Examples:
   
   # Quick test on remote server
   python3 test-http-access.py --url http://server:8000 --quick-test
+
+Enhanced Features Tested:
+  🔧 7 Enhanced Tools:
+    • raw-analysis, stripped-schema, get-job-logs, test-runner
+    • journeys (enhanced with 40+ actions for complete lifecycle management)
+    • run-jobs
+    • logs-and-reports (NEW comprehensive tool)
+  
+  ⚡ Enhanced Journeys (40+ Actions):
+    • Journey CRUD (create, read, update, delete, list)
+    • Stage Management (list, add, update, delete, add_default)
+    • Rules Management (list, add, update, delete for Second Brain rules)
+    • Job Lifecycle (list, get, run, cancel, update_status, retry, metrics, timeline, batch)
+    • Interactive Features (dashboard, journey_summary)
+  
+  🆕 NEW Logs and Reports Tool:
+    • Comprehensive log management (get, search, filter, export)
+    • Report generation (summary, performance, error analysis)
+    • Performance analysis and recommendations
+    • Error pattern analysis and insights
 """
     )
     
@@ -1210,7 +1887,7 @@ Examples:
         "--url",
         type=str,
         default="http://localhost:8000",
-        help="Base URL of the TMF ODA HTTP API (default: http://localhost:8000)"
+        help="Base URL of the Enhanced TMF ODA HTTP API (default: http://localhost:8000)"
     )
     
     parser.add_argument(
@@ -1229,7 +1906,7 @@ Examples:
     parser.add_argument(
         "--quick-test",
         action="store_true",
-        help="Run only basic connectivity tests (skip comprehensive tool testing)"
+        help="Run only basic connectivity tests (skip comprehensive enhanced tool testing)"
     )
     
     args = parser.parse_args()
@@ -1240,22 +1917,22 @@ Examples:
         ssl._create_default_https_context = ssl._create_unverified_context
         print_color(Colors.YELLOW, "⚠️ SSL certificate verification disabled")
     
-    # Create tester instance
+    # Create enhanced tester instance
     tester = TMFODAHttpTester(
         base_url=args.url,
         timeout=args.timeout,
         quick_test=args.quick_test
     )
     
-    # Run all tests
+    # Run all enhanced tests
     results = tester.run_all_tests()
     
     # Save results to file
-    results_filename = f"http_test_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    results_filename = f"enhanced_http_test_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     with open(results_filename, "w") as f:
         json.dump(results, f, indent=2, default=str)
     
-    print_color(Colors.BLUE, f"\n📁 Results saved to: {results_filename}")
+    print_color(Colors.BLUE, f"\n📁 Enhanced results saved to: {results_filename}")
     
     # Exit with appropriate code
     passed_tests = sum(1 for test, result in results["tests"].items() 

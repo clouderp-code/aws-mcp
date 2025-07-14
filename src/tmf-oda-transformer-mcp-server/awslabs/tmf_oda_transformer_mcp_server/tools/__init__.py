@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""MCP Tools for TMF ODA Transformer."""
+"""MCP Tools for TMF ODA Transformer - Enhanced with Comprehensive Lifecycle Management."""
 
 # from .analysis_tools import schema_analyzer_tool, db_analyzer_tool  # Commented out for focus on core execution tools
 from .execution_tools import raw_analysis_tool, stripped_schema_tool, run_jobs_tool
 from .management_tools import journeys_tool
-from .utility_tools import get_job_logs_tool, test_runner_tool
+from .utility_tools import get_job_logs_tool, logs_and_reports_tool, test_runner_tool
 
 __all__ = [
     # 'schema_analyzer_tool',  # Commented out for focus on core execution tools
@@ -27,5 +27,6 @@ __all__ = [
     'run_jobs_tool',
     'journeys_tool',
     'get_job_logs_tool',
+    'logs_and_reports_tool',  # Enhanced comprehensive logs and reports management
     'test_runner_tool',
 ] 

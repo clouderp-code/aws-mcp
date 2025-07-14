@@ -16,7 +16,7 @@
 
 from datetime import datetime
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -222,4 +222,199 @@ class JourneyUpdateData(BaseModel):
     status: Optional[str] = Field(default=None, description="Updated status (pending, running, completed, failed)")
     overall_progress: Optional[int] = Field(default=None, description="Updated progress percentage (0-100)")
     current_stage: Optional[str] = Field(default=None, description="Updated current stage ID")
-    priority: Optional[str] = Field(default=None, description="Updated priority") 
+    priority: Optional[str] = Field(default=None, description="Updated priority")
+
+
+# Enhanced models for comprehensive journey management
+
+class StageStep(BaseModel):
+    """Model for a stage step."""
+    id: str = Field(description="Step ID")
+    name: str = Field(description="Step name")
+    description: str = Field(description="Step description")
+    order: int = Field(description="Step execution order")
+    estimated_duration: str = Field(default="5m", description="Estimated duration")
+    ai_assisted: bool = Field(default=False, description="Whether step uses AI assistance")
+    applicable_rules: List[str] = Field(default_factory=list, description="Applicable rule types")
+    status: str = Field(default="pending", description="Step status")
+
+
+class StageData(BaseModel):
+    """Model for stage creation/update data."""
+    stage_id: str = Field(description="Unique stage identifier")
+    name: str = Field(description="Stage name")
+    description: str = Field(description="Stage description")
+    order: int = Field(description="Stage execution order")
+    estimated_duration: str = Field(default="10m", description="Estimated duration")
+    can_skip: bool = Field(default=False, description="Whether stage can be skipped")
+    second_brain_enabled: bool = Field(default=True, description="Whether Second Brain is enabled")
+    rule_types: List[str] = Field(default_factory=list, description="Applicable rule types")
+    steps: List[StageStep] = Field(default_factory=list, description="Stage steps")
+    status: str = Field(default="pending", description="Stage status")
+
+
+class RuleContent(BaseModel):
+    """Model for rule content."""
+    natural_language: str = Field(description="Human-readable rule description")
+    json_rule: Dict[str, Any] = Field(description="Machine-readable rule definition")
+    examples: List[str] = Field(default_factory=list, description="Usage examples")
+
+
+class RuleContext(BaseModel):
+    """Model for rule context."""
+    applies_to: List[str] = Field(description="Entities this rule applies to")
+    conditions: List[Dict[str, Any]] = Field(default_factory=list, description="Conditions for rule application")
+    prerequisites: List[str] = Field(default_factory=list, description="Prerequisites for rule")
+
+
+class RuleData(BaseModel):
+    """Model for rule creation/update data."""
+    rule_id: Optional[str] = Field(default=None, description="Rule ID (auto-generated if not provided)")
+    title: str = Field(description="Rule title")
+    description: str = Field(description="Rule description")
+    type: str = Field(description="Rule type (field_mapping, contextual_recommendations, etc.)")
+    priority: str = Field(description="Rule priority (low, medium, high, critical)")
+    scope: str = Field(description="Rule scope (global, project, stage)")
+    status: str = Field(default="active", description="Rule status (active, inactive, deprecated)")
+    context: RuleContext = Field(description="Rule context information")
+    content: RuleContent = Field(description="Rule content")
+    created_by: str = Field(default="user", description="Rule creator")
+    version: str = Field(default="1.0", description="Rule version")
+    tags: List[str] = Field(default_factory=list, description="Rule tags")
+
+
+class JobExecutionData(BaseModel):
+    """Model for job execution data."""
+    stage_id: str = Field(description="Stage to execute")
+    triggered_by: str = Field(default="user", description="Who triggered the job")
+    reason: str = Field(default="Manual execution", description="Reason for execution")
+    priority: str = Field(default="medium", description="Job priority")
+    timeout: int = Field(default=1800, description="Job timeout in seconds")
+    retry_attempts: int = Field(default=3, description="Number of retry attempts")
+
+
+class JobStatusUpdate(BaseModel):
+    """Model for job status updates."""
+    status: str = Field(description="Job status (pending, running, completed, failed, cancelled)")
+    progress: Optional[int] = Field(default=None, description="Progress percentage (0-100)")
+    current_step: Optional[str] = Field(default=None, description="Current step being executed")
+    error_message: Optional[str] = Field(default=None, description="Error message if failed")
+
+
+class LogEntry(BaseModel):
+    """Model for log entries."""
+    step_name: str = Field(description="Step that generated the log")
+    level: str = Field(description="Log level (error, warning, info, debug)")
+    message: str = Field(description="Log message")
+    details: Dict[str, Any] = Field(default_factory=dict, description="Additional log details")
+    source: str = Field(default="system", description="Log source")
+    timestamp: Optional[str] = Field(default=None, description="Log timestamp (auto-generated if not provided)")
+
+
+class ReportData(BaseModel):
+    """Model for report creation data."""
+    report_type: str = Field(description="Type of report (summary, performance, error_analysis, etc.)")
+    title: str = Field(description="Report title")
+    summary: Optional[str] = Field(default=None, description="Report summary")
+    content: Dict[str, Any] = Field(description="Report content")
+    format: str = Field(default="json", description="Report format (json, html, pdf)")
+
+
+class ExportData(BaseModel):
+    """Model for export operations."""
+    output_file: str = Field(description="Output file path")
+    format: str = Field(default="json", description="Export format (json, csv, txt)")
+    include_stages: bool = Field(default=True, description="Include stage data")
+    include_rules: bool = Field(default=True, description="Include rules data")
+    include_job_history: bool = Field(default=True, description="Include job history")
+    include_logs: bool = Field(default=False, description="Include logs (can be large)")
+
+
+class ImportData(BaseModel):
+    """Model for import operations."""
+    input_file: str = Field(description="Input file path")
+    journey_id: Optional[str] = Field(default=None, description="New journey ID (auto-generated if not provided)")
+    overwrite_existing: bool = Field(default=False, description="Whether to overwrite existing journey")
+    import_stages: bool = Field(default=True, description="Import stage data")
+    import_rules: bool = Field(default=True, description="Import rules data")
+
+
+class DashboardData(BaseModel):
+    """Model for dashboard data."""
+    journey_summary: Dict[str, Any] = Field(description="Journey summary information")
+    stage_summary: Dict[str, Any] = Field(description="Stage summary information")
+    job_summary: Dict[str, Any] = Field(description="Job execution summary")
+    recent_activity: List[Dict[str, Any]] = Field(description="Recent activity events")
+    performance_metrics: Dict[str, Any] = Field(description="Performance metrics")
+    health_status: Dict[str, Any] = Field(description="System health status")
+
+
+class BatchJobOperation(BaseModel):
+    """Model for batch job operations."""
+    job_ids: List[str] = Field(description="List of job IDs to operate on")
+    operation: str = Field(description="Operation to perform (cancel, retry, update_status)")
+    operation_data: Dict[str, Any] = Field(default_factory=dict, description="Operation-specific data")
+    reason: str = Field(default="Batch operation", description="Reason for batch operation")
+
+
+# Enhanced journey status enumeration
+class JourneyStatus(str, Enum):
+    """Journey status enumeration."""
+    PENDING = "pending"
+    RUNNING = "running" 
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    PAUSED = "paused"
+
+
+class JobStatus(str, Enum):
+    """Job status enumeration."""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+    TIMEOUT = "timeout"
+
+
+class LogLevel(str, Enum):
+    """Log level enumeration."""
+    ERROR = "error"
+    WARNING = "warning"
+    INFO = "info"
+    DEBUG = "debug"
+
+
+class RuleType(str, Enum):
+    """Rule type enumeration."""
+    FIELD_MAPPING = "field_mapping"
+    CONTEXTUAL_RECOMMENDATIONS = "contextual_recommendations"
+    DATA_INTERPRETATION = "data_interpretation"
+    VALIDATION_RULES = "validation_rules"
+    BUSINESS_LOGIC = "business_logic"
+    COMPLIANCE_CHECK = "compliance_check"
+
+
+class RulePriority(str, Enum):
+    """Rule priority enumeration."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+class RuleScope(str, Enum):
+    """Rule scope enumeration."""
+    GLOBAL = "global"
+    PROJECT = "project"
+    STAGE = "stage"
+
+
+class ReportType(str, Enum):
+    """Report type enumeration."""
+    SUMMARY = "summary"
+    PERFORMANCE = "performance"
+    ERROR_ANALYSIS = "error_analysis"
+    COMPLIANCE = "compliance"
+    CUSTOM = "custom" 

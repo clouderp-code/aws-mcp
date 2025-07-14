@@ -43,6 +43,7 @@ from .tools import (
     run_jobs_tool,
     journeys_tool,
     get_job_logs_tool,
+    logs_and_reports_tool,
     test_runner_tool,
 )
 
@@ -137,23 +138,25 @@ mcp.tool()(journeys_tool)
 
 # Utility Tools
 mcp.tool()(get_job_logs_tool)
+mcp.tool()(logs_and_reports_tool)
 mcp.tool()(test_runner_tool)
 
-logger.success("Core 6 TMF ODA tools registered successfully (analysis tools temporarily disabled)!")
+logger.success("Enhanced TMF ODA tools registered successfully with comprehensive lifecycle management!")
 
 
 def main():
     """Main entry point for the TMF ODA Transformer MCP Server."""
     logger.info(f"Starting {TMF_ODA_MCP_SERVER_APPLICATION_NAME}")
     logger.info("🚀 TMF ODA Transformer MCP Server ready for AI assistant integration")
-    logger.info("📋 Available tools (6 core tools - analysis tools temporarily disabled):")
+    logger.info("📋 Available tools (7 enhanced tools with comprehensive lifecycle management):")
     # logger.info("   🔍 schema-analyzer: Analyze workspace schemas for TMF ODA compliance")  # DISABLED
     # logger.info("   🗄️  db-analyzer: Analyze database structures for transformation")        # DISABLED
     logger.info("   ⚡ raw-analysis: Execute raw analysis stage")
     logger.info("   🔧 stripped-schema: Execute schema stripping stage")
     logger.info("   🎯 run-jobs: Execute any transformation stage")
-    logger.info("   📊 journeys: Comprehensive journey management (CRUD)")
-    logger.info("   📝 get-job-logs: Retrieve detailed execution logs")
+    logger.info("   📊 journeys: Comprehensive journey lifecycle management (CRUD, stages, rules, jobs)")
+    logger.info("   📝 get-job-logs: Retrieve detailed execution logs (legacy compatibility)")
+    logger.info("   📋 logs-and-reports: Enhanced logs and reports management (search, analysis, insights)")
     logger.info("   🧪 test-runner: Comprehensive tool validation testing")
     
     # Run the MCP server
