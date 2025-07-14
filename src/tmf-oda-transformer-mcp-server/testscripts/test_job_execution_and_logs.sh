@@ -380,9 +380,11 @@ make_request "/tools/logs-and-reports" '{
 }' "Get error logs with breakdown" "Retrieve error logs organized by stage and step for comprehensive error analysis"
 
 # Test 19: Performance logs analysis
+test_job_id="${JOB_IDS[0]:-JOB-TEST-001}"
 make_request "/tools/logs-and-reports" '{
     "action": "analyze_job_performance",
     "journey_id": "'$JOURNEY_ID'",
+    "job_id": "'$test_job_id'",
     "analysis_scope": "all_stages",
     "include_step_performance": true,
     "performance_metrics": ["execution_time", "resource_usage", "throughput", "error_rate"],
@@ -477,9 +479,11 @@ for i in 0 1; do  # Test first 2 stages
 done
 
 # Test 25: Comprehensive journey report with all stages
+test_job_id="${JOB_IDS[0]:-JOB-TEST-001}"
 make_request "/tools/logs-and-reports" '{
     "action": "generate_summary_report",
     "journey_id": "'$JOURNEY_ID'",
+    "job_id": "'$test_job_id'",
     "include_all_jobs": true,
     "include_stage_breakdown": true,
     "include_step_analysis": true,
@@ -521,9 +525,11 @@ make_request "/tools/logs-and-reports" '{
 }' "Error analysis with correlation" "Analyze errors with stage and step correlation for better troubleshooting"
 
 # Test 28: Performance trending across stages
+test_job_id="${JOB_IDS[0]:-JOB-TEST-001}"
 make_request "/tools/logs-and-reports" '{
     "action": "generate_performance_report",
     "journey_id": "'$JOURNEY_ID'",
+    "job_id": "'$test_job_id'",
     "analysis_scope": "multi_job",
     "include_stage_trending": true,
     "include_step_performance": true,
