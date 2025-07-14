@@ -863,11 +863,15 @@ class TestEnhancedJourneys:
             report_title='Test Journey Summary Report'
         )
         
-        # Verify actual response structure - expecting error due to implementation issue
+        # Verify actual response structure - now working correctly
         assert result['operation'] == 'logs_reports_generate_summary_report'  # Actual operation name from tool
-        # TODO: This will be 'success' once the async issue is fixed
-        assert result['status'] == 'error'
-        assert 'await' in result['error_message']
+        assert result['status'] == 'success'
+        assert result['journey_id'] == journey_id
+        assert result['job_id'] == job_id
+        assert 'report' in result
+        assert 'message' in result
+        assert 'duration_seconds' in result
+        mock_context.error.assert_not_called()
 
     async def test_analyze_job_performance_success(self, mock_context):
         """Test successful job performance analysis."""
