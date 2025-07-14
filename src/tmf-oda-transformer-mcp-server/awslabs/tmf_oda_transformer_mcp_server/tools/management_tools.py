@@ -852,19 +852,34 @@ class EnhancedJourneyService(JourneyService):
     async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
         """Add a new stage to a journey."""
         try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
             # Validate required fields
             required_fields = ['stage_id', 'name', 'description']
             for field in required_fields:
-                if field not in stage_data:
+                if field not in normalized_stage_data:
                     raise ValueError(f"Missing required field: {field}")
             
             # This would integrate with the real stage management system
-            stage_id = stage_data['stage_id']
+            stage_id = normalized_stage_data['stage_id']
             
             return {
                 'stage_id': stage_id,
                 'message': f'Stage {stage_id} added successfully to journey {journey_id}',
-                'stage_data': stage_data
+                'stage_data': normalized_stage_data
             }
         except Exception as e:
             logger.error(f'Failed to add stage: {str(e)}')
@@ -906,31 +921,64 @@ class EnhancedJourneyService(JourneyService):
                        status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
         """List job executions for a journey."""
         try:
-            # This would integrate with the real job management system
-            jobs = [
-                {
-                    'job_id': 'JOB-001-20241217120000',
-                    'stage_id': 'raw_analysis',
-                    'stage_name': 'Raw Input Analysis',
-                    'status': 'completed',
-                    'triggered_by': 'mcp-user',
-                    'reason': 'Manual execution',
-                    'start_time': '2024-12-17T12:00:00Z',
-                    'end_time': '2024-12-17T12:15:00Z',
-                    'duration': '15m',
-                    'progress': 100,
-                    'logs_available': True,
-                    'reports_available': True
-                }
-            ]
-            
-            # Apply filters
             if stage_id:
-                jobs = [j for j in jobs if j.get('stage_id') == stage_id]
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get jobs for all stages
+                # First get all stages for the journey
+                try:
+                    journey_stages = self.manager.get_journey_stages(journey_id)
+                    stage_ids = [stage.get('stage_id') for stage in journey_stages if stage.get('stage_id')]
+                except Exception as e:
+                    logger.warning(f'Could not get journey stages for {journey_id}: {str(e)}')
+                    # Fallback to common stage names
+                    stage_ids = ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                
+                # Get jobs from all stages
+                all_jobs = []
+                for stage in stage_ids:
+                    try:
+                        stage_jobs = self.manager.get_stage_jobs(journey_id, stage, limit)
+                        # Add stage_id to each job if not present
+                        for job in stage_jobs:
+                            if 'stage_id' not in job:
+                                job['stage_id'] = stage
+                        all_jobs.extend(stage_jobs)
+                    except Exception as e:
+                        logger.debug(f'No jobs found for stage {stage}: {str(e)}')
+                        continue
+                
+                # Sort by timestamp/execution number and limit
+                all_jobs.sort(key=lambda x: x.get('execution_number', 0), reverse=True)
+                jobs = all_jobs[:limit]
+            
+            # Apply status filter if provided
             if status_filter:
                 jobs = [j for j in jobs if j.get('status') == status_filter]
             
-            return jobs[:limit]
+            # Convert job format to ensure consistent structure
+            formatted_jobs = []
+            for job in jobs:
+                formatted_job = {
+                    'job_id': job.get('job_id', ''),
+                    'stage_id': job.get('stage_id', ''),
+                    'stage_name': job.get('stage_name', job.get('stage_id', '').replace('_', ' ').title()),
+                    'status': job.get('status', 'unknown'),
+                    'triggered_by': job.get('triggered_by', 'unknown'),
+                    'reason': job.get('reason', 'Unknown'),
+                    'start_time': job.get('start_time', job.get('created_at', '')),
+                    'end_time': job.get('end_time', job.get('updated_at', '')),
+                    'duration': job.get('duration', 'Unknown'),
+                    'progress': job.get('progress', 0),
+                    'logs_available': job.get('logs_available', True),
+                    'reports_available': job.get('reports_available', True),
+                    'execution_number': job.get('execution_number', 0)
+                }
+                formatted_jobs.append(formatted_job)
+            
+            return formatted_jobs
+            
         except Exception as e:
             logger.error(f'Failed to list jobs: {str(e)}')
             raise
@@ -1131,9 +1179,93 @@ async def _handle_journey_delete(
         )
         
     except Exception as e:
-        error_msg = f'Failed to delete journey: {str(e)}'
-        logger.error(error_msg)
-        raise
+        error_str = str(e)
+        logger.warning(f'Delete operation encountered error: {error_str}')
+        
+        # For any error that suggests deletion is not implemented, try fallback
+        implementation_keywords = ['not yet implemented', 'notimplementederror', 'not implemented', 'implementation', 'deletion not yet implemented']
+        should_try_fallback = any(keyword in error_str.lower() for keyword in implementation_keywords)
+        
+        # Also check if the specific error message matches
+        if 'Journey deletion not yet implemented in TransformationUtils' in error_str:
+            should_try_fallback = True
+        
+        if should_try_fallback:
+            logger.warning(f'Deletion appears not implemented, trying fallback for journey {journey_id}')
+            try:
+                # Direct fallback implementation based on the journey manager type
+                if hasattr(journey_service.manager, 'delete_journey'):
+                    # Manager has delete_journey method - try calling it directly
+                    try:
+                        delete_result = journey_service.manager.delete_journey(journey_id)
+                        return BaseToolMixin.create_tool_result(
+                            status='success',
+                            message=f'Journey {journey_id} deleted successfully (manager direct)',
+                            start_time=start_time,
+                            operation='delete_journey',
+                            action='delete',
+                            journey_id=journey_id,
+                            data_source=journey_service.get_data_source(),
+                            deletion_result=delete_result,
+                            fallback_used=True
+                        )
+                    except Exception as manager_error:
+                        logger.warning(f'Manager delete_journey failed: {str(manager_error)}')
+                
+                # Fallback to manual implementation
+                if hasattr(journey_service.manager, '_load_journeys') and hasattr(journey_service.manager, '_load_jobs'):
+                    logger.info('Using manual fallback deletion method')
+                    journeys = journey_service.manager._load_journeys()
+                    jobs = journey_service.manager._load_jobs()
+                    
+                    deleted_journey = journeys.pop(journey_id, None)
+                    deleted_jobs = jobs.pop(journey_id, None)
+                    
+                    if deleted_journey is None:
+                        raise ValueError(f'Journey {journey_id} not found for deletion')
+                    
+                    journey_service.manager._save_journeys(journeys)
+                    journey_service.manager._save_jobs(jobs)
+                    
+                    return BaseToolMixin.create_tool_result(
+                        status='success',
+                        message=f'Journey {journey_id} deleted successfully (manual fallback)',
+                        start_time=start_time,
+                        operation='delete_journey',
+                        action='delete',
+                        journey_id=journey_id,
+                        data_source=journey_service.get_data_source(),
+                        deleted_journey=deleted_journey,
+                        deleted_jobs_count=len(deleted_jobs) if deleted_jobs else 0,
+                        fallback_used=True
+                    )
+                else:
+                    raise ValueError("No fallback deletion methods available")
+                    
+            except Exception as fallback_error:
+                error_msg = f'Fallback deletion also failed for journey {journey_id}: {str(fallback_error)}'
+                logger.error(error_msg)
+                return BaseToolMixin.create_tool_result(
+                    status='error',
+                    message=f'Journey delete operation failed: {str(fallback_error)}',
+                    error_message=str(fallback_error),
+                    start_time=start_time,
+                    operation='delete_journey',
+                    action='delete',
+                    journey_id=journey_id
+                )
+        else:
+            error_msg = f'Journey delete operation failed: {error_str}'
+            logger.error(error_msg)
+            return BaseToolMixin.create_tool_result(
+                status='error',
+                message=error_msg,
+                error_message=error_str,
+                start_time=start_time,
+                operation='delete_journey',
+                action='delete',
+                journey_id=journey_id
+            )
 
 
 # New enhanced operation handlers
@@ -1190,13 +1322,16 @@ async def _handle_add_stage(
         
         result = await journey_service.add_stage(journey_id, stage_data)
         
+        # Remove conflicting keys to avoid duplicate parameter errors
+        result_clean = {k: v for k, v in result.items() if k not in ['message']}
+        
         return BaseToolMixin.create_tool_result(
             status='success',
             message=f'Stage added successfully to journey {journey_id}',
             start_time=start_time,
             operation='add_stage',
             journey_id=journey_id,
-            **result
+            **result_clean
         )
         
     except Exception as e:
@@ -1586,6 +1721,9 @@ async def _handle_get_job(
                 }
             }
         
+        # Remove job_id and journey_id from job_details to avoid duplicate parameter
+        job_details_clean = {k: v for k, v in job_details.items() if k not in ['job_id', 'journey_id']}
+        
         return BaseToolMixin.create_tool_result(
             status='success',
             message=f'Retrieved detailed information for job {job_id}',
@@ -1593,7 +1731,7 @@ async def _handle_get_job(
             operation='get_job',
             journey_id=journey_id,
             job_id=job_id,
-            **job_details
+            **job_details_clean
         )
         
     except Exception as e:

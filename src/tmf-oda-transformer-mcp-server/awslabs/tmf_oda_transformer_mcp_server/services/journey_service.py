@@ -270,8 +270,35 @@ class JourneyService:
                     raise NotImplementedError('Journey deletion not implemented for this manager')
 
         except Exception as e:
-            logger.error(f'Failed to delete journey {journey_id}: {str(e)}')
-            raise
+            error_str = str(e)
+            if 'not yet implemented' in error_str and 'TransformationUtils' in error_str:
+                # TransformationUtils delete not implemented, use fallback
+                logger.warning(f'TransformationUtils delete not implemented, using fallback for journey {journey_id}')
+                try:
+                    # Use fallback implementation
+                    journeys = self.manager._load_journeys()
+                    jobs = self.manager._load_jobs()
+                    
+                    deleted_journey = journeys.pop(journey_id, None)
+                    deleted_jobs = jobs.pop(journey_id, None)
+                    
+                    if deleted_journey is None:
+                        raise ValueError(f'Journey {journey_id} not found for deletion')
+                    
+                    self.manager._save_journeys(journeys)
+                    self.manager._save_jobs(jobs)
+                    
+                    return {
+                        'deleted_journey': deleted_journey,
+                        'deleted_jobs_count': len(deleted_jobs) if deleted_jobs else 0,
+                        'fallback_used': True
+                    }
+                except Exception as fallback_error:
+                    logger.error(f'Fallback deletion also failed for journey {journey_id}: {str(fallback_error)}')
+                    raise
+            else:
+                logger.error(f'Failed to delete journey {journey_id}: {error_str}')
+                raise
 
     def _build_journey_summary(self, journey_status: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
         """Build comprehensive journey summary.

@@ -953,9 +953,10 @@ async def _handle_export_job_logs(
             raise ValueError(error_msg)
         
         if not output_file:
-            error_msg = "output_file is required for export_job_logs action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+            # Generate default output file path
+            timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+            output_file = f"/tmp/job_logs_{journey_id}_{job_id}_{timestamp}.{export_format}"
+            logger.info(f"No output_file provided, using default: {output_file}")
         
         # Validate export format
         valid_formats = ['json', 'csv', 'txt', 'html']
@@ -1172,14 +1173,15 @@ async def _handle_create_job_report(
             raise ValueError(error_msg)
         
         if not report_type:
-            error_msg = "report_type is required for create_job_report action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+            # Use default report type
+            report_type = "summary"
+            logger.info(f"No report_type provided, using default: {report_type}")
         
         if not report_title:
-            error_msg = "report_title is required for create_job_report action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
+            # Generate default report title
+            timestamp = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+            report_title = f"{report_type.title()} Report for Job {job_id} - {timestamp}"
+            logger.info(f"No report_title provided, using default: {report_title}")
         
         # Generate report ID
         report_id = f'RPT-{str(uuid.uuid4()).upper().replace("-", "")[:8]}'

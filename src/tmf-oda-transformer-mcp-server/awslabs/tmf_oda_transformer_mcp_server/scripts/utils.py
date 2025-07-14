@@ -214,4 +214,167 @@ class TransformationUtils:
                 'success': False,
                 'error': str(e),
                 'message': f'Failed to retrieve logs for {step_name}'
-            } 
+            }
+
+    def create_journey(self, journey_data: Dict) -> str:
+        """Create a new transformation journey"""
+        try:
+            import uuid
+            import time
+            
+            # Generate a new journey ID if not provided
+            journey_id = journey_data.get('journeyId') or f"JRN-{uuid.uuid4().hex[:12].upper()}"
+            
+            # Prepare journey metadata
+            journey_metadata = {
+                'journeyId': journey_id,
+                'name': journey_data.get('name', 'Untitled Journey'),
+                'description': journey_data.get('description', ''),
+                'status': journey_data.get('status', 'pending'),
+                'createdAt': journey_data.get('createdAt', int(time.time())),
+                'currentStageId': journey_data.get('currentStageId', 'raw_analysis'),
+                'overallProgress': journey_data.get('overallProgress', 0),
+                'priority': journey_data.get('priority', 'medium'),
+                'odaComponentType': journey_data.get('oda_component_type', 'unknown')
+            }
+            
+            # Store journey metadata
+            self.table.put_item(
+                Item={
+                    'PK': f'JOURNEY#{journey_id}',
+                    'SK': 'METADATA',
+                    'GSI1PK': 'JOURNEYS',
+                    'GSI1SK': journey_id,
+                    'Data': journey_metadata
+                }
+            )
+            
+            print(f'✅ Created journey: {journey_id}')
+            return journey_id
+            
+        except Exception as e:
+            print(f'❌ Error creating journey: {str(e)}')
+            raise
+
+    def delete_journey(self, journey_id: str) -> Dict:
+        """Delete a transformation journey and all associated data - following delete_journey.py pattern"""
+        try:
+            print(f'🚀 Starting deletion of transformation journey: {journey_id}')
+            
+            # Get journey information first to verify it exists
+            journey_info = self.get_journey_status(journey_id)
+            if not journey_info:
+                raise ValueError(f'Journey {journey_id} not found')
+            
+            deletion_stats = {
+                'dynamodb_items': 0,
+                's3_objects': 0,
+                'errors': []
+            }
+            
+            # Phase 1: Delete all DynamoDB items for this journey
+            print(f'🗑️ Phase 1: Deleting DynamoDB items for journey: {journey_id}')
+            try:
+                # Query all items with PK = JOURNEY#{journey_id} (following delete_journey.py pattern)
+                response = self.table.query(
+                    KeyConditionExpression='PK = :pk',
+                    ExpressionAttributeValues={':pk': f'JOURNEY#{journey_id}'}
+                )
+                
+                items = response['Items']
+                print(f'📊 Found {len(items)} DynamoDB items to delete')
+                
+                # Delete items one by one
+                for item in items:
+                    pk = item['PK']
+                    sk = item['SK']
+                    entity_type = item.get('EntityType', 'Unknown')
+                    
+                    try:
+                        self.table.delete_item(Key={'PK': pk, 'SK': sk})
+                        deletion_stats['dynamodb_items'] += 1
+                        print(f'   ✅ Deleted {entity_type}: {sk}')
+                    except Exception as e:
+                        print(f'   ❌ Failed to delete {entity_type} {sk}: {str(e)}')
+                        deletion_stats['errors'].append(f'DynamoDB: {entity_type} {sk}: {str(e)}')
+                
+                print(f'✅ Deleted {deletion_stats["dynamodb_items"]} DynamoDB items')
+                
+            except Exception as e:
+                print(f'❌ Error deleting DynamoDB items: {str(e)}')
+                deletion_stats['errors'].append(f'DynamoDB phase: {str(e)}')
+            
+            # Phase 2: Delete S3 objects (logs and reports)
+            print(f'🪣 Phase 2: Deleting S3 logs and reports for journey: {journey_id}')
+            try:
+                buckets_to_clean = [
+                    ('transformation-journey-logs', f'journeys/{journey_id}/'),
+                    ('transformation-journey-reports', f'journeys/{journey_id}/')
+                ]
+                
+                for bucket_name, prefix in buckets_to_clean:
+                    try:
+                        print(f'   🔍 Checking bucket: {bucket_name} with prefix: {prefix}')
+                        
+                        # List objects with the journey prefix
+                        response = self.s3.list_objects_v2(
+                            Bucket=bucket_name,
+                            Prefix=prefix
+                        )
+                        
+                        if 'Contents' not in response:
+                            print(f'   ℹ️ No objects found in {bucket_name} with prefix {prefix}')
+                            continue
+                        
+                        objects = response['Contents']
+                        print(f'   📊 Found {len(objects)} objects to delete in {bucket_name}')
+                        
+                        # Delete objects in batches (max 1000 per batch)
+                        batch_size = 1000
+                        for i in range(0, len(objects), batch_size):
+                            batch = objects[i:i + batch_size]
+                            delete_keys = [{'Key': obj['Key']} for obj in batch]
+                            
+                            self.s3.delete_objects(
+                                Bucket=bucket_name,
+                                Delete={'Objects': delete_keys}
+                            )
+                            
+                            deletion_stats['s3_objects'] += len(delete_keys)
+                            print(f'   ✅ Deleted {len(delete_keys)} objects from {bucket_name}')
+                            
+                    except Exception as e:
+                        if 'NoSuchBucket' in str(e):
+                            print(f'   ⚠️ Bucket {bucket_name} does not exist')
+                        else:
+                            print(f'   ❌ Error cleaning bucket {bucket_name}: {str(e)}')
+                            deletion_stats['errors'].append(f'S3 {bucket_name}: {str(e)}')
+                
+                print(f'✅ Deleted {deletion_stats["s3_objects"]} S3 objects total')
+                
+            except Exception as e:
+                print(f'❌ Error deleting S3 objects: {str(e)}')
+                deletion_stats['errors'].append(f'S3 phase: {str(e)}')
+            
+            # Summary
+            print(f'🎉 Journey deletion completed!')
+            print(f'📊 Deletion Summary:')
+            print(f'   🆔 Journey ID: {journey_id}')
+            print(f'   📝 Journey Name: {journey_info.get("name", "Unknown")}')
+            print(f'   🗄️ DynamoDB items deleted: {deletion_stats["dynamodb_items"]}')
+            print(f'   🪣 S3 objects deleted: {deletion_stats["s3_objects"]}')
+            print(f'   ❌ Errors: {len(deletion_stats["errors"])}')
+            
+            return {
+                'success': True,
+                'journey_id': journey_id,
+                'journey_name': journey_info.get("name", "Unknown"),
+                'deleted_dynamodb_items': deletion_stats['dynamodb_items'],
+                'deleted_s3_objects': deletion_stats['s3_objects'],
+                'errors': deletion_stats['errors'],
+                'message': f'Journey {journey_id} deleted successfully'
+            }
+            
+        except Exception as e:
+            print(f'❌ Error deleting journey {journey_id}: {str(e)}')
+            raise 
