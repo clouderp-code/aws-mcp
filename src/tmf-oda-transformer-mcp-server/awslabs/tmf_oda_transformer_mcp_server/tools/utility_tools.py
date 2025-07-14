@@ -577,7 +577,6 @@ class EnhancedLogsService:
                 logs = [log for log in logs if log['step'] == step_name]
             
             return {
-                'job_id': job_id,
                 'stage_name': stage_name,
                 'step_name': step_name,
                 'total_logs': len(logs),
@@ -699,6 +698,7 @@ async def _handle_get_job_logs(
             start_time=start_time,
             operation='get_job_logs',
             journey_id=journey_id,
+            job_id=job_id,
             **logs_data
         )
         
@@ -969,8 +969,6 @@ async def _handle_export_job_logs(
         export_info = {
             'output_file': output_file,
             'format': export_format,
-            'job_id': job_id,
-            'journey_id': journey_id,
             'logs_exported': 45,
             'file_size': '12.5 KB',
             'exported_at': datetime.now(timezone.utc).isoformat()
@@ -1462,7 +1460,6 @@ async def _handle_analyze_job_performance(
         
         # This would integrate with comprehensive performance analysis
         performance_analysis = {
-            'job_id': job_id,
             'analysis_timestamp': datetime.now(timezone.utc).isoformat(),
             'overall_performance': {
                 'rating': 'excellent',

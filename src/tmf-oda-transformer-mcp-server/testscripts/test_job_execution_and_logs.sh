@@ -455,7 +455,7 @@ for stage_id in "${STAGE_IDS[@]:0:3}"; do  # Test first 3 stages
 done
 
 # Test 24: Generate stage-wise performance reports
-for i in "${!STAGE_IDS[@]:0:2}"; do  # Test first 2 stages
+for i in 0 1; do  # Test first 2 stages
     stage_id="${STAGE_IDS[$i]}"
     test_job_id="${JOB_IDS[$i]:-JOB-TEST-001}"
     s3_path="s3://transformation-journey-reports/$JOURNEY_ID/$test_job_id/stage_${stage_id}_performance_report.json"

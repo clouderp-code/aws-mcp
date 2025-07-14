@@ -792,12 +792,30 @@ async def journeys_tool(
         }
         operation = operation_map.get(action, action)
         
-        return BaseToolMixin.create_error_result(
-            error_msg, start_time,
-            operation=operation,
-            action=action,
-            journey_id=journey_id
-        )
+        # For get_job action, avoid using BaseToolMixin to prevent datetime issues
+        if action == 'get_job':
+            end_time = datetime.now()
+            duration = (end_time - start_time).total_seconds()
+            
+            return {
+                'status': 'error',
+                'message': error_msg,
+                'error_message': error_msg,
+                'start_time': start_time.isoformat(),
+                'end_time': end_time.isoformat(),
+                'timestamp': end_time.isoformat(),
+                'duration_seconds': duration,
+                'operation': operation,
+                'action': action,
+                'journey_id': journey_id
+            }
+        else:
+            return BaseToolMixin.create_error_result(
+                error_msg, start_time,
+                operation=operation,
+                action=action,
+                journey_id=journey_id
+            )
 
 
 # Enhanced Journey Service (extends the existing one)
@@ -1682,33 +1700,37 @@ async def _handle_get_job(
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # This would integrate with real job management
-        job_details = {
-            'job_id': job_id,
+        # Minimal implementation to avoid any datetime issues
+        end_time = datetime.now()
+        duration = (end_time - start_time).total_seconds()
+        
+        result = {
+            'status': 'success',
+            'message': f'Retrieved detailed information for job {job_id}',
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
+            'timestamp': end_time.isoformat(),
+            'duration_seconds': duration,
+            'operation': 'get_job',
             'journey_id': journey_id,
+            'job_id': job_id,
             'stage_id': 'raw_analysis',
             'stage_name': 'Raw Input Analysis',
-            'status': 'completed',
+            'job_status': 'completed',
             'triggered_by': 'mcp-user',
             'reason': 'Manual execution',
-            'start_time': '2024-12-17T12:00:00Z',
-            'end_time': '2024-12-17T12:15:00Z',
-            'duration': 900.0,
+            'job_start_time': '2024-12-17T12:00:00Z',
+            'job_end_time': '2024-12-17T12:15:00Z',
+            'job_duration': 900.0,
             'progress': 100,
             'current_step': 'completed',
             'total_steps': 4,
-            'step_results': {
-                'schema_parsing': {'status': 'completed', 'duration': 300},
-                'relationship_discovery': {'status': 'completed', 'duration': 300},
-                'data_type_analysis': {'status': 'completed', 'duration': 180},
-                'business_rules_extraction': {'status': 'completed', 'duration': 120}
-            },
             'logs_available': True,
             'reports_available': True
         }
         
         if include_all:
-            job_details['execution_details'] = {
+            result['execution_details'] = {
                 'retry_attempt': 0,
                 's3_config': {
                     'logs_bucket': 'transformation-journey-logs',
@@ -1720,19 +1742,8 @@ async def _handle_get_job(
                     'items_processed': 1250
                 }
             }
-        
-        # Remove job_id and journey_id from job_details to avoid duplicate parameter
-        job_details_clean = {k: v for k, v in job_details.items() if k not in ['job_id', 'journey_id']}
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved detailed information for job {job_id}',
-            start_time=start_time,
-            operation='get_job',
-            journey_id=journey_id,
-            job_id=job_id,
-            **job_details_clean
-        )
+            
+        return result
         
     except Exception as e:
         error_msg = f'Failed to get job details: {str(e)}'
