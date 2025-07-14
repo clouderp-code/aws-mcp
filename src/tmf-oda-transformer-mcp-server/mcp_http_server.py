@@ -32,6 +32,7 @@ try:
         journeys_tool,
         run_jobs_tool
     )
+    from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
     print("✅ MCP server and tools imported successfully")
 except ImportError as e:
     print(f"❌ Error importing MCP server: {e}")
@@ -123,11 +124,54 @@ TOOLS = {
         "inputSchema": {
             "type": "object",
             "properties": {
-                "journey_id": {"type": "string", "description": "Optional journey ID", "default": None},
-                "stage_id": {"type": "string", "description": "Optional stage ID", "default": None},
+                "action": {
+                    "type": "string",
+                    "description": "Action to perform",
+                    "enum": [
+                        "read", "list", "create", "update", "delete",
+                        "list_stages", "add_stage", "update_stage", "delete_stage", "add_default_stages",
+                        "list_rules", "add_rule", "update_rule", "delete_rule",
+                        "list_jobs", "get_job", "run_job", "cancel_job", "update_job_status", "retry_job",
+                        "get_job_metrics", "get_job_timeline", "batch_cancel_jobs",
+                        "get_job_logs", "get_job_reports", "add_log_entry", "search_logs", "get_logs_by_level",
+                        "export_job_logs", "get_error_summary", "list_available_logs",
+                        "generate_summary_report", "create_job_report", "generate_performance_report",
+                        "export_complete", "import_complete", "dashboard", "get_journey_summary"
+                    ],
+                    "default": "read"
+                },
+                "journey_id": {"type": "string", "description": "Journey ID for operations", "default": ""},
+                "job_id": {"type": "string", "description": "Job ID for job-related operations", "default": ""},
+                "stage_id": {"type": "string", "description": "Stage ID for stage/job operations", "default": ""},
+                "rule_id": {"type": "string", "description": "Rule ID for rule operations", "default": ""},
+                "journey_data": {"type": "object", "description": "Journey data for create/update operations", "default": None},
+                "stage_data": {"type": "object", "description": "Stage data for stage operations", "default": None},
+                "rule_data": {"type": "object", "description": "Rule data for rule operations", "default": None},
+                "job_data": {"type": "object", "description": "Job data for job operations", "default": None},
+                "triggered_by": {"type": "string", "description": "Who triggered the job execution", "default": "mcp-user"},
+                "reason": {"type": "string", "description": "Reason for job execution", "default": "MCP Server execution"},
+                "job_status": {"type": "string", "description": "Job status for updates", "enum": ["pending", "running", "completed", "failed", "cancelled"], "default": ""},
+                "progress": {"type": "integer", "description": "Job progress percentage (0-100)", "default": None},
+                "current_step": {"type": "string", "description": "Current step for job updates", "default": ""},
+                "error_message": {"type": "string", "description": "Error message for failed jobs", "default": ""},
+                "step_name": {"type": "string", "description": "Step name for log operations", "default": ""},
+                "log_level": {"type": "string", "description": "Log level", "enum": ["error", "warning", "info", "debug"], "default": ""},
+                "log_message": {"type": "string", "description": "Log message content", "default": ""},
+                "search_query": {"type": "string", "description": "Search query for log search", "default": ""},
+                "status_filter": {"type": "string", "description": "Filter by status", "default": ""},
+                "rule_type": {"type": "string", "description": "Filter by rule type", "default": ""},
+                "level_filter": {"type": "string", "description": "Filter by log level", "default": ""},
+                "step_filter": {"type": "string", "description": "Filter by step name", "default": ""},
+                "limit": {"type": "integer", "description": "Maximum results to return", "default": 50},
                 "include_stages": {"type": "boolean", "description": "Include stage details", "default": True},
                 "include_job_history": {"type": "boolean", "description": "Include job history", "default": True},
-                "job_limit": {"type": "integer", "description": "Job limit", "default": 10}
+                "include_all": {"type": "boolean", "description": "Include all available details", "default": False},
+                "output_file": {"type": "string", "description": "Output file path for export", "default": ""},
+                "input_file": {"type": "string", "description": "Input file path for import", "default": ""},
+                "export_format": {"type": "string", "description": "Export format", "enum": ["json", "csv", "txt"], "default": "json"},
+                "job_ids": {"type": "string", "description": "Comma-separated job IDs for batch operations", "default": ""},
+                "report_type": {"type": "string", "description": "Type of report to create", "default": ""},
+                "report_title": {"type": "string", "description": "Title for generated reports", "default": ""}
             },
             "required": []
         }
@@ -144,6 +188,37 @@ TOOLS = {
                 "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"}
             },
             "required": ["journey_id", "stage_id"]
+        }
+    },
+    "logs-and-reports": {
+        "func": logs_and_reports_tool,
+        "description": "Comprehensive logs and reports management with search, filter, export, and analysis capabilities",
+        "inputSchema": {
+            "type": "object",
+            "properties": {
+                "action": {
+                    "type": "string", 
+                    "description": "Action to perform",
+                    "enum": [
+                        "get_job_logs", "add_log_entry", "search_logs", "get_logs_by_level",
+                        "export_job_logs", "get_error_summary", "list_available_logs",
+                        "get_job_reports", "create_job_report", "generate_summary_report",
+                        "generate_performance_report", "generate_error_analysis_report",
+                        "list_available_reports", "export_reports", "analyze_job_performance",
+                        "analyze_error_patterns", "generate_insights", "get_recommendations"
+                    ],
+                    "default": "get_job_logs"
+                },
+                "journey_id": {"type": "string", "description": "Journey ID", "default": ""},
+                "job_id": {"type": "string", "description": "Job ID", "default": ""},
+                "stage_name": {"type": "string", "description": "Stage name", "default": ""},
+                "step_name": {"type": "string", "description": "Step name", "default": ""},
+                "log_level": {"type": "string", "description": "Log level", "enum": ["error", "warning", "info", "debug"], "default": ""},
+                "search_query": {"type": "string", "description": "Search query", "default": ""},
+                "limit": {"type": "integer", "description": "Maximum results", "default": 100},
+                "export_format": {"type": "string", "description": "Export format", "enum": ["json", "csv", "txt", "html"], "default": "json"}
+            },
+            "required": []
         }
     }
 }

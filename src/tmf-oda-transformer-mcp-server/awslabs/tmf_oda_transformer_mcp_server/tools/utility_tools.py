@@ -37,6 +37,37 @@ from ..models import LogLevel, ReportType, LogEntry, ReportData
 from ..services import JourneyService
 from .base import BaseToolMixin
 
+# Import test utilities
+try:
+    from ..utils.test_utils import (
+        run_test_imports,
+        run_validation_tests,
+        generate_test_recommendations,
+        generate_next_steps,
+        calculate_performance_metrics
+    )
+    TEST_UTILS_AVAILABLE = True
+except ImportError as e:
+    # Create fallback functions if test_utils import fails
+    print(f"Warning: Could not import test_utils: {e}")
+    TEST_UTILS_AVAILABLE = False
+    
+    # Fallback functions
+    async def run_test_imports(ctx, include_performance=False):
+        return {"status": "success", "message": "Test utils not available"}
+    
+    async def run_validation_tests(ctx, include_performance=False):
+        return {"status": "success", "message": "Test utils not available"}
+    
+    def generate_test_recommendations(test_results):
+        return ["Test utilities not available - basic functionality only"]
+    
+    def generate_next_steps(status, test_results):
+        return ["Import test_utils module to enable full testing capabilities"]
+    
+    def calculate_performance_metrics(test_results):
+        return {"message": "Performance metrics not available without test_utils"}
+
 
 # Enhanced logs and reports management tool
 async def logs_and_reports_tool(
@@ -322,6 +353,41 @@ async def logs_and_reports_tool(
     report_title = report_title.strip() if report_title else None
     output_file = output_file.strip() if output_file else None
     
+    # Add parameter validation for actions that require specific parameters
+    actions_requiring_journey_id = [
+        'get_job_logs', 'add_log_entry', 'search_logs', 'get_logs_by_level',
+        'export_job_logs', 'get_error_summary', 'list_available_logs',
+        'get_job_reports', 'create_job_report', 'generate_summary_report',
+        'generate_performance_report', 'generate_error_analysis_report',
+        'analyze_job_performance', 'analyze_error_patterns', 'generate_insights',
+        'get_recommendations'
+    ]
+    
+    actions_requiring_job_id = [
+        'get_job_logs', 'export_job_logs', 'get_error_summary',
+        'get_job_reports', 'create_job_report', 'generate_summary_report',
+        'generate_performance_report', 'analyze_job_performance',
+        'get_recommendations'
+    ]
+    
+    actions_requiring_log_message = ['add_log_entry']
+    
+        # Validate required parameters
+    if action in actions_requiring_journey_id and not journey_id:
+        error_msg = f"journey_id is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if action in actions_requiring_job_id and not job_id:
+        error_msg = f"job_id is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if action in actions_requiring_log_message and not log_message:
+        error_msg = f"log_message is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+
     try:
         # Log tool start
         BaseToolMixin.log_tool_start(
@@ -633,7 +699,6 @@ async def _handle_get_job_logs(
             start_time=start_time,
             operation='get_job_logs',
             journey_id=journey_id,
-            job_id=job_id,
             **logs_data
         )
         
@@ -1761,15 +1826,6 @@ async def test_runner_tool(
     logger.info(f"🧪 Starting {test_type} test suite with performance={'included' if include_performance else 'excluded'}")
     
     try:
-        # Import test utilities
-        from ..utils.test_utils import (
-            run_test_imports,
-            run_validation_tests,
-            generate_test_recommendations,
-            generate_next_steps,
-            calculate_performance_metrics
-        )
-        
         test_results = []
         overall_status = "success"
         

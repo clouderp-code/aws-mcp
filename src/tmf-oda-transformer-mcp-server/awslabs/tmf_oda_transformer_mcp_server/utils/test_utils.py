@@ -81,7 +81,7 @@ async def run_test_imports(ctx: Context, include_performance: bool = False) -> D
         
         return {
             'test_name': 'Import Verification',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'imports_tested': len(imports_tested),
@@ -97,9 +97,9 @@ async def run_test_imports(ctx: Context, include_performance: bool = False) -> D
         
         return {
             'test_name': 'Import Verification',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Import test failed: {str(e)}'
         }
 
@@ -170,7 +170,7 @@ async def _test_raw_analysis_validation(ctx: Context, include_performance: bool 
         
         return {
             'test_name': 'Raw Analysis Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -186,9 +186,9 @@ async def _test_raw_analysis_validation(ctx: Context, include_performance: bool 
         
         return {
             'test_name': 'Raw Analysis Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Raw analysis test failed: {str(e)}'
         }
 
@@ -228,7 +228,7 @@ async def _test_stripped_schema_validation(ctx: Context, include_performance: bo
         
         return {
             'test_name': 'Stripped Schema Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -244,9 +244,9 @@ async def _test_stripped_schema_validation(ctx: Context, include_performance: bo
         
         return {
             'test_name': 'Stripped Schema Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Stripped schema test failed: {str(e)}'
         }
 
@@ -286,7 +286,7 @@ async def _test_get_job_logs_validation(ctx: Context, include_performance: bool 
         
         return {
             'test_name': 'Get Job Logs Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -302,9 +302,9 @@ async def _test_get_job_logs_validation(ctx: Context, include_performance: bool 
         
         return {
             'test_name': 'Get Job Logs Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Get job logs test failed: {str(e)}'
         }
 
@@ -359,7 +359,7 @@ async def _test_run_jobs_validation(ctx: Context, include_performance: bool = Fa
         
         return {
             'test_name': 'Run Jobs Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -375,9 +375,9 @@ async def _test_run_jobs_validation(ctx: Context, include_performance: bool = Fa
         
         return {
             'test_name': 'Run Jobs Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Run jobs test failed: {str(e)}'
         }
 
@@ -419,7 +419,7 @@ async def _test_journeys_validation(ctx: Context, include_performance: bool = Fa
         
         return {
             'test_name': 'Journeys Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -435,9 +435,9 @@ async def _test_journeys_validation(ctx: Context, include_performance: bool = Fa
         
         return {
             'test_name': 'Journeys Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Journeys test failed: {str(e)}'
         }
 
@@ -486,7 +486,7 @@ async def _test_test_runner_validation(ctx: Context, include_performance: bool =
         
         return {
             'test_name': 'Test Runner Validation',
-            'passed': all_passed,
+            'status': 'success' if all_passed else 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
             'details': {
                 'validations_tested': len(validation_tests),
@@ -502,9 +502,9 @@ async def _test_test_runner_validation(ctx: Context, include_performance: bool =
         
         return {
             'test_name': 'Test Runner Validation',
-            'passed': False,
+            'status': 'error',  # Fix: Use 'status' instead of 'passed'
             'duration_seconds': test_duration if include_performance else None,
-            'details': {'error': str(e)},
+            'error': str(e),
             'message': f'❌ Test runner test failed: {str(e)}'
         }
 
@@ -513,7 +513,7 @@ def generate_test_recommendations(test_results: List[Dict[str, Any]]) -> List[st
     """Generate recommendations based on test results."""
     recommendations = []
     
-    failed_tests = [test for test in test_results if not test['passed']]
+    failed_tests = [test for test in test_results if not test['status'] == 'success']
     
     if not failed_tests:
         recommendations.append("🎉 All tests passed! Your TMF ODA MCP Server is fully operational.")

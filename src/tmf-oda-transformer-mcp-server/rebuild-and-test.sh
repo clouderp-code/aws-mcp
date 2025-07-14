@@ -37,7 +37,7 @@ HTTP_PORT="8000"
 BASE_URL="http://localhost:${HTTP_PORT}"
 TIMEOUT_SECONDS=60
 DOCKERFILE_PATH="Dockerfile.optimized"
-TEST_SCRIPT="test-http-access.py"
+TEST_SCRIPT="test-external-access.py"
 
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
@@ -245,7 +245,7 @@ chmod +x "$SCRIPT_DIR/$TEST_SCRIPT"
 
 # Run the test script
 cd "$SCRIPT_DIR"
-python3 $TEST_SCRIPT --url $BASE_URL --timeout 30
+python3 $TEST_SCRIPT
 
 # Capture test result
 TEST_EXIT_CODE=$?
@@ -292,7 +292,7 @@ print_color $BLUE "  🔄 Restart container: docker restart $CONTAINER_NAME"
 print_color $BLUE "  🗑️ Remove container: docker rm $CONTAINER_NAME"
 
 print_color $CYAN "\n🧪 Test Commands:"
-print_color $BLUE "  🏃 Run quick tests: python3 $TEST_SCRIPT --url $BASE_URL"
+print_color $BLUE "  🏃 Run quick tests: python3 $TEST_SCRIPT"
 print_color $BLUE "  🔍 Health check: curl $BASE_URL/health"
 print_color $BLUE "  📋 List tools: curl $BASE_URL/tools"
 

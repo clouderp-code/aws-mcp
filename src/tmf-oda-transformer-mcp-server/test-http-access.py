@@ -571,7 +571,13 @@ class TMFODAHttpTester:
                 
                 if 'logs' in logs_result:
                     logs_data = logs_result.get('logs', {})
-                    total_logs = logs_data.get('total_logs', 0)
+                    # Handle different log structures - could be nested dict or direct list
+                    if isinstance(logs_data, dict):
+                        total_logs = logs_data.get('total_logs', len(logs_data.get('logs', [])))
+                    elif isinstance(logs_data, list):
+                        total_logs = len(logs_data)
+                    else:
+                        total_logs = 0
                     print_color(Colors.BLUE, f"   📊 Total logs: {total_logs}")
         else:
             print_color(Colors.RED, f"❌ logs-and-reports: {result.get('error', 'Unknown error')}")
@@ -1849,17 +1855,45 @@ Examples:
   # Quick connectivity test only
   python3 test-http-access.py --quick-test
   
-  # Test remote HTTP API
+  # Test remote machine by IP address
+  python3 test-http-access.py --host 192.168.1.100
+  
+  # Test remote machine with custom port
+  python3 test-http-access.py --host 192.168.1.100 --port 9000
+  
+  # Test remote machine with HTTPS
+  python3 test-http-access.py --host server.example.com --protocol https --no-ssl-verify
+  
+  # Test remote HTTP API (full URL method)
   python3 test-http-access.py --url http://192.168.1.100:8000
   
   # Test with custom timeout
-  python3 test-http-access.py --url http://server:8000 --timeout 60
-  
-  # Test HTTPS API (with SSL verification disabled)
-  python3 test-http-access.py --url https://server:8000 --no-ssl-verify
+  python3 test-http-access.py --host 10.0.0.5 --timeout 60
   
   # Quick test on remote server
-  python3 test-http-access.py --url http://server:8000 --quick-test
+  python3 test-http-access.py --host 172.16.0.10 --quick-test
+
+Remote Connection Options:
+  📡 Method 1 - Individual Parameters (Recommended):
+    --host IP_ADDRESS     # IP address or hostname of remote machine
+    --port PORT_NUMBER    # Port number (default: 8000)
+    --protocol http|https # Protocol to use (default: http)
+  
+  📡 Method 2 - Full URL:
+    --url FULL_URL        # Complete URL (e.g., http://192.168.1.100:8000)
+  
+  Common Remote Scenarios:
+    # AWS EC2 instance
+    python3 test-http-access.py --host 18.191.87.212
+    
+    # Local network server
+    python3 test-http-access.py --host 192.168.1.100 --port 9000
+    
+    # Docker container on different port
+    python3 test-http-access.py --host 172.17.0.2 --port 8080
+    
+    # HTTPS with self-signed cert
+    python3 test-http-access.py --host my-server.com --protocol https --no-ssl-verify
 
 Enhanced Features Tested:
   🔧 7 Enhanced Tools:
@@ -1886,8 +1920,30 @@ Enhanced Features Tested:
     parser.add_argument(
         "--url",
         type=str,
-        default="http://localhost:8000",
-        help="Base URL of the Enhanced TMF ODA HTTP API (default: http://localhost:8000)"
+        default=None,
+        help="Full base URL of the Enhanced TMF ODA HTTP API (e.g., http://192.168.1.100:8000). If not provided, URL is built from --host, --port, and --protocol"
+    )
+    
+    parser.add_argument(
+        "--host",
+        type=str,
+        default="localhost",
+        help="IP address or hostname of the remote machine (default: localhost)"
+    )
+    
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        help="Port number of the TMF ODA MCP Server (default: 8000)"
+    )
+    
+    parser.add_argument(
+        "--protocol",
+        type=str,
+        choices=["http", "https"],
+        default="http",
+        help="Protocol to use: http or https (default: http)"
     )
     
     parser.add_argument(
@@ -1911,6 +1967,27 @@ Enhanced Features Tested:
     
     args = parser.parse_args()
     
+    # Validate arguments
+    if args.url and (args.host != "localhost" or args.port != 8000 or args.protocol != "http"):
+        print_color(Colors.YELLOW, "⚠️ Warning: --url provided along with --host/--port/--protocol. Using --url and ignoring other options.")
+    
+    # Determine the base URL
+    if args.url:
+        # Use provided URL directly
+        base_url = args.url
+        print_color(Colors.CYAN, f"🌐 Using provided URL: {base_url}")
+    else:
+        # Construct URL from host, port, and protocol
+        base_url = f"{args.protocol}://{args.host}:{args.port}"
+        if args.host == "localhost":
+            print_color(Colors.CYAN, f"🌐 Testing local TMF ODA MCP Server: {base_url}")
+        else:
+            print_color(Colors.CYAN, f"🌐 Connecting to remote machine: {args.host}:{args.port} ({args.protocol})")
+            print_color(Colors.BLUE, f"   📡 Make sure the TMF ODA MCP Server is running on {args.host}:{args.port}")
+            print_color(Colors.BLUE, f"   🔥 Check firewall settings allow connections to port {args.port}")
+            if args.protocol == "https":
+                print_color(Colors.BLUE, f"   🔒 Using HTTPS - add --no-ssl-verify if using self-signed certificates")
+    
     # Configure SSL verification
     if args.no_ssl_verify:
         import ssl
@@ -1919,7 +1996,7 @@ Enhanced Features Tested:
     
     # Create enhanced tester instance
     tester = TMFODAHttpTester(
-        base_url=args.url,
+        base_url=base_url,
         timeout=args.timeout,
         quick_test=args.quick_test
     )

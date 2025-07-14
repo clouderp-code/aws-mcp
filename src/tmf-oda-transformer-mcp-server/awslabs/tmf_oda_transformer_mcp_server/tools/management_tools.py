@@ -498,6 +498,80 @@ async def journeys_tool(
     current_step = current_step.strip() if current_step else None
     error_message = error_message.strip() if error_message else None
     
+    # Add parameter validation for actions that require specific parameters
+    actions_requiring_journey_id = [
+        # Operations that need specific journey context
+        JourneyAction.UPDATE, JourneyAction.DELETE,
+        JourneyAction.LIST_STAGES, JourneyAction.ADD_STAGE, JourneyAction.UPDATE_STAGE,
+        JourneyAction.DELETE_STAGE, JourneyAction.ADD_DEFAULT_STAGES,
+        JourneyAction.LIST_RULES, JourneyAction.ADD_RULE, JourneyAction.UPDATE_RULE,
+        JourneyAction.DELETE_RULE, JourneyAction.LIST_JOBS, JourneyAction.GET_JOB,
+        JourneyAction.RUN_JOB, JourneyAction.CANCEL_JOB, JourneyAction.UPDATE_JOB_STATUS,
+        JourneyAction.RETRY_JOB, JourneyAction.GET_JOB_METRICS, JourneyAction.GET_JOB_TIMELINE,
+        JourneyAction.BATCH_CANCEL_JOBS, JourneyAction.GET_JOB_LOGS, JourneyAction.GET_JOB_REPORTS,
+        JourneyAction.ADD_LOG_ENTRY, JourneyAction.SEARCH_LOGS, JourneyAction.GET_LOGS_BY_LEVEL,
+        JourneyAction.EXPORT_JOB_LOGS, JourneyAction.GET_ERROR_SUMMARY,
+        JourneyAction.LIST_AVAILABLE_LOGS, JourneyAction.GENERATE_SUMMARY_REPORT,
+        JourneyAction.CREATE_JOB_REPORT, JourneyAction.GENERATE_PERFORMANCE_REPORT,
+        JourneyAction.EXPORT_COMPLETE, JourneyAction.DASHBOARD, JourneyAction.GET_JOURNEY_SUMMARY
+    ]
+    
+    actions_requiring_job_id = [
+        JourneyAction.GET_JOB, JourneyAction.CANCEL_JOB, JourneyAction.UPDATE_JOB_STATUS,
+        JourneyAction.RETRY_JOB, JourneyAction.GET_JOB_METRICS, JourneyAction.GET_JOB_TIMELINE,
+        JourneyAction.GET_JOB_LOGS, JourneyAction.GET_JOB_REPORTS,
+        JourneyAction.GENERATE_SUMMARY_REPORT, JourneyAction.CREATE_JOB_REPORT,
+        JourneyAction.GENERATE_PERFORMANCE_REPORT
+    ]
+    
+    actions_requiring_stage_id = [
+        JourneyAction.UPDATE_STAGE, JourneyAction.DELETE_STAGE, JourneyAction.RUN_JOB,
+        JourneyAction.ADD_RULE, JourneyAction.UPDATE_RULE, JourneyAction.DELETE_RULE
+    ]
+    
+    actions_requiring_data = [
+        (JourneyAction.CREATE, 'journey_data'), (JourneyAction.UPDATE, 'journey_data'),
+        (JourneyAction.ADD_STAGE, 'stage_data'), (JourneyAction.UPDATE_STAGE, 'stage_data'),
+        (JourneyAction.ADD_RULE, 'rule_data'), (JourneyAction.UPDATE_RULE, 'rule_data'),
+        (JourneyAction.ADD_LOG_ENTRY, 'log_message')
+    ]
+    
+    # Validate required parameters
+    if action in actions_requiring_journey_id and not journey_id:
+        error_msg = f"journey_id is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if action in actions_requiring_job_id and not job_id:
+        error_msg = f"job_id is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    if action in actions_requiring_stage_id and not stage_id:
+        error_msg = f"stage_id is required for action '{action}'"
+        logger.error(error_msg)
+        raise ValueError(error_msg)
+    
+    # Check data requirements
+    for required_action, required_field in actions_requiring_data:
+        if action == required_action:
+            if required_field == 'journey_data' and not journey_data:
+                error_msg = f"journey_data is required for action '{action}'"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            elif required_field == 'stage_data' and not stage_data:
+                error_msg = f"stage_data is required for action '{action}'"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            elif required_field == 'rule_data' and not rule_data:
+                error_msg = f"rule_data is required for action '{action}'"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+            elif required_field == 'log_message' and not log_message:
+                error_msg = f"log_message is required for action '{action}'"
+                logger.error(error_msg)
+                raise ValueError(error_msg)
+
     try:
         # Log tool start
         BaseToolMixin.log_tool_start(
