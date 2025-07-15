@@ -7955,3 +7955,430 @@ class EnhancedJourneyService(JourneyService):
     
     async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
                        status_filter: Optional[str] = None, limit: int = 50): pass
+
+
+# Missing function definitions with actual DynamoDB operations
+async def _handle_list_rules(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str] = None,
+    rule_type: Optional[str] = None,
+    start_time: datetime = None
+) -> Dict[str, Any]:
+    """Handle list rules operation with actual DynamoDB query."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        
+        # Clean journey ID and validate journey exists
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        response = table.get_item(Key={'PK': f'JOURNEY#{clean_id}', 'SK': 'METADATA'})
+        if 'Item' not in response:
+            raise ValueError(f"Journey not found: {journey_id}")
+        
+        # Query rules using GSI1
+        if stage_id:
+            # When filtering by stage, use KeyConditionExpression for both GSI1PK and GSI1SK
+            query_params = {
+                'IndexName': 'GSI1',
+                'KeyConditionExpression': 'GSI1PK = :pk AND begins_with(GSI1SK, :stage_id)',
+                'ExpressionAttributeValues': {
+                    ':pk': f'JOURNEY#{clean_id}#RULES',
+                    ':stage_id': stage_id
+                }
+            }
+            logger.debug(f'Adding stage filter for stage_id: {stage_id}')
+        else:
+            # When no stage filter, just query by GSI1PK
+            query_params = {
+                'IndexName': 'GSI1',
+                'KeyConditionExpression': 'GSI1PK = :pk',
+                'ExpressionAttributeValues': {':pk': f'JOURNEY#{clean_id}#RULES'}
+            }
+        
+        rules_response = table.query(**query_params)
+        logger.debug(f'DynamoDB query response: {rules_response}')
+        rules = []
+        
+        for item in rules_response.get('Items', []):
+            rule_data = item.get('Data', {})
+            
+            # Debug logging to see what we're getting
+            logger.debug(f'Processing rule item: {item}')
+            logger.debug(f'Rule data: {rule_data}')
+            
+            # Apply rule type filter if provided
+            if rule_type and rule_data.get('type') != rule_type:
+                continue
+                
+            # Format rule following the expected structure
+            rule = {
+                'rule_id': rule_data.get('ruleId'),
+                'ruleId': rule_data.get('ruleId'),  # Add camelCase for test compatibility
+                'journey_id': rule_data.get('journeyId'),
+                'journeyId': rule_data.get('journeyId'),  # Add camelCase for test compatibility
+                'stage_id': rule_data.get('stageId'),
+                'stageId': rule_data.get('stageId'),  # Add camelCase for test compatibility
+                'name': rule_data.get('title'),  # Add name field for test compatibility
+                'title': rule_data.get('title'),
+                'description': rule_data.get('description'),
+                'type': rule_data.get('type'),
+                'priority': rule_data.get('priority'),
+                'scope': rule_data.get('scope'),
+                'status': rule_data.get('status', 'active'),
+                'context': rule_data.get('context', {}),
+                'content': rule_data.get('content', {}),
+                'metadata': rule_data.get('metadata', {}),
+                'created_at': item.get('CreatedAt'),
+                'updated_at': item.get('UpdatedAt')
+            }
+            rules.append(rule)
+        
+        # Sort rules by stage_id and priority
+        rules.sort(key=lambda x: (x.get('stage_id', ''), x.get('priority', 'medium')))
+        
+        logger.info(f'Successfully retrieved {len(rules)} rules for journey {journey_id}')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved {len(rules)} rules for journey {journey_id}',
+            start_time=start_time,
+            operation='list_rules',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_type=rule_type,
+            rules=rules,
+            total_rules=len(rules)
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to list rules: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey list_rules operation failed: {str(e)}',
+            start_time=start_time,
+            operation='list_rules',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_type=rule_type
+        )
+
+
+async def _handle_add_rule(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str], 
+    rule_data: Optional[Dict[str, Any]],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle add rule operation with actual DynamoDB storage."""
+    try:
+        if not journey_id or not stage_id or not rule_data:
+            raise ValueError("journey_id, stage_id, and rule_data are required")
+        
+        # Validate required fields
+        required_fields = ['title', 'description', 'type', 'priority', 'scope', 'content']
+        for field in required_fields:
+            if field not in rule_data:
+                raise ValueError(f"Missing required field in rule_data: {field}")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        from decimal import Decimal
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        
+        # Clean journey ID and validate journey exists
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        response = table.get_item(Key={'PK': f'JOURNEY#{clean_id}', 'SK': 'METADATA'})
+        if 'Item' not in response:
+            raise ValueError(f"Journey not found: {journey_id}")
+        
+        # Generate rule ID and get current rules count
+        rule_id = rule_data.get('rule_id', f'rule-{stage_id}-{rule_data["type"]}-{str(uuid.uuid4())[:8]}')
+        rules_response = table.query(
+            IndexName='GSI1',
+            KeyConditionExpression='GSI1PK = :pk',
+            ExpressionAttributeValues={':pk': f'JOURNEY#{clean_id}#RULES'}
+        )
+        rule_index = len(rules_response.get('Items', []))
+        
+        # Convert floats to Decimal for DynamoDB
+        def convert_floats(data):
+            if isinstance(data, dict):
+                return {k: convert_floats(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [convert_floats(item) for item in data]
+            elif isinstance(data, float):
+                return Decimal(str(data))
+            return data
+        
+        rule_data = convert_floats(rule_data)
+        timestamp = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        
+        # Create rule item following manage_journey.py pattern
+        rule_item = {
+            'PK': f'JOURNEY#{clean_id}',
+            'SK': f'RULE#{stage_id}#{rule_index:03d}#{rule_id}',
+            'EntityType': 'SecondBrainRule',
+            'GSI1PK': f'JOURNEY#{clean_id}#RULES',
+            'GSI1SK': f'{stage_id}#{rule_data["priority"]}#{rule_index:03d}',
+            'CreatedAt': timestamp,
+            'UpdatedAt': timestamp,
+            'Data': {
+                'ruleId': rule_id,
+                'journeyId': clean_id,
+                'stageId': stage_id,
+                'title': rule_data['title'],
+                'description': rule_data['description'],
+                'type': rule_data['type'],
+                'priority': rule_data['priority'],
+                'scope': rule_data['scope'],
+                'status': rule_data.get('status', 'active'),
+                'context': rule_data.get('context', {}),
+                'content': rule_data['content'],
+                'metadata': {
+                    'createdBy': rule_data.get('createdBy', 'mcp-user'),
+                    'version': rule_data.get('version', '1.0'),
+                    'tags': rule_data.get('tags', [stage_id, rule_data['type'], rule_data['priority']]),
+                    'applicableStages': rule_data.get('applicableStages', [stage_id]),
+                    'ruleEngine': 'second_brain_v1'
+                }
+            }
+        }
+        
+        # Store rule in DynamoDB
+        table.put_item(Item=rule_item)
+        logger.info(f'Successfully added rule {rule_id} to DynamoDB')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Second Brain rule {rule_id} added successfully to stage {stage_id}',
+            start_time=start_time,
+            operation='add_rule',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_id=rule_id,
+            rule_data=rule_data
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to add rule: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey add_rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='add_rule',
+            journey_id=journey_id,
+            stage_id=stage_id
+        )
+
+
+async def _handle_update_rule(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str],
+    rule_id: Optional[str],
+    rule_data: Optional[Dict[str, Any]],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle update rule operation with actual DynamoDB operations."""
+    try:
+        if not journey_id or not stage_id or not rule_id or not rule_data:
+            raise ValueError("journey_id, stage_id, rule_id, and rule_data are required")
+        
+        # Setup DynamoDB connection  
+        import os, sys, boto3
+        from decimal import Decimal
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        
+        # Find existing rule
+        response = table.query(
+            KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression='#data.ruleId = :rule_id AND #data.stageId = :stage_id',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':pk': f'JOURNEY#{clean_id}',
+                ':sk': 'RULE#',
+                ':rule_id': rule_id,
+                ':stage_id': stage_id
+            }
+        )
+        
+        if not response['Items']:
+            raise ValueError(f"Rule not found: {rule_id} in stage {stage_id}")
+        
+        existing_item = response['Items'][0]
+        existing_data = existing_item['Data']
+        
+        # Convert floats to Decimal and merge data
+        def convert_floats(data):
+            if isinstance(data, dict):
+                return {k: convert_floats(v) for k, v in data.items()}
+            elif isinstance(data, list):
+                return [convert_floats(item) for item in data]
+            elif isinstance(data, float):
+                return Decimal(str(data))
+            return data
+        
+        updated_data = existing_data.copy()
+        updated_data.update(convert_floats(rule_data))
+        updated_data['updatedAt'] = datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+        
+        # Update the rule in DynamoDB
+        table.update_item(
+            Key={'PK': existing_item['PK'], 'SK': existing_item['SK']},
+            UpdateExpression='SET #data = :data, UpdatedAt = :updated_at',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':data': updated_data,
+                ':updated_at': datetime.now(timezone.utc).isoformat().replace('+00:00', 'Z')
+            }
+        )
+        
+        logger.info(f'Successfully updated rule {rule_id} in DynamoDB')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Second Brain rule {rule_id} updated successfully in stage {stage_id}',
+            start_time=start_time,
+            operation='update_rule',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_id=rule_id,
+            rule_data=rule_data
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to update rule: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey update_rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='update_rule',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_id=rule_id
+        )
+
+
+async def _handle_delete_rule(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str],
+    rule_id: Optional[str],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle delete rule operation with actual DynamoDB operations."""
+    try:
+        if not journey_id or not stage_id or not rule_id:
+            raise ValueError("journey_id, stage_id, and rule_id are required")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        
+        # Find rule to delete
+        response = table.query(
+            KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression='#data.ruleId = :rule_id AND #data.stageId = :stage_id',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':pk': f'JOURNEY#{clean_id}',
+                ':sk': 'RULE#',
+                ':rule_id': rule_id,
+                ':stage_id': stage_id
+            }
+        )
+        
+        if not response['Items']:
+            raise ValueError(f"Rule not found: {rule_id} in stage {stage_id}")
+        
+        rule_item = response['Items'][0]
+        
+        # Delete the rule from DynamoDB
+        table.delete_item(Key={'PK': rule_item['PK'], 'SK': rule_item['SK']})
+        logger.info(f'Successfully deleted rule {rule_id} from DynamoDB')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Second Brain rule {rule_id} deleted successfully from stage {stage_id}',
+            start_time=start_time,
+            operation='delete_rule',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_id=rule_id
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to delete rule: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey delete_rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='delete_rule',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            rule_id=rule_id
+        )
