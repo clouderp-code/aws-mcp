@@ -982,30 +982,73 @@ class EnhancedJourneyService(JourneyService):
                         rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
         """List Second Brain rules for a journey."""
         try:
-            # This would integrate with the real rules management system
-            rules = [
-                {
-                    'rule_id': 'rule-001',
-                    'stage_id': 'raw_analysis',
-                    'title': 'Customer ID Field Mapping',
-                    'type': 'field_mapping',
-                    'priority': 'high',
-                    'scope': 'global',
-                    'status': 'active',
-                    'content': {
-                        'natural_language': 'Map customer_id fields to TMF Party.id',
-                        'json_rule': {'field_mapping': 'customer_id -> Party.id'}
-                    }
-                }
-            ]
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
             
-            # Apply filters
-            if stage_id:
-                rules = [r for r in rules if r.get('stage_id') == stage_id]
-            if rule_type:
-                rules = [r for r in rules if r.get('type') == rule_type]
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
             
             return rules
+            
         except Exception as e:
             logger.error(f'Failed to list rules: {str(e)}')
             raise
@@ -1018,1787 +1061,6897 @@ class EnhancedJourneyService(JourneyService):
                 # Get jobs for specific stage using parent class manager
                 jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
             else:
-                # Get jobs for all stages
-                # First get all stages for the journey
-                try:
-                    journey_stages = self.manager.get_journey_stages(journey_id)
-                    stage_ids = [stage.get('stage_id') for stage in journey_stages if stage.get('stage_id')]
-                except Exception as e:
-                    logger.warning(f'Could not get journey stages for {journey_id}: {str(e)}')
-                    # Fallback to common stage names
-                    stage_ids = ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
-                
-                # Get jobs from all stages
-                all_jobs = []
-                for stage in stage_ids:
-                    try:
-                        stage_jobs = self.manager.get_stage_jobs(journey_id, stage, limit)
-                        # Add stage_id to each job if not present
-                        for job in stage_jobs:
-                            if 'stage_id' not in job:
-                                job['stage_id'] = stage
-                        all_jobs.extend(stage_jobs)
-                    except Exception as e:
-                        logger.debug(f'No jobs found for stage {stage}: {str(e)}')
-                        continue
-                
-                # Sort by timestamp/execution number and limit
-                all_jobs.sort(key=lambda x: x.get('execution_number', 0), reverse=True)
-                jobs = all_jobs[:limit]
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
             
-            # Apply status filter if provided
+            # Apply status filter if specified
             if status_filter:
-                jobs = [j for j in jobs if j.get('status') == status_filter]
+                jobs = [job for job in jobs if job.get('status') == status_filter]
             
-            # Convert job format to ensure consistent structure
-            formatted_jobs = []
-            for job in jobs:
-                formatted_job = {
-                    'job_id': job.get('job_id', ''),
-                    'stage_id': job.get('stage_id', ''),
-                    'stage_name': job.get('stage_name', job.get('stage_id', '').replace('_', ' ').title()),
-                    'status': job.get('status', 'unknown'),
-                    'triggered_by': job.get('triggered_by', 'unknown'),
-                    'reason': job.get('reason', 'Unknown'),
-                    'start_time': job.get('start_time', job.get('created_at', '')),
-                    'end_time': job.get('end_time', job.get('updated_at', '')),
-                    'duration': job.get('duration', 'Unknown'),
-                    'progress': job.get('progress', 0),
-                    'logs_available': job.get('logs_available', True),
-                    'reports_available': job.get('reports_available', True),
-                    'execution_number': job.get('execution_number', 0)
-                }
-                formatted_jobs.append(formatted_job)
-            
-            return formatted_jobs
-            
+            return jobs[:limit]
         except Exception as e:
             logger.error(f'Failed to list jobs: {str(e)}')
             raise
-
-
-# Helper functions for enhanced operations (implementing the first few)
-
-async def _handle_journey_read(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    include_stages: bool,
-    include_job_history: bool,
-    limit: int,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle journey read/list operations (existing implementation)."""
-    try:
-        if not journey_id:
-            # List all journeys
-            journeys = await journey_service.list_journeys()
-            
-            # Build summary statistics
-            total_journeys = len(journeys)
-            status_counts = {}
-            for journey in journeys:
-                status = journey.get('status', 'unknown')
-                status_counts[status] = status_counts.get(status, 0) + 1
-            
-            return BaseToolMixin.create_tool_result(
-                status='success',
-                message=f'Retrieved {total_journeys} transformation journeys from {journey_service.get_data_source()}',
-                start_time=start_time,
-                operation='list_all_journeys',
-                data_source=journey_service.get_data_source(),
-                summary={
-                    'total_journeys': total_journeys,
-                    'status_distribution': status_counts,
-                    'active_journeys': len([j for j in journeys if j.get('status') in ['running', 'pending']]),
-                    'completed_journeys': len([j for j in journeys if j.get('status') == 'completed']),
-                    'failed_journeys': len([j for j in journeys if j.get('status') == 'failed'])
-                },
-                journeys=journeys
-            )
-        
-        # Get specific journey details
-        journey_details = await journey_service.get_journey_details(
-            journey_id=journey_id,
-            stage_id=stage_id,
-            include_stages=include_stages,
-            include_job_history=include_job_history,
-            job_limit=limit
-        )
-        
-        if not journey_details:
-            error_msg = f'Journey {journey_id} not found'
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved comprehensive information for journey {journey_id}',
-            start_time=start_time,
-            operation='get_journey_details',
-            journey_id=journey_id,
-            data_source=journey_service.get_data_source(),
-            **journey_details
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to read journey information: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_journey_create(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    journey_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle journey creation operations (existing implementation)."""
-    try:
-        if not journey_data:
-            error_msg = "journey_data is required for CREATE action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Validate and parse journey data
-        try:
-            create_data = JourneyCreateData(**journey_data)
-        except Exception as e:
-            error_msg = f"Invalid journey_data format: {str(e)}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Create journey
-        created_journey_id = await journey_service.create_journey(
-            journey_id=journey_id,
-            journey_data=create_data.model_dump()
-        )
-        
-        # Check if user provided custom stages or we should use defaults
-        default_stages = ["raw_analysis", "stripped_schema", "tmf_mapping", "migration_planning", "data_migration", "verification_validation"]
-        stages_to_create = create_data.stages or default_stages
-        
-        # If using default stages or if stages list matches default, create the complete stage definitions
-        default_stages_created = False
-        stages_count = 0
-        verification_details = None
-        
-        if stages_to_create == default_stages:
-            logger.info(f"Creating default stages for journey {created_journey_id}")
-            try:
-                # Create complete default stages automatically
-                default_stages_result = await _handle_add_default_stages(ctx, journey_service, created_journey_id, start_time)
-                default_stages_created = True
-                
-                # Get verification details from the result
-                if default_stages_result and 'verification_details' in default_stages_result:
-                    verification_details = default_stages_result['verification_details']
-                    stages_count = verification_details.get('stages_verified_present', 0)
-                    logger.info(f"Successfully created default stages for journey {created_journey_id}. Verified: {stages_count} stages")
-                else:
-                    stages_count = len(default_stages)  # Fallback to expected count
-                    logger.info(f"Successfully created default stages for journey {created_journey_id}. Expected: {stages_count} stages")
-                
-            except Exception as e:
-                logger.warning(f"Failed to create default stages for journey {created_journey_id}: {str(e)}")
-                default_stages_created = False
-                stages_count = 0
-        else:
-            # User provided custom stages - don't create defaults
-            logger.info(f"User provided custom stages for journey {created_journey_id}: {stages_to_create}")
-            default_stages_created = False
-            stages_count = 0
-        
-        # Prepare response message
-        base_message = f'Journey {created_journey_id} created successfully'
-        if default_stages_created:
-            base_message += f' with {stages_count} default stages'
-        
-        data_source_suffix = (' (DynamoDB - simulated)' if journey_service.get_data_source() == 'DynamoDB' else '')
-        message = base_message + data_source_suffix
-        
-        # Build comprehensive result
-        result = BaseToolMixin.create_tool_result(
-            status='success',
-            message=message,
-            start_time=start_time,
-            operation='create_journey',
-            action='create',
-            journey_id=created_journey_id,
-            journey_data=create_data.model_dump(),
-            default_stages_created=default_stages_created,
-            stages_count=stages_count,
-            data_source=journey_service.get_data_source()
-        )
-        
-        # Add verification details if available
-        if verification_details:
-            result['stage_verification'] = verification_details
-        
-        return result
-        
-    except Exception as e:
-        error_msg = f'Failed to create journey: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_journey_update(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    journey_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle journey update operations (existing implementation)."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for UPDATE action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not journey_data:
-            error_msg = "journey_data is required for UPDATE action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Validate and parse update data
-        try:
-            update_data = JourneyUpdateData(**journey_data)
-        except Exception as e:
-            error_msg = f"Invalid journey_data format for update: {str(e)}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Update journey
-        update_result = await journey_service.update_journey(
-            journey_id=journey_id,
-            journey_data=update_data.model_dump()
-        )
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Journey {journey_id} updated successfully',
-            start_time=start_time,
-            operation='update_journey',
-            action='update',
-            journey_id=journey_id,
-            update_data={k: v for k, v in update_data.model_dump().items() if v is not None},
-            data_source=journey_service.get_data_source(),
-            **update_result
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to update journey: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_journey_delete(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle journey deletion operations (existing implementation)."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for DELETE action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Delete journey
-        delete_result = await journey_service.delete_journey(journey_id=journey_id)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Journey {journey_id} deleted successfully',
-            start_time=start_time,
-            operation='delete_journey',
-            action='delete',
-            journey_id=journey_id,
-            data_source=journey_service.get_data_source(),
-            **delete_result
-        )
-        
-    except Exception as e:
-        error_str = str(e)
-        logger.warning(f'Delete operation encountered error: {error_str}')
-        
-        # For any error that suggests deletion is not implemented, try fallback
-        implementation_keywords = ['not yet implemented', 'notimplementederror', 'not implemented', 'implementation', 'deletion not yet implemented']
-        should_try_fallback = any(keyword in error_str.lower() for keyword in implementation_keywords)
-        
-        # Also check if the specific error message matches
-        if 'Journey deletion not yet implemented in TransformationUtils' in error_str:
-            should_try_fallback = True
-        
-        if should_try_fallback:
-            logger.warning(f'Deletion appears not implemented, trying fallback for journey {journey_id}')
-            try:
-                # Direct fallback implementation based on the journey manager type
-                if hasattr(journey_service.manager, 'delete_journey'):
-                    # Manager has delete_journey method - try calling it directly
-                    try:
-                        delete_result = journey_service.manager.delete_journey(journey_id)
-                        return BaseToolMixin.create_tool_result(
-                            status='success',
-                            message=f'Journey {journey_id} deleted successfully (manager direct)',
-                            start_time=start_time,
-                            operation='delete_journey',
-                            action='delete',
-                            journey_id=journey_id,
-                            data_source=journey_service.get_data_source(),
-                            deletion_result=delete_result,
-                            fallback_used=True
-                        )
-                    except Exception as manager_error:
-                        logger.warning(f'Manager delete_journey failed: {str(manager_error)}')
-                
-                # Fallback to manual implementation
-                if hasattr(journey_service.manager, '_load_journeys') and hasattr(journey_service.manager, '_load_jobs'):
-                    logger.info('Using manual fallback deletion method')
-                    journeys = journey_service.manager._load_journeys()
-                    jobs = journey_service.manager._load_jobs()
-                    
-                    deleted_journey = journeys.pop(journey_id, None)
-                    deleted_jobs = jobs.pop(journey_id, None)
-                    
-                    if deleted_journey is None:
-                        raise ValueError(f'Journey {journey_id} not found for deletion')
-                    
-                    journey_service.manager._save_journeys(journeys)
-                    journey_service.manager._save_jobs(jobs)
-                    
-                    return BaseToolMixin.create_tool_result(
-                        status='success',
-                        message=f'Journey {journey_id} deleted successfully (manual fallback)',
-                        start_time=start_time,
-                        operation='delete_journey',
-                        action='delete',
-                        journey_id=journey_id,
-                        data_source=journey_service.get_data_source(),
-                        deleted_journey=deleted_journey,
-                        deleted_jobs_count=len(deleted_jobs) if deleted_jobs else 0,
-                        fallback_used=True
-                    )
-                else:
-                    raise ValueError("No fallback deletion methods available")
-                    
-            except Exception as fallback_error:
-                error_msg = f'Fallback deletion also failed for journey {journey_id}: {str(fallback_error)}'
-                logger.error(error_msg)
-                return BaseToolMixin.create_tool_result(
-                    status='error',
-                    message=f'Journey delete operation failed: {str(fallback_error)}',
-                    error_message=str(fallback_error),
-                    start_time=start_time,
-                    operation='delete_journey',
-                    action='delete',
-                    journey_id=journey_id
-                )
-        else:
-            error_msg = f'Journey delete operation failed: {error_str}'
-            logger.error(error_msg)
-            return BaseToolMixin.create_tool_result(
-                status='error',
-                message=error_msg,
-                error_message=error_str,
-                start_time=start_time,
-                operation='delete_journey',
-                action='delete',
-                journey_id=journey_id
-            )
-
-
-# New enhanced operation handlers
-
-async def _handle_list_stages(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle list stages operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for list_stages action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        stages = await journey_service.list_stages(journey_id)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved {len(stages)} stages for journey {journey_id}',
-            start_time=start_time,
-            operation='list_stages',
-            journey_id=journey_id,
-            total_stages=len(stages),
-            stages=stages
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to list stages: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_add_stage(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle add stage operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for add_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_data:
-            error_msg = "stage_data is required for add_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        result = await journey_service.add_stage(journey_id, stage_data)
-        
-        # Remove conflicting keys to avoid duplicate parameter errors
-        result_clean = {k: v for k, v in result.items() if k not in ['message']}
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Stage added successfully to journey {journey_id}',
-            start_time=start_time,
-            operation='add_stage',
-            journey_id=journey_id,
-            **result_clean
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to add stage: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_update_stage(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    stage_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle update stage operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for update_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for update_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_data:
-            error_msg = "stage_data is required for update_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real stage management
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Stage {stage_id} updated successfully in journey {journey_id}',
-            start_time=start_time,
-            operation='update_stage',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            stage_data=stage_data
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to update stage: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_delete_stage(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle delete stage operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for delete_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for delete_stage action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real stage management
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Stage {stage_id} deleted successfully from journey {journey_id}',
-            start_time=start_time,
-            operation='delete_stage',
-            journey_id=journey_id,
-            stage_id=stage_id
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to delete stage: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_add_default_stages(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle add default stages operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for add_default_stages action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Create complete default stages
-        default_stages = _create_default_stage_definitions(journey_id)
-        
-        # First, check if the journey exists and if it has an incomplete stage list
-        journey = journey_service.journey_manager.get_journey_status(journey_id)
-        if journey and 'stages' in journey:
-            current_stages = journey['stages']
-            expected_stages = ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
-            
-            # If the journey has incomplete stages, reset it to the full default list
-            if len(current_stages) < len(expected_stages):
-                logger.info(f"Journey {journey_id} has incomplete stages ({len(current_stages)} vs {len(expected_stages)}), updating to full default list")
-                
-                # Update the journey's stages list to include all default stages
-                journeys = journey_service.journey_manager._load_journeys()
-                if journey_id in journeys:
-                    journeys[journey_id]['stages'] = expected_stages
-                    journey_service.journey_manager._save_journeys(journeys)
-                    logger.info(f"Updated journey {journey_id} to have complete stages list: {expected_stages}")
-        
-        # Add each stage to the journey
-        stages_added = []
-        stages_failed = []
-        
-        for stage_data in default_stages:
-            try:
-                logger.info(f"Attempting to add default stage {stage_data['stage_id']} to journey {journey_id}")
-                result = await journey_service.add_stage(journey_id, stage_data)
-                stages_added.append(stage_data['stage_id'])
-                logger.info(f"Successfully added default stage {stage_data['stage_id']} to journey {journey_id}")
-            except Exception as e:
-                logger.error(f"Failed to add stage {stage_data['stage_id']}: {str(e)}")
-                logger.error(f"Stage data: {json.dumps(stage_data, indent=2, default=str)}")
-                logger.error(f"Exception details: {traceback.format_exc()}")
-                stages_failed.append(stage_data['stage_id'])
-        
-        # Verify stages were actually added by checking the journey
-        actual_stages = await journey_service.list_stages(journey_id)
-        actual_stage_ids = [stage.get('stage_id') for stage in actual_stages]
-        
-        # Count how many of the expected stages are actually present
-        expected_stage_ids = ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
-        actually_present = [stage_id for stage_id in expected_stage_ids if stage_id in actual_stage_ids]
-        
-        # Enhanced verification and feedback
-        verification_details = {
-            'stages_requested': len(default_stages),
-            'stages_attempted': len(stages_added) + len(stages_failed),
-            'stages_successfully_added': len(stages_added),
-            'stages_failed': len(stages_failed),
-            'stages_verified_present': len(actually_present),
-            'total_stages_after_operation': len(actual_stage_ids),
-            'expected_stages': expected_stage_ids,
-            'actually_present_stages': actually_present,
-            'all_current_stages': actual_stage_ids,
-            'failed_stages': stages_failed
-        }
-        
-        # Build comprehensive success message
-        success_message = f'Added {len(stages_added)} default stages to journey {journey_id}'
-        if stages_failed:
-            success_message += f' (failed to add {len(stages_failed)} stages: {", ".join(stages_failed)})'
-        
-        # Add verification info
-        success_message += f'. Verification: {len(actually_present)}/{len(expected_stage_ids)} expected stages present'
-        
-        # Log detailed information
-        logger.info(f'Default stages operation completed for journey {journey_id}:')
-        logger.info(f'  - Requested: {len(default_stages)} stages')
-        logger.info(f'  - Successfully added: {len(stages_added)} stages')
-        logger.info(f'  - Failed: {len(stages_failed)} stages')
-        logger.info(f'  - Verified present: {len(actually_present)} stages')
-        logger.info(f'  - Total stages after operation: {len(actual_stage_ids)}')
-        logger.info(f'  - Expected stages: {expected_stage_ids}')
-        logger.info(f'  - Actually present: {actually_present}')
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=success_message,
-            start_time=start_time,
-            operation='add_default_stages',
-            journey_id=journey_id,
-            stages_added=actually_present,  # Return what's actually present
-            verification_details=verification_details
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to add default stages: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-def _create_default_stage_definitions(journey_id: str) -> List[Dict[str, Any]]:
-    """Create complete default stage definitions for TMF ODA transformation journey."""
-    stages = [
-        # Stage 0: Raw Input Analysis
-        {
-            'stage_id': 'raw_analysis',
-            'name': 'Raw Input Analysis',
-            'description': 'Analyze the raw database schema and structure with AI-guided insights',
-            'order': 0,
-            'can_skip': False,
-            'estimated_duration': '15m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['field_mapping', 'contextual_recommendations', 'data_interpretation'],
-            'steps': [
-                {
-                    'id': 'schema_parsing',
-                    'name': 'Schema File Parsing',
-                    'description': 'Parse SQL schema files and extract structure',
-                    'order': 0,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations', 'data_interpretation'],
-                },
-                {
-                    'id': 'relationship_discovery',
-                    'name': 'Relationship Discovery',
-                    'description': 'Identify table relationships and foreign keys',
-                    'order': 1,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
-                },
-                {
-                    'id': 'data_type_analysis',
-                    'name': 'Data Type Analysis',
-                    'description': 'Analyze column data types and constraints',
-                    'order': 2,
-                    'estimated_duration': '3m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['data_interpretation'],
-                },
-                {
-                    'id': 'business_rules_extraction',
-                    'name': 'Business Rules Extraction',
-                    'description': 'Extract business rules from schema constraints',
-                    'order': 3,
-                    'estimated_duration': '2m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations', 'data_interpretation'],
-                },
-            ],
-        },
-        # Stage 1: Create Stripped Document/Schema
-        {
-            'stage_id': 'stripped_schema',
-            'name': 'Create Stripped Document',
-            'description': 'Create TMF-focused simplified schema removing unnecessary complexity',
-            'order': 1,
-            'can_skip': False,
-            'estimated_duration': '12m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['field_mapping', 'data_interpretation'],
-            'steps': [
-                {
-                    'id': 'schema_stripping',
-                    'name': 'Schema Stripping',
-                    'description': 'Remove non-TMF relevant tables and columns',
-                    'order': 0,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['data_interpretation'],
-                },
-                {
-                    'id': 'core_structure_extraction',
-                    'name': 'Core Structure Extraction',
-                    'description': 'Extract core business entities and relationships',
-                    'order': 1,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping', 'data_interpretation'],
-                },
-                {
-                    'id': 'data_model_simplification',
-                    'name': 'Data Model Simplification',
-                    'description': 'Simplify complex relationships for TMF mapping',
-                    'order': 2,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping'],
-                },
-            ],
-        },
-        # Stage 2: TMF Schema Mapping
-        {
-            'stage_id': 'tmf_mapping',
-            'name': 'TMF Schema Mapping',
-            'description': 'Map the stripped schema to TMF ODA standards and APIs',
-            'order': 2,
-            'can_skip': False,
-            'estimated_duration': '20m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['field_mapping', 'contextual_recommendations'],
-            'steps': [
-                {
-                    'id': 'tmf_api_matching',
-                    'name': 'TMF API Matching',
-                    'description': 'Match entities to appropriate TMF API specifications',
-                    'order': 0,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
-                },
-                {
-                    'id': 'attribute_mapping',
-                    'name': 'Attribute Mapping',
-                    'description': 'Map database columns to TMF API attributes',
-                    'order': 1,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping'],
-                },
-                {
-                    'id': 'relationship_mapping',
-                    'name': 'Relationship Mapping',
-                    'description': 'Map database relationships to TMF API relationships',
-                    'order': 2,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
-                },
-                {
-                    'id': 'api_coverage_analysis',
-                    'name': 'API Coverage Analysis',
-                    'description': 'Analyze coverage of TMF API specifications',
-                    'order': 3,
-                    'estimated_duration': '3m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-                {
-                    'id': 'gap_identification',
-                    'name': 'Gap Identification',
-                    'description': 'Identify gaps and missing mappings',
-                    'order': 4,
-                    'estimated_duration': '3m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-            ],
-        },
-        # Stage 3: Data Migration Planning
-        {
-            'stage_id': 'migration_planning',
-            'name': 'Data Migration Planning',
-            'description': 'Plan and prepare data migration strategies and scripts',
-            'order': 3,
-            'can_skip': False,
-            'estimated_duration': '18m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['contextual_recommendations', 'validation_rules'],
-            'steps': [
-                {
-                    'id': 'migration_strategy_planning',
-                    'name': 'Migration Strategy Planning',
-                    'description': 'Plan the overall data migration approach',
-                    'order': 0,
-                    'estimated_duration': '6m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-                {
-                    'id': 'etl_script_generation',
-                    'name': 'ETL Script Generation',
-                    'description': 'Generate Extract, Transform, Load scripts',
-                    'order': 1,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-                {
-                    'id': 'data_validation_rules',
-                    'name': 'Data Validation Rules',
-                    'description': 'Create validation rules for data integrity',
-                    'order': 2,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules'],
-                },
-                {
-                    'id': 'rollback_procedures',
-                    'name': 'Rollback Procedures',
-                    'description': 'Prepare rollback and recovery procedures',
-                    'order': 3,
-                    'estimated_duration': '3m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-            ],
-        },
-        # Stage 4: Data Migration
-        {
-            'stage_id': 'data_migration',
-            'name': 'Data Migration',
-            'description': 'Execute the actual data migration from legacy systems to TMF-compliant structure',
-            'order': 4,
-            'can_skip': False,
-            'estimated_duration': '25m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['data_interpretation', 'validation_rules'],
-            'steps': [
-                {
-                    'id': 'candidate_dataset_selection',
-                    'name': 'Candidate Dataset Selection',
-                    'description': 'Select and prepare candidate datasets for migration',
-                    'order': 0,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['data_interpretation'],
-                },
-                {
-                    'id': 'data_transfer',
-                    'name': 'Data Transfer',
-                    'description': 'Execute the actual data transfer from legacy to TMF systems',
-                    'order': 1,
-                    'estimated_duration': '12m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules'],
-                },
-                {
-                    'id': 'tmf_api_compliance_test',
-                    'name': 'TMF API Compliance Test',
-                    'description': 'Test migrated data against TMF API compliance requirements',
-                    'order': 2,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules'],
-                },
-                {
-                    'id': 'mark_completion',
-                    'name': 'Mark Completion',
-                    'description': 'Mark migration tasks as completed and update status',
-                    'order': 3,
-                    'estimated_duration': '3m',
-                    'ai_assisted': False,
-                    'applicable_rules': [],
-                },
-            ],
-        },
-        # Stage 5: Verification & Validation
-        {
-            'stage_id': 'verification_validation',
-            'name': 'Verification & Validation',
-            'description': 'Validate the mapping and migration results against TMF standards',
-            'order': 5,
-            'can_skip': False,
-            'estimated_duration': '22m',
-            'status': 'pending',
-            'second_brain_enabled': True,
-            'rule_types': ['contextual_recommendations', 'validation_rules'],
-            'steps': [
-                {
-                    'id': 'mapping_validation',
-                    'name': 'Mapping Validation',
-                    'description': 'Validate the accuracy of schema mappings',
-                    'order': 0,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules'],
-                },
-                {
-                    'id': 'api_compliance_check',
-                    'name': 'API Compliance Check',
-                    'description': 'Check compliance with TMF API standards',
-                    'order': 1,
-                    'estimated_duration': '5m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules', 'contextual_recommendations'],
-                },
-                {
-                    'id': 'data_integrity_verification',
-                    'name': 'Data Integrity Verification',
-                    'description': 'Verify data integrity and consistency',
-                    'order': 2,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['validation_rules'],
-                },
-                {
-                    'id': 'performance_assessment',
-                    'name': 'Performance Assessment',
-                    'description': 'Assess performance implications of the mapping',
-                    'order': 3,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-                {
-                    'id': 'final_report_generation',
-                    'name': 'Final Report Generation',
-                    'description': 'Generate comprehensive final report',
-                    'order': 4,
-                    'estimated_duration': '4m',
-                    'ai_assisted': True,
-                    'applicable_rules': ['contextual_recommendations'],
-                },
-            ],
-        },
-    ]
     
-    return stages
-
-
-async def _handle_list_rules(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    rule_type: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle list rules operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for list_rules action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        rules = await journey_service.list_rules(journey_id, stage_id, rule_type)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved {len(rules)} Second Brain rules for journey {journey_id}',
-            start_time=start_time,
-            operation='list_rules',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            rule_type=rule_type,
-            total_rules=len(rules),
-            rules=rules
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to list rules: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_add_rule(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    rule_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle add rule operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for add_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for add_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not rule_data:
-            error_msg = "rule_data is required for add_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Validate required fields
-        required_fields = ['title', 'description', 'type', 'priority', 'scope', 'content']
-        for field in required_fields:
-            if field not in rule_data:
-                raise ValueError(f"Missing required field in rule_data: {field}")
-        
-        # Generate rule ID if not provided
-        rule_id = rule_data.get('rule_id', f'rule-{stage_id}-{str(uuid.uuid4())[:8]}')
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Second Brain rule {rule_id} added successfully to stage {stage_id}',
-            start_time=start_time,
-            operation='add_rule',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            rule_id=rule_id,
-            rule_data=rule_data
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to add rule: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_update_rule(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    rule_id: Optional[str],
-    rule_data: Optional[Dict[str, Any]],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle update rule operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for update_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for update_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not rule_id:
-            error_msg = "rule_id is required for update_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not rule_data:
-            error_msg = "rule_data is required for update_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Second Brain rule {rule_id} updated successfully in stage {stage_id}',
-            start_time=start_time,
-            operation='update_rule',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            rule_id=rule_id,
-            rule_data=rule_data
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to update rule: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_delete_rule(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    rule_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle delete rule operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for delete_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for delete_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not rule_id:
-            error_msg = "rule_id is required for delete_rule action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Second Brain rule {rule_id} deleted successfully from stage {stage_id}',
-            start_time=start_time,
-            operation='delete_rule',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            rule_id=rule_id
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to delete rule: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_list_jobs(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    status_filter: Optional[str],
-    limit: int,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle list jobs operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for list_jobs action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        jobs = await journey_service.list_jobs(journey_id, stage_id, status_filter, limit)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved {len(jobs)} job executions for journey {journey_id}',
-            start_time=start_time,
-            operation='list_jobs',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            status_filter=status_filter,
-            total_jobs=len(jobs),
-            jobs=jobs
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to list jobs: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_get_job(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    include_all: bool,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle get job details operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for get_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for get_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Minimal implementation to avoid any datetime issues
-        end_time = datetime.now()
-        duration = (end_time - start_time).total_seconds()
-        
-        result = {
-            'status': 'success',
-            'message': f'Retrieved detailed information for job {job_id}',
-            'start_time': start_time.isoformat(),
-            'end_time': end_time.isoformat(),
-            'timestamp': end_time.isoformat(),
-            'duration_seconds': duration,
-            'operation': 'get_job',
-            'journey_id': journey_id,
-            'job_id': job_id,
-            'stage_id': 'raw_analysis',
-            'stage_name': 'Raw Input Analysis',
-            'job_status': 'completed',
-            'triggered_by': 'mcp-user',
-            'reason': 'Manual execution',
-            'job_start_time': '2024-12-17T12:00:00Z',
-            'job_end_time': '2024-12-17T12:15:00Z',
-            'job_duration': 900.0,
-            'progress': 100,
-            'current_step': 'completed',
-            'total_steps': 4,
-            'logs_available': True,
-            'reports_available': True
-        }
-        
-        if include_all:
-            result['execution_details'] = {
-                'retry_attempt': 0,
-                's3_config': {
-                    'logs_bucket': 'transformation-journey-logs',
-                    'reports_bucket': 'transformation-journey-reports'
-                },
-                'job_metrics': {
-                    'cpu_usage': 45.2,
-                    'memory_usage': 67.8,
-                    'items_processed': 1250
-                }
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
             }
             
-        return result
-        
-    except Exception as e:
-        error_msg = f'Failed to get job details: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_run_job(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    stage_id: Optional[str],
-    triggered_by: str,
-    reason: str,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle run job operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for run_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not stage_id:
-            error_msg = "stage_id is required for run_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Generate a new job ID
-        job_id = f'JOB-{str(uuid.uuid4()).upper().replace("-", "")[:12]}'
-        
-        # This would integrate with the real job execution system
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Job {job_id} started successfully for stage {stage_id}',
-            start_time=start_time,
-            operation='run_job',
-            journey_id=journey_id,
-            stage_id=stage_id,
-            job_id=job_id,
-            triggered_by=triggered_by,
-            reason=reason,
-            job_status='running',
-            estimated_duration='15m'
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to run job: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_cancel_job(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    reason: str,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle cancel job operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for cancel_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for cancel_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Job {job_id} cancelled successfully',
-            start_time=start_time,
-            operation='cancel_job',
-            journey_id=journey_id,
-            job_id=job_id,
-            cancellation_reason=reason,
-            job_status='cancelled'
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to cancel job: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_update_job_status(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    job_status: Optional[str],
-    progress: Optional[int],
-    current_step: Optional[str],
-    error_message: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle update job status operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for update_job_status action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for update_job_status action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_status:
-            error_msg = "job_status is required for update_job_status action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Validate job status
-        valid_statuses = ['pending', 'running', 'completed', 'failed', 'cancelled']
-        if job_status not in valid_statuses:
-            error_msg = f"Invalid job_status: {job_status}. Valid statuses: {valid_statuses}"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Validate progress if provided
-        if progress is not None and (progress < 0 or progress > 100):
-            error_msg = f"Invalid progress: {progress}. Must be between 0 and 100"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        update_data = {
-            'status': job_status,
-            'progress': progress,
-            'current_step': current_step,
-            'error_message': error_message,
-            'updated_at': datetime.now(timezone.utc).isoformat()
-        }
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Job {job_id} status updated successfully to {job_status}',
-            start_time=start_time,
-            operation='update_job_status',
-            journey_id=journey_id,
-            job_id=job_id,
-            update_data={k: v for k, v in update_data.items() if v is not None}
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to update job status: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_retry_job(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    triggered_by: str,
-    reason: str,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle retry job operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for retry_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for retry_job action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Generate new job ID for retry
-        new_job_id = f'JOB-{str(uuid.uuid4()).upper().replace("-", "")[:12]}'
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Job retry {new_job_id} created successfully (retry of {job_id})',
-            start_time=start_time,
-            operation='retry_job',
-            journey_id=journey_id,
-            original_job_id=job_id,
-            new_job_id=new_job_id,
-            triggered_by=triggered_by,
-            reason=reason,
-            job_status='pending'
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to retry job: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_get_job_metrics(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle get job metrics operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for get_job_metrics action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for get_job_metrics action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real metrics collection
-        metrics = {
-            'job_id': job_id,
-            'stage_id': 'raw_analysis',
-            'status': 'completed',
-            'duration': 900.0,
-            'log_metrics': {
-                'total_entries': 45,
-                'error_count': 0,
-                'warning_count': 2,
-                'info_count': 40,
-                'debug_count': 3
-            },
-            'performance_metrics': {
-                'avg_step_duration': 225.0,
-                'slowest_step': {'step': 'schema_parsing', 'duration': 300.0},
-                'fastest_step': {'step': 'business_rules_extraction', 'duration': 120.0},
-                'error_rate': 0.0
-            },
-            'resource_metrics': {
-                'cpu_usage_avg': 45.2,
-                'memory_usage_avg': 67.8,
-                'items_processed': 1250,
-                'data_processed_mb': 15.6
-            },
-            'timeline': [
-                {'timestamp': '2024-12-17T12:00:00Z', 'event': 'job_started'},
-                {'timestamp': '2024-12-17T12:05:00Z', 'event': 'schema_parsing_completed'},
-                {'timestamp': '2024-12-17T12:10:00Z', 'event': 'relationship_discovery_completed'},
-                {'timestamp': '2024-12-17T12:13:00Z', 'event': 'data_type_analysis_completed'},
-                {'timestamp': '2024-12-17T12:15:00Z', 'event': 'job_completed'}
-            ]
-        }
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved performance metrics for job {job_id}',
-            start_time=start_time,
-            operation='get_job_metrics',
-            journey_id=journey_id,
-            job_id=job_id,
-            metrics=metrics
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to get job metrics: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_get_job_timeline(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle get job timeline operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for get_job_timeline action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_id:
-            error_msg = "job_id is required for get_job_timeline action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real timeline collection
-        timeline = {
-            'job_id': job_id,
-            'total_events': 15,
-            'timeline': [
-                {
-                    'timestamp': '2024-12-17T12:00:00Z',
-                    'type': 'job_started',
-                    'description': 'Job started for stage raw_analysis',
-                    'details': {'triggered_by': 'mcp-user', 'reason': 'Manual execution'}
-                },
-                {
-                    'timestamp': '2024-12-17T12:01:00Z',
-                    'type': 'log_entry',
-                    'description': 'Schema parsing initiated',
-                    'details': {'level': 'info', 'step': 'schema_parsing'}
-                },
-                {
-                    'timestamp': '2024-12-17T12:05:00Z',
-                    'type': 'log_entry',
-                    'description': 'Schema parsing completed successfully',
-                    'details': {'level': 'info', 'step': 'schema_parsing'}
-                },
-                {
-                    'timestamp': '2024-12-17T12:15:00Z',
-                    'type': 'job_completed',
-                    'description': 'Job completed successfully',
-                    'details': {'final_status': 'completed', 'progress': 100}
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
                 }
-            ],
-            'generated_at': datetime.now(timezone.utc).isoformat()
-        }
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved execution timeline for job {job_id}',
-            start_time=start_time,
-            operation='get_job_timeline',
-            journey_id=journey_id,
-            job_id=job_id,
-            timeline=timeline
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to get job timeline: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_batch_cancel_jobs(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    job_ids: Optional[str],
-    reason: str,
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle batch cancel jobs operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for batch_cancel_jobs action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        if not job_ids:
-            error_msg = "job_ids is required for batch_cancel_jobs action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # Parse comma-separated job IDs
-        job_id_list = [job_id.strip() for job_id in job_ids.split(',') if job_id.strip()]
-        
-        if not job_id_list:
-            error_msg = "No valid job_ids provided"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real batch cancellation
-        results = {}
-        successful_cancellations = 0
-        
-        for job_id in job_id_list:
-            try:
-                # Simulate cancellation
-                results[job_id] = {'status': 'cancelled', 'success': True}
-                successful_cancellations += 1
-            except Exception as e:
-                results[job_id] = {'status': 'error', 'success': False, 'error': str(e)}
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Batch cancellation completed: {successful_cancellations}/{len(job_id_list)} jobs cancelled',
-            start_time=start_time,
-            operation='batch_cancel_jobs',
-            journey_id=journey_id,
-            total_jobs=len(job_id_list),
-            successful_cancellations=successful_cancellations,
-            failed_cancellations=len(job_id_list) - successful_cancellations,
-            cancellation_reason=reason,
-            results=results
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to batch cancel jobs: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_dashboard(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle dashboard view operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for dashboard action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with real dashboard data collection
-        dashboard_data = {
-            'journey_id': journey_id,
-            'journey_name': 'Customer Management Transformation',
-            'status': 'running',
-            'overall_progress': 65,
-            'current_stage': 'tmf_mapping',
-            'created_at': '2024-12-17T10:00:00Z',
-            'updated_at': '2024-12-17T12:00:00Z',
-            'summary': {
-                'total_stages': 6,
-                'completed_stages': 2,
-                'total_rules': 15,
-                'active_rules': 12,
-                'total_jobs': 8,
-                'running_jobs': 1,
-                'completed_jobs': 6,
-                'failed_jobs': 1
-            },
-            'recent_activity': [
-                {'timestamp': '2024-12-17T12:00:00Z', 'event': 'Job completed for raw_analysis'},
-                {'timestamp': '2024-12-17T11:45:00Z', 'event': 'Job started for stripped_schema'},
-                {'timestamp': '2024-12-17T11:30:00Z', 'event': 'Rule updated in raw_analysis stage'}
-            ],
-            'performance_metrics': {
-                'avg_job_duration': '12m',
-                'success_rate': 87.5,
-                'total_execution_time': '96m'
-            },
-            'health_status': {
-                'overall': 'healthy',
-                'jobs': 'running',
-                'logs': 'available',
-                'reports': 'available'
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
             }
-        }
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved dashboard for journey {journey_id}',
-            start_time=start_time,
-            operation='dashboard',
-            journey_id=journey_id,
-            dashboard=dashboard_data
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to get dashboard: {str(e)}'
-        logger.error(error_msg)
-        raise
-
-
-async def _handle_get_journey_summary(
-    ctx: Context,
-    journey_service: EnhancedJourneyService,
-    journey_id: Optional[str],
-    start_time: datetime
-) -> Dict[str, Any]:
-    """Handle get journey summary operation."""
-    try:
-        if not journey_id:
-            error_msg = "journey_id is required for get_journey_summary action"
-            logger.error(error_msg)
-            raise ValueError(error_msg)
-        
-        # This would integrate with comprehensive summary generation
-        summary = {
-            'journey_id': journey_id,
-            'basic_info': {
-                'name': 'Customer Management Transformation',
-                'description': 'Transform customer database to TMF ODA compliance',
-                'oda_component_type': 'customer-management',
-                'status': 'running',
-                'priority': 'high',
-                'created_by': 'mcp-user',
-                'created_at': '2024-12-17T10:00:00Z'
-            },
-            'progress_summary': {
-                'overall_progress': 65,
-                'current_stage': 'tmf_mapping',
-                'current_stage_progress': 30,
-                'estimated_completion': '2024-12-17T16:00:00Z'
-            },
-            'execution_summary': {
-                'total_stages': 6,
-                'completed_stages': 2,
-                'pending_stages': 4,
-                'total_jobs': 8,
-                'running_jobs': 1,
-                'completed_jobs': 6,
-                'failed_jobs': 1,
-                'total_execution_time': '96m'
-            },
-            'second_brain_summary': {
-                'total_rules': 15,
-                'active_rules': 12,
-                'inactive_rules': 3,
-                'rules_by_type': {
-                    'field_mapping': 8,
-                    'contextual_recommendations': 4,
-                    'data_interpretation': 3
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
                 }
-            },
-            'logs_and_reports_summary': {
-                'total_log_entries': 245,
-                'error_entries': 3,
-                'warning_entries': 12,
-                'reports_generated': 6,
-                'latest_report': '2024-12-17T11:30:00Z'
-            },
-            'recommendations': [
-                {
-                    'type': 'performance',
-                    'priority': 'medium',
-                    'message': 'Consider optimizing schema_parsing step for better performance'
-                },
-                {
-                    'type': 'error_handling',
-                    'priority': 'low',
-                    'message': 'Review warnings in relationship_discovery step'
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
                 }
-            ]
-        }
-        
-        return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Retrieved comprehensive summary for journey {journey_id}',
-            start_time=start_time,
-            operation='get_journey_summary',
-            journey_id=journey_id,
-            summary=summary
-        )
-        
-    except Exception as e:
-        error_msg = f'Failed to get journey summary: {str(e)}'
-        logger.error(error_msg)
-        raise 
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        """List job executions for a journey."""
+        try:
+            if stage_id:
+                # Get jobs for specific stage using parent class manager
+                jobs = self.manager.get_stage_jobs(journey_id, stage_id, limit)
+            else:
+                # Get all jobs for journey
+                jobs = self.manager.get_stage_jobs(journey_id, '', limit)
+            
+            # Apply status filter if specified
+            if status_filter:
+                jobs = [job for job in jobs if job.get('status') == status_filter]
+            
+            return jobs[:limit]
+        except Exception as e:
+            logger.error(f'Failed to list jobs: {str(e)}')
+            raise
+    
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
+            raise
+    
+    async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new stage to a journey."""
+        try:
+            # Normalize field names to handle both camelCase and snake_case
+            normalized_stage_data = {}
+            for key, value in stage_data.items():
+                # Convert camelCase to snake_case for consistency
+                if key == 'stageId':
+                    normalized_stage_data['stage_id'] = value
+                elif key == 'canSkip':
+                    normalized_stage_data['can_skip'] = value
+                elif key == 'estimatedDuration':
+                    normalized_stage_data['estimated_duration'] = value
+                elif key == 'secondBrainEnabled':
+                    normalized_stage_data['second_brain_enabled'] = value
+                else:
+                    normalized_stage_data[key] = value
+            
+            # Validate required fields
+            required_fields = ['stage_id', 'name', 'description']
+            for field in required_fields:
+                if field not in normalized_stage_data:
+                    raise ValueError(f"Missing required field: {field}")
+            
+            # Add stage to the journey using the real manager
+            stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
+            
+            return {
+                'stage_id': stage_id,
+                'message': f'Stage {stage_id} added successfully to journey {journey_id}',
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
+            }
+        except Exception as e:
+            logger.error(f'Failed to add stage: {str(e)}')
+            raise
+    
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None) -> List[Dict[str, Any]]:
+        """List Second Brain rules for a journey."""
+        try:
+            # Get actual DynamoDB table connection (similar to simple_journeys_tool)
+            import os
+            import sys
+            import boto3
+            from decimal import Decimal
+            
+            # Setup DynamoDB connection
+            try:
+                current_dir = os.path.dirname(os.path.abspath(__file__))
+                scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+                if scripts_dir not in sys.path:
+                    sys.path.insert(0, scripts_dir)
+                
+                try:
+                    from aws_client_utils import create_aws_resource
+                    role_arn = os.environ.get('AWS_ROLE_ARN')
+                    if role_arn:
+                        dynamodb = create_aws_resource('dynamodb', role_arn=role_arn)
+                    else:
+                        dynamodb = boto3.resource('dynamodb')
+                except ImportError:
+                    dynamodb = boto3.resource('dynamodb')
+                
+                table = dynamodb.Table('TransformationSystem')
+                
+            except Exception as e:
+                logger.error(f'Failed to setup DynamoDB connection: {str(e)}')
+                return []
+            
+            # Clean journey ID
+            clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+            
+            # Query rules using GSI1 following manage_journey.py pattern
+            response = table.query(
+                IndexName='GSI1',
+                KeyConditionExpression='GSI1PK = :pk',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}#RULES'
+                }
+            )
+            
+            rules = []
+            for item in response['Items']:
+                rule_data = item['Data']
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                
+                rules.append({
+                    'rule_id': rule_data.get('ruleId'),
+                    'stage_id': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data.get('content', {}),
+                    'context': rule_data.get('context', {}),
+                    'metadata': rule_data.get('metadata', {})
+                })
+            
+            return rules
+            
+        except Exception as e:
+            logger.error(f'Failed to list rules: {str(e)}')
+            raise
+    
+    async def list_jobs(self, journey_id: str, stage_id: Optional[str] = None,
+                       status_filter: Optional[str] = None, limit: int = 50): pass
