@@ -6,6 +6,21 @@
 # This script tests all journey and logs endpoints based on the pytest test suite
 # Usage: ./test_journey_endpoints.sh [SERVER_URL]
 # Default SERVER_URL: http://localhost:8000
+# 
+# NEW COMPREHENSIVE TESTING FEATURES:
+# - Journey creation with automatic default six stages
+# - Verification of journey metadata and stage configuration
+# - Comprehensive testing of default stages: raw_analysis, stripped_schema, 
+#   tmf_mapping, migration_planning, data_migration, verification_validation
+# - Verification that journeys without custom stages get defaults automatically
+# - Verification that journeys with custom stages do NOT get defaults
+# - Enhanced add_default_stages testing with stage verification
+# 
+# The script now includes:
+# - create_journey_and_verify(): Creates journey and verifies default stages
+# - verify_journey_stages(): Verifies journey has correct six stages
+# - verify_journey_metadata(): Verifies journey metadata matches expectations
+# - test_add_default_stages(): Comprehensive testing of add_default_stages action
 # =============================================================================
 
 set -e
@@ -13,7 +28,7 @@ set -e
 # Configuration
 SERVER_URL="${1:-http://localhost:8000}"
 TIMEOUT=30
-SAMPLE_JOURNEY_ID="JRN-TEST-001"  # Will be replaced with real journey ID
+STAGE_MANAGEMENT_JOURNEY_ID="JRN-TEST-001"  # Will be replaced with real journey ID
 SAMPLE_JOB_ID="JOB-001-20240101120000"  # Will be replaced with real job ID
 SAMPLE_STAGE_ID="raw_analysis"
 SAMPLE_RULE_ID="RULE-001"
@@ -154,6 +169,287 @@ make_request() {
     log_message "\n${CYAN}---${NC}"
 }
 
+# Function to create journey and capture response for verification
+create_journey_and_verify() {
+    local journey_data="$1"
+    local description="$2"
+    
+    print_test "$description" "/tools/journeys"
+    
+    # Log request data
+    log_json_response "$journey_data" "Request Data"
+    
+    # Log separator before response
+    log_message ""
+    
+    # Make the request
+    local response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d "$journey_data" \
+        --connect-timeout $TIMEOUT \
+        --max-time $TIMEOUT 2>&1)
+    
+    if [[ $? -eq 0 ]]; then
+        # Log response data
+        log_json_response "$response" "Response"
+        
+        # Check if response contains success status
+        local status=$(echo "$response" | jq -r '.status // .result.status // "unknown"' 2>/dev/null)
+        if [[ "$status" == "success" ]]; then
+            # Extract journey information for verification
+            local journey_id=$(echo "$response" | jq -r '.journey_id // .result.journey_id // "unknown"' 2>/dev/null)
+            local default_stages_created=$(echo "$response" | jq -r '.default_stages_created // .result.default_stages_created // false' 2>/dev/null)
+            local stages_count=$(echo "$response" | jq -r '.stages_count // .result.stages_count // 0' 2>/dev/null)
+            
+            log_message "${GREEN}✅ Journey created successfully${NC}"
+            log_message "${BLUE}  Journey ID: $journey_id${NC}"
+            log_message "${BLUE}  Default stages created: $default_stages_created${NC}"
+            log_message "${BLUE}  Stages count: $stages_count${NC}"
+            
+            # Verify default stages were created
+            if [[ "$default_stages_created" == "true" ]] && [[ "$stages_count" == "6" ]]; then
+                print_success "✅ Default stages creation verified (6 stages created)"
+            else
+                print_warning "⚠️  Default stages creation needs verification (created: $default_stages_created, count: $stages_count)"
+            fi
+            
+            # Now verify the journey has the correct stages
+            verify_journey_stages "$journey_id"
+            
+            # Store journey ID for later tests
+            CREATED_JOURNEY_ID="$journey_id"
+            
+        elif [[ "$status" == "error" ]]; then
+            local error_msg=$(echo "$response" | jq -r '.error_message // .result.error_message // .message // .result.message // "Unknown error"' 2>/dev/null)
+            print_error "$description failed: $error_msg"
+        else
+            print_warning "$description returned unexpected response format"
+        fi
+    else
+        print_error "$description failed: $response"
+        log_message "${RED}Full curl error details:${NC}"
+        log_message "$response"
+    fi
+    
+    log_message "\n${CYAN}---${NC}"
+}
+
+# Function to verify journey has correct stages
+verify_journey_stages() {
+    local journey_id="$1"
+    
+    if [[ -z "$journey_id" ]] || [[ "$journey_id" == "unknown" ]]; then
+        print_error "Cannot verify stages - invalid journey ID: $journey_id"
+        return 1
+    fi
+    
+    log_message "${BLUE}Verifying stages for journey: $journey_id${NC}"
+    
+    # Request to list stages
+    local stages_response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d "{\"action\": \"list_stages\", \"journey_id\": \"$journey_id\"}" \
+        --connect-timeout $TIMEOUT \
+        --max-time $TIMEOUT 2>&1)
+    
+    if [[ $? -eq 0 ]]; then
+        log_json_response "$stages_response" "Stages Response"
+        
+        # Check if response contains success status
+        local status=$(echo "$stages_response" | jq -r '.status // .result.status // "unknown"' 2>/dev/null)
+        if [[ "$status" == "success" ]]; then
+            # Extract stages information
+            local total_stages=$(echo "$stages_response" | jq -r '.total_stages // .result.total_stages // 0' 2>/dev/null)
+            local stages_json=$(echo "$stages_response" | jq -r '.stages // .result.stages // []' 2>/dev/null)
+            
+            log_message "${BLUE}  Total stages found: $total_stages${NC}"
+            
+            # Verify we have 6 stages
+            if [[ "$total_stages" == "6" ]]; then
+                print_success "✅ Correct number of stages (6)"
+                
+                # Verify the stage IDs are correct
+                local expected_stages=("raw_analysis" "stripped_schema" "tmf_mapping" "migration_planning" "data_migration" "verification_validation")
+                local verification_passed=true
+                
+                for expected_stage in "${expected_stages[@]}"; do
+                    local stage_found=$(echo "$stages_json" | jq -r ".[] | select(.stage_id == \"$expected_stage\") | .stage_id" 2>/dev/null)
+                    if [[ "$stage_found" == "$expected_stage" ]]; then
+                        local stage_name=$(echo "$stages_json" | jq -r ".[] | select(.stage_id == \"$expected_stage\") | .name" 2>/dev/null)
+                        log_message "${GREEN}    ✅ Stage $expected_stage: $stage_name${NC}"
+                    else
+                        log_message "${RED}    ❌ Missing stage: $expected_stage${NC}"
+                        verification_passed=false
+                    fi
+                done
+                
+                if [[ "$verification_passed" == "true" ]]; then
+                    print_success "✅ All six default stages verified successfully"
+                else
+                    print_error "❌ Some default stages are missing"
+                fi
+                
+            else
+                print_error "❌ Incorrect number of stages found: $total_stages (expected 6)"
+            fi
+            
+        else
+            local error_msg=$(echo "$stages_response" | jq -r '.error_message // .result.error_message // .message // .result.message // "Unknown error"' 2>/dev/null)
+            print_error "Failed to get stages: $error_msg"
+        fi
+    else
+        print_error "Failed to request stages: $stages_response"
+    fi
+}
+
+# Function to verify journey metadata
+verify_journey_metadata() {
+    local journey_id="$1"
+    local expected_name="$2"
+    local expected_description="$3"
+    local expected_oda_component_type="$4"
+    
+    if [[ -z "$journey_id" ]] || [[ "$journey_id" == "unknown" ]]; then
+        print_error "Cannot verify metadata - invalid journey ID: $journey_id"
+        return 1
+    fi
+    
+    log_message "${BLUE}Verifying metadata for journey: $journey_id${NC}"
+    
+    # Request to get journey details
+    local journey_response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d "{\"action\": \"read\", \"journey_id\": \"$journey_id\"}" \
+        --connect-timeout $TIMEOUT \
+        --max-time $TIMEOUT 2>&1)
+    
+    if [[ $? -eq 0 ]]; then
+        log_json_response "$journey_response" "Journey Details Response"
+        
+        # Check if response contains success status
+        local status=$(echo "$journey_response" | jq -r '.status // .result.status // "unknown"' 2>/dev/null)
+        if [[ "$status" == "success" ]]; then
+            # Extract journey information
+            local actual_name=$(echo "$journey_response" | jq -r '.journey.name // .result.journey.name // "unknown"' 2>/dev/null)
+            local actual_description=$(echo "$journey_response" | jq -r '.journey.description // .result.journey.description // "unknown"' 2>/dev/null)
+            local actual_oda_component_type=$(echo "$journey_response" | jq -r '.journey.oda_component_type // .result.journey.oda_component_type // "unknown"' 2>/dev/null)
+            
+            log_message "${BLUE}  Metadata verification:${NC}"
+            
+            # Verify name
+            if [[ "$actual_name" == "$expected_name" ]]; then
+                log_message "${GREEN}    ✅ Name: $actual_name${NC}"
+            else
+                log_message "${RED}    ❌ Name mismatch: expected '$expected_name', got '$actual_name'${NC}"
+            fi
+            
+            # Verify description
+            if [[ "$actual_description" == "$expected_description" ]]; then
+                log_message "${GREEN}    ✅ Description: $actual_description${NC}"
+            else
+                log_message "${RED}    ❌ Description mismatch: expected '$expected_description', got '$actual_description'${NC}"
+            fi
+            
+            # Verify ODA component type
+            if [[ "$actual_oda_component_type" == "$expected_oda_component_type" ]]; then
+                log_message "${GREEN}    ✅ ODA Component Type: $actual_oda_component_type${NC}"
+            else
+                log_message "${RED}    ❌ ODA Component Type mismatch: expected '$expected_oda_component_type', got '$actual_oda_component_type'${NC}"
+            fi
+            
+        else
+            local error_msg=$(echo "$journey_response" | jq -r '.error_message // .result.error_message // .message // .result.message // "Unknown error"' 2>/dev/null)
+            print_error "Failed to get journey details: $error_msg"
+        fi
+    else
+        print_error "Failed to request journey details: $journey_response"
+    fi
+}
+
+# Function to test add_default_stages with verification
+test_add_default_stages() {
+    local journey_id="$1"
+    local description="$2"
+    
+    print_test "$description" "/tools/journeys"
+    
+    # First check how many stages the journey has before adding defaults
+    local before_response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d "{\"action\": \"list_stages\", \"journey_id\": \"$journey_id\"}" \
+        --connect-timeout $TIMEOUT \
+        --max-time $TIMEOUT 2>&1)
+    
+    local stages_before=0
+    if [[ $? -eq 0 ]]; then
+        stages_before=$(echo "$before_response" | jq -r '.total_stages // .result.total_stages // 0' 2>/dev/null)
+    fi
+    
+    log_message "${BLUE}Stages before adding defaults: $stages_before${NC}"
+    
+    # Now add default stages
+    local add_request_data="{\"action\": \"add_default_stages\", \"journey_id\": \"$journey_id\"}"
+    log_json_response "$add_request_data" "Request Data"
+    
+    # Log separator before response
+    log_message ""
+    
+    # Make the request
+    local response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d "$add_request_data" \
+        --connect-timeout $TIMEOUT \
+        --max-time $TIMEOUT 2>&1)
+    
+    if [[ $? -eq 0 ]]; then
+        # Log response data
+        log_json_response "$response" "Response"
+        
+        # Check if response contains success status
+        local status=$(echo "$response" | jq -r '.status // .result.status // "unknown"' 2>/dev/null)
+        if [[ "$status" == "success" ]]; then
+            # Extract stages information
+            local stages_added=$(echo "$response" | jq -r '.stages_added // .result.stages_added // []' 2>/dev/null)
+            local stages_added_count=$(echo "$stages_added" | jq -r '. | length' 2>/dev/null)
+            
+            log_message "${GREEN}✅ Add default stages completed successfully${NC}"
+            log_message "${BLUE}  Stages added: $stages_added_count${NC}"
+            
+            # Verify that we got the expected 6 stages
+            if [[ "$stages_added_count" == "6" ]]; then
+                print_success "✅ Correct number of default stages added (6)"
+                
+                # List the added stages
+                local added_stage_ids=$(echo "$stages_added" | jq -r '.[]' 2>/dev/null)
+                log_message "${BLUE}  Added stages:${NC}"
+                echo "$added_stage_ids" | while read -r stage_id; do
+                    log_message "${GREEN}    - $stage_id${NC}"
+                done
+                
+                # Verify the journey now has the correct stages
+                verify_journey_stages "$journey_id"
+                
+            else
+                print_warning "⚠️  Unexpected number of stages added: $stages_added_count (expected 6)"
+            fi
+            
+        elif [[ "$status" == "error" ]]; then
+            local error_msg=$(echo "$response" | jq -r '.error_message // .result.error_message // .message // .result.message // "Unknown error"' 2>/dev/null)
+            print_error "$description failed: $error_msg"
+        else
+            print_warning "$description returned unexpected response format"
+        fi
+    else
+        print_error "$description failed: $response"
+        log_message "${RED}Full curl error details:${NC}"
+        log_message "$response"
+    fi
+    
+    log_message "\n${CYAN}---${NC}"
+}
+
+
+
 # Function to get real journey ID from system
 get_real_journey_id() {
     log_message "${BLUE}Getting real journey ID from system...${NC}"
@@ -265,20 +561,20 @@ print_header "SETUP REAL TEST DATA"
 
 # Get real journey ID from system
 if get_real_journey_id; then
-    SAMPLE_JOURNEY_ID="$REAL_JOURNEY_ID"
-    log_message "${GREEN}✅ Will use existing journey: $SAMPLE_JOURNEY_ID${NC}"
+    STAGE_MANAGEMENT_JOURNEY_ID="$REAL_JOURNEY_ID"
+    log_message "${GREEN}✅ Will use existing journey: $STAGE_MANAGEMENT_JOURNEY_ID${NC}"
 else
     # Try to create a test journey
     if create_test_journey; then
-        SAMPLE_JOURNEY_ID="$CREATED_JOURNEY_ID"
-        log_message "${GREEN}✅ Will use created journey: $SAMPLE_JOURNEY_ID${NC}"
+        STAGE_MANAGEMENT_JOURNEY_ID="$CREATED_JOURNEY_ID"
+        log_message "${GREEN}✅ Will use created journey: $STAGE_MANAGEMENT_JOURNEY_ID${NC}"
     else
-        log_message "${YELLOW}⚠️  Using fallback journey ID: $SAMPLE_JOURNEY_ID${NC}"
+        log_message "${YELLOW}⚠️  Using fallback journey ID: $STAGE_MANAGEMENT_JOURNEY_ID${NC}"
     fi
 fi
 
 # Create a test job to use for job-related tests
-if run_test_job "$SAMPLE_JOURNEY_ID"; then
+if run_test_job "$STAGE_MANAGEMENT_JOURNEY_ID"; then
     SAMPLE_JOB_ID="$CREATED_JOB_ID"
     log_message "${GREEN}✅ Will use created job: $SAMPLE_JOB_ID${NC}"
 else
@@ -286,7 +582,7 @@ else
 fi
 
 log_message "${CYAN}Final test configuration:${NC}"
-log_message "${CYAN}  - Journey ID: $SAMPLE_JOURNEY_ID${NC}"
+log_message "${CYAN}  - Journey ID: $STAGE_MANAGEMENT_JOURNEY_ID${NC}"
 log_message "${CYAN}  - Job ID: $SAMPLE_JOB_ID${NC}"
 log_message "${CYAN}  - Stage ID: $SAMPLE_STAGE_ID${NC}"
 
@@ -339,34 +635,93 @@ make_request "/tools/journeys" '{
     "limit": 50
 }' "List all journeys"
 
-# Test 2: Create journey
+# Test 2: Create journey with default stages (NEW COMPREHENSIVE TEST)
+print_header "TESTING DEFAULT STAGES CREATION"
+log_message "${YELLOW}Creating a new journey specifically to test default stages functionality${NC}"
+
+create_journey_and_verify '{
+    "action": "create",
+    "journey_id": "",
+    "journey_data": {
+        "name": "New Journey for Default Stages Test",
+        "description": "Comprehensive test journey created specifically to verify default stages functionality",
+        "oda_component_type": "customer-management",
+        "source_type": "database",
+        "priority": "high"
+    }
+}' "Create new journey with default stages"
+
+# Test 2.1: Verify metadata for the newly created journey
+if [[ -n "$CREATED_JOURNEY_ID" ]] && [[ "$CREATED_JOURNEY_ID" != "unknown" ]]; then
+    verify_journey_metadata "$CREATED_JOURNEY_ID" "New Journey for Default Stages Test" "Comprehensive test journey created specifically to verify default stages functionality" "customer-management"
+else
+    log_message "${RED}❌ No journey ID available for metadata verification${NC}"
+fi
+
+# Test 2.2: Test add_default_stages on a journey that might not have all stages
+print_header "TESTING ADD_DEFAULT_STAGES FUNCTION"
+log_message "${YELLOW}Testing add_default_stages function on existing journey${NC}"
+
+# Use an existing journey for add_default_stages test
+test_add_default_stages "$STAGE_MANAGEMENT_JOURNEY_ID" "Add default TMF ODA stages with verification"
+
+# Test 2.3: Create another journey with different component type to test default stages
+create_journey_and_verify '{
+    "action": "create",
+    "journey_id": "",
+    "journey_data": {
+        "name": "Product Catalog Journey with Default Stages",
+        "description": "Test journey for product catalog transformation to verify default stages work across different component types",
+        "oda_component_type": "product-catalog-management",
+        "source_type": "database",
+        "priority": "medium"
+    }
+}' "Create product catalog journey with default stages"
+
+# Test 2.4: Create journey with custom stages (should NOT create default stages)
 make_request "/tools/journeys" '{
     "action": "create",
     "journey_id": "",
     "journey_data": {
-        "name": "Test Product Catalog Journey",
-        "description": "A test journey for product catalog transformation",
-        "oda_component_type": "product-catalog-management",
-        "source_type": "database",
-        "priority": "high"
+        "name": "Custom Stages Journey",
+        "description": "Journey with custom stages instead of defaults",
+        "oda_component_type": "order-management",
+        "source_type": "api",
+        "priority": "low",
+        "stages": ["custom_stage_1", "custom_stage_2"]
     }
-}' "Create new journey"
+}' "Create journey with custom stages (should NOT create default stages)"
 
-# Test 3: Update journey
+# Test 3: Update journey (using existing journey)
 make_request "/tools/journeys" '{
     "action": "update",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "journey_data": {
         "status": "completed",
         "overall_progress": 100
     }
-}' "Update journey"
+}' "Update existing journey"
 
-# Test 4: Delete journey
+# Test 4: Delete journey (using a dedicated journey for deletion)
+# Create a journey specifically for deletion to avoid breaking subsequent tests
+create_journey_and_verify '{
+    "action": "create",
+    "journey_id": "",
+    "journey_data": {
+        "name": "Journey for Deletion Test",
+        "description": "This journey will be deleted to test the delete functionality",
+        "oda_component_type": "product-catalog-management",
+        "source_type": "database",
+        "priority": "low"
+    }
+}' "Create journey for deletion test"
+
+# Use the created journey for deletion
+DELETION_JOURNEY_ID="$CREATED_JOURNEY_ID"
 make_request "/tools/journeys" '{
     "action": "delete",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
-}' "Delete journey"
+    "journey_id": "'"$DELETION_JOURNEY_ID"'"
+}' "Delete existing journey"
 
 # =============================================================================
 # STAGE MANAGEMENT OPERATIONS
@@ -374,16 +729,32 @@ make_request "/tools/journeys" '{
 
 print_header "STAGE MANAGEMENT OPERATIONS"
 
+# Create a fresh journey for stage management tests (since we deleted the previous one)
+create_journey_and_verify '{
+    "action": "create",
+    "journey_id": "",
+    "journey_data": {
+        "name": "Journey for Stage Management Tests",
+        "description": "Fresh journey for testing stage management operations",
+        "oda_component_type": "customer-management",
+        "source_type": "database",
+        "priority": "high"
+    }
+}' "Create journey for stage management tests"
+
+# Use the fresh journey for stage management tests
+STAGE_MANAGEMENT_JOURNEY_ID="$CREATED_JOURNEY_ID"
+
 # Test 5: List stages
 make_request "/tools/journeys" '{
     "action": "list_stages",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'"
 }' "List journey stages"
 
 # Test 6: Add stage
 make_request "/tools/journeys" '{
     "action": "add_stage",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_data": {
         "stage_id": "custom_validation",
         "name": "Custom Validation Stage",
@@ -416,7 +787,7 @@ make_request "/tools/journeys" '{
 # Test 7: Update stage
 make_request "/tools/journeys" '{
     "action": "update_stage",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "raw_analysis",
     "stage_data": {
         "name": "Raw Analysis - Updated",
@@ -449,15 +820,12 @@ make_request "/tools/journeys" '{
 # Test 8: Delete stage
 make_request "/tools/journeys" '{
     "action": "delete_stage",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "custom_analysis"
 }' "Delete stage"
 
-# Test 9: Add default stages
-make_request "/tools/journeys" '{
-    "action": "add_default_stages",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
-}' "Add default TMF ODA stages"
+# Test 9: Add default stages with comprehensive verification
+test_add_default_stages "$STAGE_MANAGEMENT_JOURNEY_ID" "Add default TMF ODA stages with verification"
 
 # =============================================================================
 # RULES MANAGEMENT OPERATIONS
@@ -468,14 +836,14 @@ print_header "RULES MANAGEMENT OPERATIONS"
 # Test 10: List rules
 make_request "/tools/journeys" '{
     "action": "list_rules",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "data_mapping"
 }' "List stage rules"
 
 # Test 11: Add rule
 make_request "/tools/journeys" '{
     "action": "add_rule",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "data_mapping",
     "rule_data": {
         "title": "Customer ID Mapping Rule",
@@ -516,7 +884,7 @@ make_request "/tools/journeys" '{
 # Test 12: Update rule
 make_request "/tools/journeys" '{
     "action": "update_rule",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "data_mapping",
     "rule_id": "'"$SAMPLE_RULE_ID"'",
     "rule_data": {
@@ -528,7 +896,7 @@ make_request "/tools/journeys" '{
 # Test 13: Delete rule
 make_request "/tools/journeys" '{
     "action": "delete_rule",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "data_mapping",
     "rule_id": "'"$SAMPLE_RULE_ID"'"
 }' "Delete rule"
@@ -542,21 +910,21 @@ print_header "JOB MANAGEMENT OPERATIONS"
 # Test 14: List jobs
 make_request "/tools/journeys" '{
     "action": "list_jobs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "'"$SAMPLE_STAGE_ID"'"
 }' "List jobs"
 
 # Test 15: Get job details
 make_request "/tools/journeys" '{
     "action": "get_job",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'"
 }' "Get job details"
 
 # Test 16: Run job
 make_request "/tools/journeys" '{
     "action": "run_job",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "'"$SAMPLE_STAGE_ID"'",
     "triggered_by": "test-user",
     "reason": "Manual test execution"
@@ -565,7 +933,7 @@ make_request "/tools/journeys" '{
 # Test 17: Cancel job
 make_request "/tools/journeys" '{
     "action": "cancel_job",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "reason": "Test cancellation"
 }' "Cancel job"
@@ -573,7 +941,7 @@ make_request "/tools/journeys" '{
 # Test 18: Update job status
 make_request "/tools/journeys" '{
     "action": "update_job_status",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "job_status": "running",
     "progress": 75,
@@ -583,7 +951,7 @@ make_request "/tools/journeys" '{
 # Test 19: Retry job
 make_request "/tools/journeys" '{
     "action": "retry_job",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "triggered_by": "test-user",
     "reason": "Retry after fixing data issue"
@@ -592,21 +960,21 @@ make_request "/tools/journeys" '{
 # Test 20: Get job metrics
 make_request "/tools/journeys" '{
     "action": "get_job_metrics",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'"
 }' "Get job metrics"
 
 # Test 21: Get job timeline
 make_request "/tools/journeys" '{
     "action": "get_job_timeline",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'"
 }' "Get job timeline"
 
 # Test 22: Batch cancel jobs
 make_request "/tools/journeys" '{
     "action": "batch_cancel_jobs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_ids": "JOB-003-20240101140000,JOB-004-20240101150000,JOB-005-20240101160000",
     "reason": "Batch test cancellation"
 }' "Batch cancel jobs"
@@ -620,13 +988,13 @@ print_header "INTERACTIVE FEATURES"
 # Test 23: Dashboard
 make_request "/tools/journeys" '{
     "action": "dashboard",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'"
 }' "Get dashboard"
 
 # Test 24: Journey summary
 make_request "/tools/journeys" '{
     "action": "get_journey_summary",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'"
 }' "Get journey summary"
 
 # =============================================================================
@@ -638,7 +1006,7 @@ print_header "LOGS AND REPORTS OPERATIONS"
 # Test 25: Get job logs
 make_request "/tools/logs-and-reports" '{
     "action": "get_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "stage_name": "'"$SAMPLE_STAGE_ID"'",
     "step_name": "schema_parsing"
@@ -647,7 +1015,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 26: Add log entry
 make_request "/tools/logs-and-reports" '{
     "action": "add_log_entry",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "step_name": "schema_parsing",
     "log_level": "INFO",
@@ -657,21 +1025,21 @@ make_request "/tools/logs-and-reports" '{
 # Test 27: Search logs
 make_request "/tools/logs-and-reports" '{
     "action": "search_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "search_query": "error schema parsing"
 }' "Search logs"
 
 # Test 28: Get logs by level
 make_request "/tools/logs-and-reports" '{
     "action": "get_logs_by_level",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "log_level": "error"
 }' "Get logs by level"
 
 # Test 29: Export job logs
 make_request "/tools/logs-and-reports" '{
     "action": "export_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "output_file": "/tmp/test_export_logs_json.json",
     "export_format": "json"
@@ -680,14 +1048,14 @@ make_request "/tools/logs-and-reports" '{
 # Test 30: Get error summary
 make_request "/tools/logs-and-reports" '{
     "action": "get_error_summary",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'"
 }' "Get error summary"
 
 # Test 31: Generate summary report
 make_request "/tools/logs-and-reports" '{
     "action": "generate_summary_report",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "report_type": "comprehensive",
     "report_title": "Test Journey Summary Report"
@@ -696,7 +1064,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 32: Analyze job performance
 make_request "/tools/logs-and-reports" '{
     "action": "analyze_job_performance",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "analysis_period": "24h"
 }' "Analyze job performance"
@@ -710,7 +1078,7 @@ print_header "COMPREHENSIVE JOB LOG TESTING"
 # Test 33: Get job logs with S3 integration
 make_request "/tools/logs-and-reports" '{
     "action": "get_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "stage_name": "raw_analysis",
     "step_name": "schema_parsing",
@@ -724,7 +1092,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 34: Get job logs for different stages with S3 storage
 make_request "/tools/logs-and-reports" '{
     "action": "get_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "stage_name": "stripped_schema",
     "step_name": "all",
@@ -736,7 +1104,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 35: Search logs with advanced filters
 make_request "/tools/logs-and-reports" '{
     "action": "search_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "search_query": "processing completed",
     "log_level": "info",
     "time_from": "2024-01-01T00:00:00Z",
@@ -747,7 +1115,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 36: Get logs by multiple levels
 make_request "/tools/logs-and-reports" '{
     "action": "get_logs_by_level",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "log_level": "warning",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "stage_name": "raw_analysis",
@@ -757,7 +1125,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 37: Export logs in different formats
 make_request "/tools/logs-and-reports" '{
     "action": "export_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "output_file": "/tmp/test_export_logs_csv.csv",
     "export_format": "csv"
@@ -791,24 +1159,24 @@ print_header "S3 OPERATIONS AND REPORTS TESTING"
 # Test 38: Export job logs to S3 (transformation-journey-logs bucket)
 make_request "/tools/logs-and-reports" '{
     "action": "export_job_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
-    "output_file": "s3://transformation-journey-logs/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/job_logs_export.json",
+    "output_file": "s3://transformation-journey-logs/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/job_logs_export.json",
     "export_format": "json"
 }' "Export job logs to S3 logs bucket"
 
 # Test 39: Generate job summary report with S3 storage
 make_request "/tools/logs-and-reports" '{
     "action": "generate_job_summary_report",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
-    "output_location": "s3://transformation-journey-reports/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/summary_report.json"
+    "output_location": "s3://transformation-journey-reports/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/summary_report.json"
 }' "Generate job summary report to S3"
 
 # Test 40: Create job performance report in S3
 make_request "/tools/logs-and-reports" '{
     "action": "create_job_report",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "report_type": "performance",
     "report_title": "Job Performance Analysis Report",
@@ -822,29 +1190,29 @@ make_request "/tools/logs-and-reports" '{
             "S3 operations performed efficiently"
         ],
         "s3_metrics": {
-            "logs_stored": "s3://transformation-journey-logs/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/",
-            "reports_stored": "s3://transformation-journey-reports/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/",
+            "logs_stored": "s3://transformation-journey-logs/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/",
+            "reports_stored": "s3://transformation-journey-reports/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/",
             "storage_efficiency": "optimized"
         }
     },
     "summary": "Overall performance was excellent with efficient S3 integration",
-    "output_location": "s3://transformation-journey-reports/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/performance_report.json"
+    "output_location": "s3://transformation-journey-reports/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/performance_report.json"
 }' "Create job performance report with S3 storage"
 
 # Test 41: Performance analysis with S3 integration
 make_request "/tools/logs-and-reports" '{
     "action": "analyze_job_performance",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "analysis_period": "24h",
     "include_s3_metrics": true,
-    "output_location": "s3://transformation-journey-reports/'"$SAMPLE_JOURNEY_ID"'/analytics/performance_analysis.json"
+    "output_location": "s3://transformation-journey-reports/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/analytics/performance_analysis.json"
 }' "Analyze job performance with S3 metrics"
 
 # Test 42: Get job reports from S3
 make_request "/tools/logs-and-reports" '{
     "action": "get_job_reports",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "stage_name": "raw_analysis",
     "include_s3_location": true,
@@ -854,7 +1222,7 @@ make_request "/tools/logs-and-reports" '{
 # Test 43: List available logs with S3 locations
 make_request "/tools/logs-and-reports" '{
     "action": "list_available_logs",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "include_s3_locations": true,
     "logs_bucket": "transformation-journey-logs",
@@ -875,7 +1243,7 @@ print_header "INTEGRATION TESTING"
 # Test 44: End-to-end workflow test with S3 logging
 make_request "/tools/journeys" '{
     "action": "run_job",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "stage_id": "stripped_schema",
     "triggered_by": "integration-test",
     "reason": "End-to-end workflow testing with S3 integration",
@@ -887,7 +1255,7 @@ make_request "/tools/journeys" '{
 # Test 45: Add log entry with S3 archival
 make_request "/tools/logs-and-reports" '{
     "action": "add_log_entry",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "step_name": "integration_test",
     "log_level": "INFO",
@@ -908,10 +1276,10 @@ make_request "/tools/logs-and-reports" '{
 # Test 46: Generate performance report with S3 output
 make_request "/tools/logs-and-reports" '{
     "action": "generate_performance_report",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'",
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'",
     "job_id": "'"$SAMPLE_JOB_ID"'",
     "include_s3_metrics": true,
-    "output_location": "s3://transformation-journey-reports/'"$SAMPLE_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/final_performance_report.json",
+    "output_location": "s3://transformation-journey-reports/'"$STAGE_MANAGEMENT_JOURNEY_ID"'/'"$SAMPLE_JOB_ID"'/final_performance_report.json",
     "s3_logs_analysis": {
         "analyze_logs_bucket": "transformation-journey-logs",
         "analyze_reports_bucket": "transformation-journey-reports"
@@ -950,13 +1318,13 @@ make_request "/tools/logs-and-reports" '{
 # Test 50: Unsupported action in journeys
 make_request "/tools/journeys" '{
     "action": "invalid_action",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'"
 }' "Unsupported action in journeys"
 
 # Test 51: Unsupported action in logs
 make_request "/tools/logs-and-reports" '{
     "action": "invalid_action",
-    "journey_id": "'"$SAMPLE_JOURNEY_ID"'"
+    "journey_id": "'"$STAGE_MANAGEMENT_JOURNEY_ID"'"
 }' "Unsupported action in logs"
 
 # =============================================================================

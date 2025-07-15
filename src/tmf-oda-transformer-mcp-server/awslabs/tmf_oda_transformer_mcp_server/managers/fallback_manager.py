@@ -58,32 +58,58 @@ class FallbackJourneyManager:
             },
             'stripped_schema': {
                 'name': 'Stripped Schema',
-                'description': 'Strip non-essential elements and extract core structure',
+                'description': 'Create TMF-focused simplified schema',
                 'order': 2,
                 'steps': [
-                    {'id': 'schema_stripping', 'name': 'Schema Stripping', 'description': 'Remove non-essential elements'},
-                    {'id': 'core_structure_extraction', 'name': 'Core Structure Extraction', 'description': 'Extract core TMF ODA structure'},
-                    {'id': 'data_model_simplification', 'name': 'Data Model Simplification', 'description': 'Simplify data models'}
+                    {'id': 'schema_stripping', 'name': 'Schema Stripping', 'description': 'Remove non-TMF relevant elements'},
+                    {'id': 'core_structure_extraction', 'name': 'Core Structure Extraction', 'description': 'Extract core business entities'},
+                    {'id': 'data_model_simplification', 'name': 'Data Model Simplification', 'description': 'Simplify complex relationships'}
                 ]
             },
-            'data_mapping': {
-                'name': 'Data Mapping',
-                'description': 'Map data structures to TMF ODA specifications',
+            'tmf_mapping': {
+                'name': 'TMF Schema Mapping',
+                'description': 'Map stripped schema to TMF ODA APIs',
                 'order': 3,
                 'steps': [
-                    {'id': 'field_mapping', 'name': 'Field Mapping', 'description': 'Map fields to TMF ODA fields'},
-                    {'id': 'transformation_rules', 'name': 'Transformation Rules', 'description': 'Apply transformation rules'},
-                    {'id': 'validation_mapping', 'name': 'Validation Mapping', 'description': 'Validate mappings'}
+                    {'id': 'tmf_api_matching', 'name': 'TMF API Matching', 'description': 'Match entities to TMF API specifications'},
+                    {'id': 'attribute_mapping', 'name': 'Attribute Mapping', 'description': 'Map database columns to TMF API attributes'},
+                    {'id': 'relationship_mapping', 'name': 'Relationship Mapping', 'description': 'Map relationships to TMF API relationships'},
+                    {'id': 'api_coverage_analysis', 'name': 'API Coverage Analysis', 'description': 'Analyze TMF API coverage'},
+                    {'id': 'gap_identification', 'name': 'Gap Identification', 'description': 'Identify mapping gaps'}
                 ]
             },
-            'compliance_validation': {
-                'name': 'Compliance Validation',
-                'description': 'Validate compliance with TMF ODA specifications',
+            'migration_planning': {
+                'name': 'Data Migration Planning',
+                'description': 'Plan and prepare data migration strategies',
                 'order': 4,
                 'steps': [
-                    {'id': 'compliance_check', 'name': 'Compliance Check', 'description': 'Check TMF ODA compliance'},
-                    {'id': 'report_generation', 'name': 'Report Generation', 'description': 'Generate compliance report'},
-                    {'id': 'recommendations', 'name': 'Recommendations', 'description': 'Generate improvement recommendations'}
+                    {'id': 'migration_strategy_planning', 'name': 'Migration Strategy Planning', 'description': 'Plan overall migration approach'},
+                    {'id': 'etl_script_generation', 'name': 'ETL Script Generation', 'description': 'Generate Extract, Transform, Load scripts'},
+                    {'id': 'data_validation_rules', 'name': 'Data Validation Rules', 'description': 'Create validation rules for data integrity'},
+                    {'id': 'rollback_procedures', 'name': 'Rollback Procedures', 'description': 'Prepare rollback and recovery procedures'}
+                ]
+            },
+            'data_migration': {
+                'name': 'Data Migration',
+                'description': 'Execute actual data migration from legacy to TMF-compliant structure',
+                'order': 5,
+                'steps': [
+                    {'id': 'candidate_dataset_selection', 'name': 'Candidate Dataset Selection', 'description': 'Select and prepare candidate datasets'},
+                    {'id': 'data_transfer', 'name': 'Data Transfer', 'description': 'Execute data transfer from legacy to TMF systems'},
+                    {'id': 'tmf_api_compliance_test', 'name': 'TMF API Compliance Test', 'description': 'Test migrated data against TMF API compliance'},
+                    {'id': 'mark_completion', 'name': 'Mark Completion', 'description': 'Mark migration tasks as completed'}
+                ]
+            },
+            'verification_validation': {
+                'name': 'Verification & Validation',
+                'description': 'Validate mapping and migration results against TMF standards',
+                'order': 6,
+                'steps': [
+                    {'id': 'mapping_validation', 'name': 'Mapping Validation', 'description': 'Validate accuracy of schema mappings'},
+                    {'id': 'api_compliance_check', 'name': 'API Compliance Check', 'description': 'Check compliance with TMF API standards'},
+                    {'id': 'data_integrity_verification', 'name': 'Data Integrity Verification', 'description': 'Verify data integrity and consistency'},
+                    {'id': 'performance_assessment', 'name': 'Performance Assessment', 'description': 'Assess performance implications'},
+                    {'id': 'final_report_generation', 'name': 'Final Report Generation', 'description': 'Generate comprehensive final report'}
                 ]
             }
         }
@@ -103,11 +129,11 @@ class FallbackJourneyManager:
                     'created_at': '2024-01-01T10:00:00Z',
                     'updated_at': '2024-01-01T16:30:00Z',
                     'overall_progress': 100,
-                    'current_stage': 'compliance_validation',
+                    'current_stage': 'verification_validation',
                     'created_by': 'demo-user',
                     'oda_component_type': 'product-catalog-management',
                     'source_type': 'database',
-                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                    'stages': ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
                 },
                 'JRN-DEMO-002': {
                     'journey_id': 'JRN-DEMO-002',
@@ -117,11 +143,11 @@ class FallbackJourneyManager:
                     'created_at': '2024-01-02T14:30:00Z',
                     'updated_at': '2024-01-02T15:45:00Z',
                     'overall_progress': 65,
-                    'current_stage': 'data_mapping',
+                    'current_stage': 'tmf_mapping',
                     'created_by': 'demo-user',
                     'oda_component_type': 'customer-management',
                     'source_type': 'schema',
-                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                    'stages': ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
                 },
                 'JRN-DEMO-003': {
                     'journey_id': 'JRN-DEMO-003',
@@ -131,11 +157,11 @@ class FallbackJourneyManager:
                     'created_at': '2024-01-03T09:15:00Z',
                     'updated_at': '2024-01-03T12:00:00Z',
                     'overall_progress': 100,
-                    'current_stage': 'compliance_validation',
+                    'current_stage': 'verification_validation',
                     'created_by': 'demo-user',
                     'oda_component_type': 'order-management',
                     'source_type': 'api',
-                    'stages': ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation']
+                    'stages': ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
                 }
             }
             with open(self.journeys_file, 'w') as f:
@@ -409,7 +435,7 @@ class FallbackJourneyManager:
             'created_by': journey_data.get('created_by', 'mcp-server'),
             'oda_component_type': journey_data.get('oda_component_type', 'product-catalog-management'),
             'source_type': journey_data.get('source_type', 'database'),
-            'stages': journey_data.get('stages', ['raw_analysis', 'stripped_schema', 'data_mapping', 'compliance_validation'])
+            'stages': journey_data.get('stages', ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation'])
         }
         
         # Save journey

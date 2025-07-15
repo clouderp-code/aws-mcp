@@ -26,6 +26,7 @@ This module provides comprehensive journey lifecycle management including:
 
 import json
 import uuid
+import traceback
 from datetime import datetime, timezone
 from typing import Dict, Any, Optional, List, Union
 
@@ -824,47 +825,60 @@ class EnhancedJourneyService(JourneyService):
     
     def __init__(self):
         super().__init__()
+        # Initialize with FallbackJourneyManager for real stage management
+        from ..managers.fallback_manager import FallbackJourneyManager
+        self.journey_manager = FallbackJourneyManager()
         logger.info("Enhanced journey service initialized with comprehensive lifecycle management")
     
     async def list_stages(self, journey_id: str) -> List[Dict[str, Any]]:
         """List all stages for a journey."""
         try:
-            # This would integrate with the real stage management system
-            # For now, return mock data structure
-            return [
-                {
-                    'stage_id': 'raw_analysis',
-                    'name': 'Raw Input Analysis', 
-                    'description': 'Analyze the raw database schema and structure',
-                    'order': 0,
-                    'status': 'completed',
-                    'estimated_duration': '15m',
-                    'can_skip': False,
-                    'second_brain_enabled': True,
-                    'rule_types': ['field_mapping', 'contextual_recommendations'],
-                    'steps': [
-                        {'id': 'schema_parsing', 'name': 'Schema File Parsing', 'status': 'completed'},
-                        {'id': 'relationship_discovery', 'name': 'Relationship Discovery', 'status': 'completed'}
-                    ]
-                },
-                {
-                    'stage_id': 'stripped_schema',
-                    'name': 'Create Stripped Document',
-                    'description': 'Create TMF-focused simplified schema',
-                    'order': 1,
-                    'status': 'pending',
-                    'estimated_duration': '12m',
-                    'can_skip': False,
-                    'second_brain_enabled': True,
-                    'rule_types': ['field_mapping', 'data_interpretation'],
-                    'steps': [
-                        {'id': 'schema_stripping', 'name': 'Schema Stripping', 'status': 'pending'},
-                        {'id': 'core_structure_extraction', 'name': 'Core Structure Extraction', 'status': 'pending'}
-                    ]
-                }
-            ]
+            # Ensure journey exists in local storage first
+            await self._ensure_journey_synchronized(journey_id)
+            
+            # Use real journey manager instead of mock data
+            stages = self.journey_manager.get_journey_stages(journey_id)
+            return stages
         except Exception as e:
             logger.error(f'Failed to list stages: {str(e)}')
+            raise
+
+    async def _ensure_journey_synchronized(self, journey_id: str):
+        """Ensure journey exists in local storage, sync from DynamoDB if needed."""
+        try:
+            # Check if journey exists in local storage
+            fallback_journey = self.journey_manager.get_journey_status(journey_id)
+            if fallback_journey:
+                return  # Already synchronized
+            
+            # Get journey from DynamoDB using the parent class manager
+            journey = self.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f'Journey {journey_id} not found in DynamoDB')
+            
+            # Create synchronized entry in local storage
+            logger.info(f'Synchronizing journey {journey_id} from DynamoDB to local storage')
+            journeys = self.journey_manager._load_journeys()
+            
+            journeys[journey_id] = {
+                'journey_id': journey_id,
+                'name': journey.get('name', 'Unknown'),
+                'description': journey.get('description', ''),
+                'status': journey.get('status', 'pending'),
+                'created_at': journey.get('createdAt', journey.get('created_at')),
+                'updated_at': journey.get('updatedAt', journey.get('updated_at')),
+                'overall_progress': journey.get('overallProgress', journey.get('overall_progress', 0)),
+                'current_stage': journey.get('currentStageId', journey.get('current_stage', 'raw_analysis')),
+                'created_by': journey.get('createdBy', journey.get('created_by', 'mcp-server')),
+                'oda_component_type': journey.get('odaComponentType', journey.get('oda_component_type', 'customer-management')),
+                'source_type': journey.get('sourceType', journey.get('source_type', 'database')),
+                'stages': []  # Start with empty stages
+            }
+            self.journey_manager._save_journeys(journeys)
+            logger.info(f'Successfully synchronized journey {journey_id} to local storage')
+            
+        except Exception as e:
+            logger.error(f'Failed to synchronize journey {journey_id}: {str(e)}')
             raise
     
     async def add_stage(self, journey_id: str, stage_data: Dict[str, Any]) -> Dict[str, Any]:
@@ -891,13 +905,74 @@ class EnhancedJourneyService(JourneyService):
                 if field not in normalized_stage_data:
                     raise ValueError(f"Missing required field: {field}")
             
-            # This would integrate with the real stage management system
+            # Add stage to the journey using the real manager
             stage_id = normalized_stage_data['stage_id']
+            
+            # Ensure the journey is synchronized between DynamoDB and local storage
+            await self._ensure_journey_synchronized(journey_id)
+            
+            logger.info(f'Adding stage {stage_id} to journey {journey_id}')
+            
+            # Update the journey manager's stage definitions with the new stage
+            self.journey_manager.stage_definitions[stage_id] = {
+                'name': normalized_stage_data['name'],
+                'description': normalized_stage_data['description'],
+                'order': normalized_stage_data.get('order', len(journey.get('stages', []))),
+                'steps': normalized_stage_data.get('steps', [])
+            }
+            
+            # Update the journey's stages list properly
+            journeys = self.journey_manager._load_journeys()
+            logger.info(f'Loaded journeys: {list(journeys.keys())}')
+            
+            # Since we ensured the journey exists above, we can use the journey_id directly
+            if journey_id in journeys:
+                logger.info(f'Found journey: {journey_id}')
+                if 'stages' not in journeys[journey_id]:
+                    journeys[journey_id]['stages'] = []
+                if stage_id not in journeys[journey_id]['stages']:
+                    journeys[journey_id]['stages'].append(stage_id)
+                    self.journey_manager._save_journeys(journeys)
+                    logger.info(f'Stage {stage_id} added to journey {journey_id} stages list: {journeys[journey_id]["stages"]}')
+                else:
+                    logger.info(f'Stage {stage_id} already exists in journey {journey_id}')
+            else:
+                logger.error(f'Journey {journey_id} not found in loaded journeys: {list(journeys.keys())}')
+                # This shouldn't happen since we created the entry above, but let's handle it
+                journeys[journey_id] = {
+                    'journey_id': journey_id,
+                    'name': journey.get('name', 'Unknown'),
+                    'status': journey.get('status', 'pending'),
+                    'stages': [stage_id]
+                }
+                self.journey_manager._save_journeys(journeys)
+                logger.info(f'Created new journey entry and added stage {stage_id} to journey {journey_id}')
+            
+            # Verify the stage was actually added
+            updated_stages = self.journey_manager.get_journey_stages(journey_id)
+            stage_ids = [s.get('stage_id') for s in updated_stages]
+            
+            logger.info(f'After adding stage {stage_id}: total stages = {len(updated_stages)}, stage_ids = {stage_ids}')
+            
+            if stage_id not in stage_ids:
+                logger.error(f'Stage {stage_id} was not properly added to journey {journey_id}')
+                logger.error(f'Expected stage_ids to contain {stage_id}, but got: {stage_ids}')
+                
+                # Try to debug the issue
+                logger.error(f'Journey data after update: {journeys.get(journey_id, {})}')
+                raise ValueError(f'Failed to add stage {stage_id} to journey {journey_id}')
+            
+            logger.info(f'Successfully added stage {stage_id} to journey {journey_id}. Total stages: {len(updated_stages)}')
             
             return {
                 'stage_id': stage_id,
                 'message': f'Stage {stage_id} added successfully to journey {journey_id}',
-                'stage_data': normalized_stage_data
+                'stage_data': normalized_stage_data,
+                'verification': {
+                    'stage_added': True,
+                    'total_stages': len(updated_stages),
+                    'all_stage_ids': stage_ids
+                }
             }
         except Exception as e:
             logger.error(f'Failed to add stage: {str(e)}')
@@ -1101,16 +1176,68 @@ async def _handle_journey_create(
             journey_data=create_data.model_dump()
         )
         
-        return BaseToolMixin.create_tool_result(
+        # Check if user provided custom stages or we should use defaults
+        default_stages = ["raw_analysis", "stripped_schema", "tmf_mapping", "migration_planning", "data_migration", "verification_validation"]
+        stages_to_create = create_data.stages or default_stages
+        
+        # If using default stages or if stages list matches default, create the complete stage definitions
+        default_stages_created = False
+        stages_count = 0
+        verification_details = None
+        
+        if stages_to_create == default_stages:
+            logger.info(f"Creating default stages for journey {created_journey_id}")
+            try:
+                # Create complete default stages automatically
+                default_stages_result = await _handle_add_default_stages(ctx, journey_service, created_journey_id, start_time)
+                default_stages_created = True
+                
+                # Get verification details from the result
+                if default_stages_result and 'verification_details' in default_stages_result:
+                    verification_details = default_stages_result['verification_details']
+                    stages_count = verification_details.get('stages_verified_present', 0)
+                    logger.info(f"Successfully created default stages for journey {created_journey_id}. Verified: {stages_count} stages")
+                else:
+                    stages_count = len(default_stages)  # Fallback to expected count
+                    logger.info(f"Successfully created default stages for journey {created_journey_id}. Expected: {stages_count} stages")
+                
+            except Exception as e:
+                logger.warning(f"Failed to create default stages for journey {created_journey_id}: {str(e)}")
+                default_stages_created = False
+                stages_count = 0
+        else:
+            # User provided custom stages - don't create defaults
+            logger.info(f"User provided custom stages for journey {created_journey_id}: {stages_to_create}")
+            default_stages_created = False
+            stages_count = 0
+        
+        # Prepare response message
+        base_message = f'Journey {created_journey_id} created successfully'
+        if default_stages_created:
+            base_message += f' with {stages_count} default stages'
+        
+        data_source_suffix = (' (DynamoDB - simulated)' if journey_service.get_data_source() == 'DynamoDB' else '')
+        message = base_message + data_source_suffix
+        
+        # Build comprehensive result
+        result = BaseToolMixin.create_tool_result(
             status='success',
-            message=f'Journey {created_journey_id} created successfully' + (' (DynamoDB - simulated)' if journey_service.get_data_source() == 'DynamoDB' else ''),
+            message=message,
             start_time=start_time,
             operation='create_journey',
             action='create',
             journey_id=created_journey_id,
             journey_data=create_data.model_dump(),
+            default_stages_created=default_stages_created,
+            stages_count=stages_count,
             data_source=journey_service.get_data_source()
         )
+        
+        # Add verification details if available
+        if verification_details:
+            result['stage_verification'] = verification_details
+        
+        return result
         
     except Exception as e:
         error_msg = f'Failed to create journey: {str(e)}'
@@ -1448,25 +1575,413 @@ async def _handle_add_default_stages(
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # This would add the default TMF ODA transformation stages
-        default_stages = [
-            'raw_analysis', 'stripped_schema', 'tmf_mapping', 
-            'migration_planning', 'data_migration', 'verification_validation'
-        ]
+        # Create complete default stages
+        default_stages = _create_default_stage_definitions(journey_id)
+        
+        # First, check if the journey exists and if it has an incomplete stage list
+        journey = journey_service.journey_manager.get_journey_status(journey_id)
+        if journey and 'stages' in journey:
+            current_stages = journey['stages']
+            expected_stages = ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
+            
+            # If the journey has incomplete stages, reset it to the full default list
+            if len(current_stages) < len(expected_stages):
+                logger.info(f"Journey {journey_id} has incomplete stages ({len(current_stages)} vs {len(expected_stages)}), updating to full default list")
+                
+                # Update the journey's stages list to include all default stages
+                journeys = journey_service.journey_manager._load_journeys()
+                if journey_id in journeys:
+                    journeys[journey_id]['stages'] = expected_stages
+                    journey_service.journey_manager._save_journeys(journeys)
+                    logger.info(f"Updated journey {journey_id} to have complete stages list: {expected_stages}")
+        
+        # Add each stage to the journey
+        stages_added = []
+        stages_failed = []
+        
+        for stage_data in default_stages:
+            try:
+                logger.info(f"Attempting to add default stage {stage_data['stage_id']} to journey {journey_id}")
+                result = await journey_service.add_stage(journey_id, stage_data)
+                stages_added.append(stage_data['stage_id'])
+                logger.info(f"Successfully added default stage {stage_data['stage_id']} to journey {journey_id}")
+            except Exception as e:
+                logger.error(f"Failed to add stage {stage_data['stage_id']}: {str(e)}")
+                logger.error(f"Stage data: {json.dumps(stage_data, indent=2, default=str)}")
+                logger.error(f"Exception details: {traceback.format_exc()}")
+                stages_failed.append(stage_data['stage_id'])
+        
+        # Verify stages were actually added by checking the journey
+        actual_stages = await journey_service.list_stages(journey_id)
+        actual_stage_ids = [stage.get('stage_id') for stage in actual_stages]
+        
+        # Count how many of the expected stages are actually present
+        expected_stage_ids = ['raw_analysis', 'stripped_schema', 'tmf_mapping', 'migration_planning', 'data_migration', 'verification_validation']
+        actually_present = [stage_id for stage_id in expected_stage_ids if stage_id in actual_stage_ids]
+        
+        # Enhanced verification and feedback
+        verification_details = {
+            'stages_requested': len(default_stages),
+            'stages_attempted': len(stages_added) + len(stages_failed),
+            'stages_successfully_added': len(stages_added),
+            'stages_failed': len(stages_failed),
+            'stages_verified_present': len(actually_present),
+            'total_stages_after_operation': len(actual_stage_ids),
+            'expected_stages': expected_stage_ids,
+            'actually_present_stages': actually_present,
+            'all_current_stages': actual_stage_ids,
+            'failed_stages': stages_failed
+        }
+        
+        # Build comprehensive success message
+        success_message = f'Added {len(stages_added)} default stages to journey {journey_id}'
+        if stages_failed:
+            success_message += f' (failed to add {len(stages_failed)} stages: {", ".join(stages_failed)})'
+        
+        # Add verification info
+        success_message += f'. Verification: {len(actually_present)}/{len(expected_stage_ids)} expected stages present'
+        
+        # Log detailed information
+        logger.info(f'Default stages operation completed for journey {journey_id}:')
+        logger.info(f'  - Requested: {len(default_stages)} stages')
+        logger.info(f'  - Successfully added: {len(stages_added)} stages')
+        logger.info(f'  - Failed: {len(stages_failed)} stages')
+        logger.info(f'  - Verified present: {len(actually_present)} stages')
+        logger.info(f'  - Total stages after operation: {len(actual_stage_ids)}')
+        logger.info(f'  - Expected stages: {expected_stage_ids}')
+        logger.info(f'  - Actually present: {actually_present}')
         
         return BaseToolMixin.create_tool_result(
             status='success',
-            message=f'Added {len(default_stages)} default stages to journey {journey_id}',
+            message=success_message,
             start_time=start_time,
             operation='add_default_stages',
             journey_id=journey_id,
-            stages_added=default_stages
+            stages_added=actually_present,  # Return what's actually present
+            verification_details=verification_details
         )
         
     except Exception as e:
         error_msg = f'Failed to add default stages: {str(e)}'
         logger.error(error_msg)
         raise
+
+
+def _create_default_stage_definitions(journey_id: str) -> List[Dict[str, Any]]:
+    """Create complete default stage definitions for TMF ODA transformation journey."""
+    stages = [
+        # Stage 0: Raw Input Analysis
+        {
+            'stage_id': 'raw_analysis',
+            'name': 'Raw Input Analysis',
+            'description': 'Analyze the raw database schema and structure with AI-guided insights',
+            'order': 0,
+            'can_skip': False,
+            'estimated_duration': '15m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['field_mapping', 'contextual_recommendations', 'data_interpretation'],
+            'steps': [
+                {
+                    'id': 'schema_parsing',
+                    'name': 'Schema File Parsing',
+                    'description': 'Parse SQL schema files and extract structure',
+                    'order': 0,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations', 'data_interpretation'],
+                },
+                {
+                    'id': 'relationship_discovery',
+                    'name': 'Relationship Discovery',
+                    'description': 'Identify table relationships and foreign keys',
+                    'order': 1,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
+                },
+                {
+                    'id': 'data_type_analysis',
+                    'name': 'Data Type Analysis',
+                    'description': 'Analyze column data types and constraints',
+                    'order': 2,
+                    'estimated_duration': '3m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['data_interpretation'],
+                },
+                {
+                    'id': 'business_rules_extraction',
+                    'name': 'Business Rules Extraction',
+                    'description': 'Extract business rules from schema constraints',
+                    'order': 3,
+                    'estimated_duration': '2m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations', 'data_interpretation'],
+                },
+            ],
+        },
+        # Stage 1: Create Stripped Document/Schema
+        {
+            'stage_id': 'stripped_schema',
+            'name': 'Create Stripped Document',
+            'description': 'Create TMF-focused simplified schema removing unnecessary complexity',
+            'order': 1,
+            'can_skip': False,
+            'estimated_duration': '12m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['field_mapping', 'data_interpretation'],
+            'steps': [
+                {
+                    'id': 'schema_stripping',
+                    'name': 'Schema Stripping',
+                    'description': 'Remove non-TMF relevant tables and columns',
+                    'order': 0,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['data_interpretation'],
+                },
+                {
+                    'id': 'core_structure_extraction',
+                    'name': 'Core Structure Extraction',
+                    'description': 'Extract core business entities and relationships',
+                    'order': 1,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping', 'data_interpretation'],
+                },
+                {
+                    'id': 'data_model_simplification',
+                    'name': 'Data Model Simplification',
+                    'description': 'Simplify complex relationships for TMF mapping',
+                    'order': 2,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping'],
+                },
+            ],
+        },
+        # Stage 2: TMF Schema Mapping
+        {
+            'stage_id': 'tmf_mapping',
+            'name': 'TMF Schema Mapping',
+            'description': 'Map the stripped schema to TMF ODA standards and APIs',
+            'order': 2,
+            'can_skip': False,
+            'estimated_duration': '20m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['field_mapping', 'contextual_recommendations'],
+            'steps': [
+                {
+                    'id': 'tmf_api_matching',
+                    'name': 'TMF API Matching',
+                    'description': 'Match entities to appropriate TMF API specifications',
+                    'order': 0,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
+                },
+                {
+                    'id': 'attribute_mapping',
+                    'name': 'Attribute Mapping',
+                    'description': 'Map database columns to TMF API attributes',
+                    'order': 1,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping'],
+                },
+                {
+                    'id': 'relationship_mapping',
+                    'name': 'Relationship Mapping',
+                    'description': 'Map database relationships to TMF API relationships',
+                    'order': 2,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['field_mapping', 'contextual_recommendations'],
+                },
+                {
+                    'id': 'api_coverage_analysis',
+                    'name': 'API Coverage Analysis',
+                    'description': 'Analyze coverage of TMF API specifications',
+                    'order': 3,
+                    'estimated_duration': '3m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+                {
+                    'id': 'gap_identification',
+                    'name': 'Gap Identification',
+                    'description': 'Identify gaps and missing mappings',
+                    'order': 4,
+                    'estimated_duration': '3m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+            ],
+        },
+        # Stage 3: Data Migration Planning
+        {
+            'stage_id': 'migration_planning',
+            'name': 'Data Migration Planning',
+            'description': 'Plan and prepare data migration strategies and scripts',
+            'order': 3,
+            'can_skip': False,
+            'estimated_duration': '18m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['contextual_recommendations', 'validation_rules'],
+            'steps': [
+                {
+                    'id': 'migration_strategy_planning',
+                    'name': 'Migration Strategy Planning',
+                    'description': 'Plan the overall data migration approach',
+                    'order': 0,
+                    'estimated_duration': '6m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+                {
+                    'id': 'etl_script_generation',
+                    'name': 'ETL Script Generation',
+                    'description': 'Generate Extract, Transform, Load scripts',
+                    'order': 1,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+                {
+                    'id': 'data_validation_rules',
+                    'name': 'Data Validation Rules',
+                    'description': 'Create validation rules for data integrity',
+                    'order': 2,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules'],
+                },
+                {
+                    'id': 'rollback_procedures',
+                    'name': 'Rollback Procedures',
+                    'description': 'Prepare rollback and recovery procedures',
+                    'order': 3,
+                    'estimated_duration': '3m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+            ],
+        },
+        # Stage 4: Data Migration
+        {
+            'stage_id': 'data_migration',
+            'name': 'Data Migration',
+            'description': 'Execute the actual data migration from legacy systems to TMF-compliant structure',
+            'order': 4,
+            'can_skip': False,
+            'estimated_duration': '25m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['data_interpretation', 'validation_rules'],
+            'steps': [
+                {
+                    'id': 'candidate_dataset_selection',
+                    'name': 'Candidate Dataset Selection',
+                    'description': 'Select and prepare candidate datasets for migration',
+                    'order': 0,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['data_interpretation'],
+                },
+                {
+                    'id': 'data_transfer',
+                    'name': 'Data Transfer',
+                    'description': 'Execute the actual data transfer from legacy to TMF systems',
+                    'order': 1,
+                    'estimated_duration': '12m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules'],
+                },
+                {
+                    'id': 'tmf_api_compliance_test',
+                    'name': 'TMF API Compliance Test',
+                    'description': 'Test migrated data against TMF API compliance requirements',
+                    'order': 2,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules'],
+                },
+                {
+                    'id': 'mark_completion',
+                    'name': 'Mark Completion',
+                    'description': 'Mark migration tasks as completed and update status',
+                    'order': 3,
+                    'estimated_duration': '3m',
+                    'ai_assisted': False,
+                    'applicable_rules': [],
+                },
+            ],
+        },
+        # Stage 5: Verification & Validation
+        {
+            'stage_id': 'verification_validation',
+            'name': 'Verification & Validation',
+            'description': 'Validate the mapping and migration results against TMF standards',
+            'order': 5,
+            'can_skip': False,
+            'estimated_duration': '22m',
+            'status': 'pending',
+            'second_brain_enabled': True,
+            'rule_types': ['contextual_recommendations', 'validation_rules'],
+            'steps': [
+                {
+                    'id': 'mapping_validation',
+                    'name': 'Mapping Validation',
+                    'description': 'Validate the accuracy of schema mappings',
+                    'order': 0,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules'],
+                },
+                {
+                    'id': 'api_compliance_check',
+                    'name': 'API Compliance Check',
+                    'description': 'Check compliance with TMF API standards',
+                    'order': 1,
+                    'estimated_duration': '5m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules', 'contextual_recommendations'],
+                },
+                {
+                    'id': 'data_integrity_verification',
+                    'name': 'Data Integrity Verification',
+                    'description': 'Verify data integrity and consistency',
+                    'order': 2,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['validation_rules'],
+                },
+                {
+                    'id': 'performance_assessment',
+                    'name': 'Performance Assessment',
+                    'description': 'Assess performance implications of the mapping',
+                    'order': 3,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+                {
+                    'id': 'final_report_generation',
+                    'name': 'Final Report Generation',
+                    'description': 'Generate comprehensive final report',
+                    'order': 4,
+                    'estimated_duration': '4m',
+                    'ai_assisted': True,
+                    'applicable_rules': ['contextual_recommendations'],
+                },
+            ],
+        },
+    ]
+    
+    return stages
 
 
 async def _handle_list_rules(

@@ -17,9 +17,90 @@ import os
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 import uuid
+import logging
+import argparse
+from loguru import logger
 
 # Add the MCP server to Python path
 sys.path.insert(0, str(Path(__file__).parent))
+
+# Parse command-line arguments
+parser = argparse.ArgumentParser(description="TMF ODA Transformer MCP HTTP Server")
+parser.add_argument("--debug", action="store_true", help="Enable debug logging")
+parser.add_argument("--port", type=int, default=8000, help="Port to run the server on")
+parser.add_argument("--host", default="0.0.0.0", help="Host to bind the server to")
+args = parser.parse_args()
+
+# Configure logging
+LOG_DIR = Path(__file__).parent / "logs"
+LOG_DIR.mkdir(exist_ok=True)
+
+# Set log level based on debug flag
+LOG_LEVEL = "DEBUG" if args.debug else "INFO"
+
+# Configure loguru for console output only
+logger.remove()  # Remove default handler
+logger.add(
+    sys.stdout,
+    level=LOG_LEVEL,
+    format="{time:HH:mm:ss} | {level} | {module}:{function} | {message}",
+    colorize=True,
+    catch=True  # Catch logging errors
+)
+
+# Custom file logger that works reliably
+LOG_FILE = LOG_DIR / f"mcp_server_{datetime.now().strftime('%Y-%m-%d')}.log"
+
+def log_to_file(level: str, module: str, function: str, line: int, message: str):
+    """Write log entry directly to file with proper formatting."""
+    try:
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        log_entry = f"{timestamp} | {level} | {module}:{function}:{line} | {message}\n"
+        with open(LOG_FILE, "a", encoding="utf-8") as f:
+            f.write(log_entry)
+            f.flush()
+    except Exception as e:
+        print(f"File logging error: {e}")
+
+# Enhanced logger that writes to both console and file
+class DualLogger:
+    def __init__(self, loguru_logger):
+        self.loguru = loguru_logger
+        
+    def info(self, message: str):
+        self.loguru.info(message)
+        log_to_file("INFO", "mcp_http_server", "dual_logger", 0, message)
+        
+    def debug(self, message: str):
+        self.loguru.debug(message)
+        if LOG_LEVEL == "DEBUG":
+            log_to_file("DEBUG", "mcp_http_server", "dual_logger", 0, message)
+            
+    def error(self, message: str):
+        self.loguru.error(message)
+        log_to_file("ERROR", "mcp_http_server", "dual_logger", 0, message)
+        
+    def warning(self, message: str):
+        self.loguru.warning(message)
+        log_to_file("WARNING", "mcp_http_server", "dual_logger", 0, message)
+
+# Replace the logger with our dual logger
+dual_logger = DualLogger(logger)
+
+# Also configure Python's logging to capture uvicorn and other HTTP errors
+import logging
+logging.basicConfig(
+    level=logging.DEBUG if args.debug else logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler(LOG_DIR / "uvicorn.log"),
+        logging.StreamHandler()
+    ]
+)
+
+dual_logger.info("=== MCP HTTP Server Starting ===")
+dual_logger.info(f"Log directory: {LOG_DIR}")
+dual_logger.info(f"Log files will be rotated daily and kept for 7 days")
 
 # Import MCP server and tools directly
 try:
@@ -33,6 +114,7 @@ try:
         run_jobs_tool
     )
     from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
+    from awslabs.tmf_oda_transformer_mcp_server.tools.simple_journeys_tool import simple_journeys_tool
     print("✅ MCP server and tools imported successfully")
 except ImportError as e:
     print(f"❌ Error importing MCP server: {e}")
@@ -54,6 +136,35 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Add request logging middleware
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all HTTP requests and responses."""
+    start_time = datetime.now()
+    
+    # Log incoming request
+    dual_logger.info(f"📥 HTTP Request: {request.method} {request.url}")
+    dual_logger.debug(f"Request headers: {dict(request.headers)}")
+    
+    # Process request
+    try:
+        response = await call_next(request)
+        
+        # Log successful response
+        duration = (datetime.now() - start_time).total_seconds()
+        dual_logger.info(f"📤 HTTP Response: {response.status_code} ({duration:.3f}s)")
+        
+        return response
+        
+    except Exception as e:
+        # Log error response
+        duration = (datetime.now() - start_time).total_seconds()
+        dual_logger.error(f"❌ HTTP Request failed: {request.method} {request.url} ({duration:.3f}s)")
+        logger.error(f"Exception: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        
+        raise
 
 # Store server state
 server_state = {
@@ -220,6 +331,11 @@ TOOLS = {
             },
             "required": []
         }
+    },
+    "simple-journeys": {
+        "func": simple_journeys_tool.execute,
+        "description": "Simple journey management tool following manage_journey.py pattern",
+        "inputSchema": simple_journeys_tool.get_tool_definition()["inputSchema"]
     }
 }
 
@@ -439,6 +555,11 @@ async def call_tool(request: Request):
         # Reset context errors
         ctx.errors = []
         
+        # Log the tool call with detailed information
+        logger.info(f"🔧 MCP Tool Call: {tool_name}")
+        logger.debug(f"Tool arguments: {json.dumps(arguments, indent=2, default=str)}")
+        logger.debug(f"Tool info: {json.dumps(tool_info, indent=2, default=str)}")
+        
         print(f"🔧 Calling tool: {tool_name} with arguments: {arguments}")
         
         # Call tool function
@@ -465,6 +586,10 @@ async def call_tool(request: Request):
             else:
                 result_data = result
             
+            # Log the successful result
+            logger.info(f"✅ Tool {tool_name} completed successfully")
+            logger.debug(f"Tool result: {json.dumps(result_data, indent=2, default=str)}")
+            
             return {
                 "jsonrpc": "2.0",
                 "id": data.get("id"),
@@ -484,6 +609,10 @@ async def call_tool(request: Request):
             if ctx.errors:
                 error_msg += f"\nContext errors: {'; '.join(ctx.errors)}"
             
+            # Log the error with full details
+            logger.error(f"❌ Tool {tool_name} execution failed: {error_msg}")
+            logger.error(f"Exception details: {traceback.format_exc()}")
+            
             print(f"❌ Tool execution error: {error_msg}")
             
             return {
@@ -500,6 +629,10 @@ async def call_tool(request: Request):
             }
             
     except Exception as e:
+        error_msg = f"HTTP Server error: {str(e)}"
+        logger.error(f"❌ HTTP Server Exception: {error_msg}")
+        logger.error(f"Full traceback: {traceback.format_exc()}")
+        
         print(f"Error calling tool: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
@@ -598,6 +731,10 @@ async def call_tool_rest(tool_name: str, request: Request):
             elif "default" in prop_info:
                 final_args[prop_name] = prop_info["default"]
         
+        # Log the tool call for REST API
+        logger.info(f"🔧 REST API Tool Call: {tool_name}")
+        logger.debug(f"REST API arguments: {json.dumps(final_args, indent=2, default=str)}")
+        
         result = await tool_func(ctx, **final_args)
         
         # Convert result to JSON-serializable format
@@ -608,17 +745,33 @@ async def call_tool_rest(tool_name: str, request: Request):
         else:
             result_data = result
         
+        # Log the successful result
+        logger.info(f"✅ REST API Tool {tool_name} completed successfully")
+        logger.debug(f"REST API result: {json.dumps(result_data, indent=2, default=str)}")
+        
         return {
             "result": result_data,
             "timestamp": datetime.now().isoformat()
         }
         
     except Exception as e:
+        # Log the error with full details
+        dual_logger.error(f"❌ REST API Tool {tool_name} execution failed: {str(e)}")
+        dual_logger.error(f"Exception details: {traceback.format_exc()}")
+        dual_logger.error(f"Tool arguments: {json.dumps(final_args, indent=2, default=str)}")
+        
         print(f"Error calling tool {tool_name}: {e}")
         traceback.print_exc()
         raise HTTPException(status_code=400, detail=str(e))
 
 if __name__ == "__main__":
+    dual_logger.info("🚀 Starting TMF ODA Transformer MCP HTTP Transport Server...")
+    dual_logger.info("📡 Server will be available at: http://0.0.0.0:8000")
+    dual_logger.info("🔗 MCP Server Info: http://0.0.0.0:8000/mcp/server/info")
+    dual_logger.info("🏥 Health check: http://0.0.0.0:8000/health")
+    dual_logger.info("📋 Tools list: http://0.0.0.0:8000/tools")
+    dual_logger.info(f"🔧 Available tools: {', '.join(TOOLS.keys())}")
+    
     print("🚀 Starting TMF ODA Transformer MCP HTTP Transport Server...")
     print("📡 Server will be available at: http://0.0.0.0:8000")
     print("🔗 MCP Server Info: http://0.0.0.0:8000/mcp/server/info")
@@ -628,8 +781,8 @@ if __name__ == "__main__":
     
     uvicorn.run(
         app,
-        host="0.0.0.0",
-        port=8000,
+        host=args.host,
+        port=args.port,
         access_log=True,
-        log_level="info"
+        log_level=LOG_LEVEL.lower()
     ) 

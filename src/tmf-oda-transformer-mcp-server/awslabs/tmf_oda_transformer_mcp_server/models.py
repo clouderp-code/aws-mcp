@@ -207,7 +207,7 @@ class JourneyCreateData(BaseModel):
     oda_component_type: TMFODAComponentType = Field(description="Target TMF ODA component type")
     source_type: str = Field(default="database", description="Source type (database, schema, api)")
     stages: Optional[List[str]] = Field(
-        default=["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"],
+        default=["raw_analysis", "stripped_schema", "tmf_mapping", "migration_planning", "data_migration", "verification_validation"],
         description="List of stage IDs for this journey"
     )
     priority: str = Field(default="medium", description="Journey priority (low, medium, high)")
