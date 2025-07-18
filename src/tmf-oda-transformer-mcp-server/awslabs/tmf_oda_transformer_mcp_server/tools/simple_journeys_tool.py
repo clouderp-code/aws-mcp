@@ -181,6 +181,17 @@ class SimpleJourneysService:
     
     def add_default_stages_complete(self, journey_id: str) -> int:
         """Add all default stages to a journey following manage_journey.py pattern"""
+        # Import stage registry to get actual step definitions
+        from ..scripts.stages import get_stage_class
+        
+        def get_stage_steps(stage_id):
+            """Get steps from stage class"""
+            stage_class = get_stage_class(stage_id)
+            if stage_class:
+                temp_stage = stage_class('temp', stage_id, 'temp', 'us-east-1', None)
+                return temp_stage.steps
+            return []
+        
         try:
             logger.info(f'Starting add_default_stages_complete for journey: {journey_id}')
             
@@ -194,7 +205,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['field_mapping', 'contextual_recommendations'],
-                    'steps': []
+                    'steps': get_stage_steps('raw_analysis')
                 },
                 {
                     'stageId': 'stripped_schema',
@@ -205,7 +216,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['field_mapping', 'data_interpretation'],
-                    'steps': []
+                    'steps': get_stage_steps('stripped_schema')
                 },
                 {
                     'stageId': 'tmf_mapping',
@@ -216,7 +227,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['field_mapping', 'contextual_recommendations'],
-                    'steps': []
+                    'steps': get_stage_steps('tmf_mapping')
                 },
                 {
                     'stageId': 'migration_planning',
@@ -227,7 +238,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['contextual_recommendations'],
-                    'steps': []
+                    'steps': get_stage_steps('migration_planning')
                 },
                 {
                     'stageId': 'data_migration',
@@ -238,7 +249,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['contextual_recommendations'],
-                    'steps': []
+                    'steps': get_stage_steps('data_migration')
                 },
                 {
                     'stageId': 'verification_validation',
@@ -249,7 +260,7 @@ class SimpleJourneysService:
                     'canSkip': False,
                     'secondBrainEnabled': True,
                     'ruleTypes': ['contextual_recommendations', 'validation_rules'],
-                    'steps': []
+                    'steps': get_stage_steps('verification_validation')
                 }
             ]
             

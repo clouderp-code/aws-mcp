@@ -60,10 +60,13 @@ class TransformationJobExecutor:
             if not journey:
                 raise Exception(f'Journey {journey_id} not found')
 
-            # Get stage definition
-            stage_def = self.get_stage_definition(journey_id, stage_id)
+            # Get stage definition from stage class (not DynamoDB)
+            stage_def = self.get_stage_info(stage_id)
             if not stage_def:
-                raise Exception(f'Stage {stage_id} not found')
+                raise Exception(f'Stage {stage_id} not found in stage registry')
+            
+            # Stage definition from class always has all required fields
+            self.logger.info(f'Using stage definition: {stage_def["stage_name"]} with {len(stage_def["steps"])} steps')
 
             # Validate stage is available
             if stage_id not in list_available_stages():
@@ -74,10 +77,14 @@ class TransformationJobExecutor:
             execution_number = self.get_next_execution_number(journey_id, stage_id)
             job_id = f'JOB-{execution_number:03d}-{timestamp}'
 
+            # Extract stage info with proper field mapping
+            stage_name = stage_def.get('stage_name', stage_id)
+            stage_order = stage_def.get('order', 0)  # Default order 0
+            
             # Create job execution record
             job_data = {
                 'PK': f'JOURNEY#{journey_id}',
-                'SK': f'JOB#{int(stage_def["order"]):02d}#{stage_id}#{execution_number:03d}#{timestamp}',
+                'SK': f'JOB#{stage_order:02d}#{stage_id}#{execution_number:03d}#{timestamp}',
                 'EntityType': 'JobExecution',
                 'GSI1PK': f'STAGE#{journey_id}#{stage_id}',
                 'GSI1SK': datetime.utcnow().isoformat() + 'Z',
@@ -87,8 +94,8 @@ class TransformationJobExecutor:
                     'jobId': job_id,
                     'journeyId': journey_id,
                     'stageId': stage_id,
-                    'stageName': stage_def['name'],
-                    'stageOrder': int(stage_def['order']),
+                    'stageName': stage_name,
+                    'stageOrder': stage_order,
                     'executionNumber': execution_number,
                     'status': 'in_progress',
                     'startTime': datetime.utcnow().isoformat() + 'Z',
@@ -129,6 +136,14 @@ class TransformationJobExecutor:
             self.update_journey_current_job(journey_id, stage_id, job_id, execution_number)
 
             self.logger.info(f'✅ Started job execution: {job_id} for stage {stage_id}')
+            
+            # Execute the job asynchronously
+            try:
+                self.execute_job(journey_id, job_id)
+            except Exception as e:
+                self.logger.error(f'❌ Job execution failed: {str(e)}')
+                # The job will remain in the database with error status
+                
             return job_id
 
         except Exception as e:
@@ -216,11 +231,23 @@ class TransformationJobExecutor:
         
         # Create a temporary instance to get stage info
         temp_stage = stage_class('temp', stage_id, 'temp', self.region_name, self.role_arn)
+        
+        # Determine stage order based on common pipeline sequence
+        stage_order_map = {
+            'raw_analysis': 0,
+            'stripped_schema': 1, 
+            'data_mapping': 2,
+            'compliance_validation': 3,
+            'business_rules': 4,
+            'integration_testing': 5
+        }
+        
         return {
             'stage_id': stage_id,
             'stage_name': temp_stage.stage_name,
             'stage_description': temp_stage.stage_description,
             'steps': temp_stage.steps,
+            'order': stage_order_map.get(stage_id, 99),  # Default to 99 for unknown stages
             'class_name': stage_class.__name__
         }
 

@@ -1401,35 +1401,16 @@ async def _handle_list_available_reports(
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # This would integrate with real report listing
-        available_reports = [
-            {
-                'report_id': 'SUMMARY-JOB-001',
-                'type': 'summary',
-                'title': 'Job Summary Report',
-                'job_id': job_id or 'JOB-001',
-                'generated_at': '2024-12-17T12:16:00Z',
-                'size': '15.2 KB'
-            },
-            {
-                'report_id': 'PERF-JOB-001',
-                'type': 'performance',
-                'title': 'Performance Analysis Report',
-                'job_id': job_id or 'JOB-001',
-                'generated_at': '2024-12-17T12:17:00Z',
-                'size': '22.8 KB'
-            }
-        ]
-        
+        # Real report listing not implemented
+        error_msg = "Report listing functionality not implemented"
+        logger.error(error_msg)
         return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Found {len(available_reports)} available reports',
+            status='error',
+            message=error_msg,
             start_time=start_time,
             operation='list_available_reports',
             journey_id=journey_id,
-            job_id=job_id,
-            total_reports=len(available_reports),
-            reports=available_reports
+            job_id=job_id
         )
         
     except Exception as e:
@@ -1623,76 +1604,15 @@ async def _handle_generate_insights(
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # This would integrate with AI-powered insights generation
-        insights = {
-            'journey_id': journey_id,
-            'analysis_period': analysis_period,
-            'generated_at': datetime.now(timezone.utc).isoformat(),
-            'key_insights': [
-                {
-                    'insight_id': 'performance_excellent',
-                    'category': 'performance',
-                    'title': 'Excellent Performance Across All Stages',
-                    'description': 'All transformation stages are performing within optimal parameters with minimal errors',
-                    'confidence': 95.0,
-                    'impact': 'positive'
-                },
-                {
-                    'insight_id': 'schema_modernization_opportunity',
-                    'category': 'optimization',
-                    'title': 'Schema Modernization Opportunity',
-                    'description': 'Deprecated field types detected suggest opportunity for schema modernization',
-                    'confidence': 85.0,
-                    'impact': 'improvement'
-                },
-                {
-                    'insight_id': 'second_brain_effectiveness',
-                    'category': 'ai_assistance',
-                    'title': 'Second Brain Rules Showing High Effectiveness',
-                    'description': 'AI-assisted transformation steps are completing with high accuracy and efficiency',
-                    'confidence': 90.0,
-                    'impact': 'positive'
-                }
-            ],
-            'trend_predictions': [
-                {
-                    'trend': 'execution_time',
-                    'prediction': 'stable_improvement',
-                    'confidence': 80.0,
-                    'timeframe': '30 days'
-                },
-                {
-                    'trend': 'error_rate',
-                    'prediction': 'continued_low',
-                    'confidence': 85.0,
-                    'timeframe': '30 days'
-                }
-            ],
-            'actionable_recommendations': [
-                {
-                    'priority': 'medium',
-                    'category': 'schema_optimization',
-                    'action': 'Plan schema modernization project',
-                    'expected_benefit': 'Reduce warnings, improve TMF ODA compliance',
-                    'effort_estimate': 'moderate'
-                },
-                {
-                    'priority': 'low',
-                    'category': 'performance',
-                    'action': 'Investigate parallel processing for schema parsing',
-                    'expected_benefit': '15% performance improvement',
-                    'effort_estimate': 'low'
-                }
-            ]
-        }
-        
+        # AI-powered insights generation not implemented
+        error_msg = "AI-powered insights generation not implemented"
+        logger.error(error_msg)
         return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Generated {len(insights["key_insights"])} insights for journey {journey_id}',
+            status='error',
+            message=error_msg,
             start_time=start_time,
             operation='generate_insights',
-            journey_id=journey_id,
-            insights=insights
+            journey_id=journey_id
         )
         
     except Exception as e:
@@ -1715,69 +1635,16 @@ async def _handle_get_recommendations(
             logger.error(error_msg)
             raise ValueError(error_msg)
         
-        # This would integrate with AI-powered recommendation engine
-        recommendations = {
-            'journey_id': journey_id,
-            'job_id': job_id,
-            'generated_at': datetime.now(timezone.utc).isoformat(),
-            'recommendation_categories': {
-                'performance': 1,
-                'optimization': 1,
-                'compliance': 1,
-                'maintenance': 0
-            },
-            'recommendations': [
-                {
-                    'recommendation_id': 'perf_001',
-                    'category': 'performance',
-                    'priority': 'low',
-                    'title': 'Optimize Schema Parsing Performance',
-                    'description': 'Consider implementing parallel processing for schema parsing operations',
-                    'expected_impact': 'Up to 15% improvement in schema parsing time',
-                    'implementation_effort': 'low',
-                    'confidence': 75.0,
-                    'applicable_stages': ['raw_analysis']
-                },
-                {
-                    'recommendation_id': 'opt_001',
-                    'category': 'optimization',
-                    'priority': 'medium',
-                    'title': 'Schema Modernization',
-                    'description': 'Update deprecated field types to improve TMF ODA compliance',
-                    'expected_impact': 'Eliminate schema warnings, improve compliance score',
-                    'implementation_effort': 'moderate',
-                    'confidence': 85.0,
-                    'applicable_stages': ['raw_analysis', 'stripped_schema']
-                },
-                {
-                    'recommendation_id': 'comp_001',
-                    'category': 'compliance',
-                    'priority': 'medium',
-                    'title': 'Enhance TMF ODA Alignment',
-                    'description': 'Review and update field mappings to latest TMF ODA specifications',
-                    'expected_impact': 'Improved compliance score and future-proofing',
-                    'implementation_effort': 'moderate',
-                    'confidence': 90.0,
-                    'applicable_stages': ['tmf_mapping']
-                }
-            ],
-            'summary': {
-                'total_recommendations': 3,
-                'high_priority': 0,
-                'medium_priority': 2,
-                'low_priority': 1,
-                'avg_confidence': 83.3
-            }
-        }
-        
+        # AI-powered recommendation engine not implemented
+        error_msg = "AI-powered recommendation engine not implemented"
+        logger.error(error_msg)
         return BaseToolMixin.create_tool_result(
-            status='success',
-            message=f'Generated {len(recommendations["recommendations"])} recommendations for journey {journey_id}',
+            status='error',
+            message=error_msg,
             start_time=start_time,
             operation='get_recommendations',
             journey_id=journey_id,
-            job_id=job_id,
-            recommendations=recommendations
+            job_id=job_id
         )
         
     except Exception as e:

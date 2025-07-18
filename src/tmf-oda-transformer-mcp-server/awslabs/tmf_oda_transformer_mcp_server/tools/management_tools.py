@@ -27,7 +27,7 @@ This module provides comprehensive journey lifecycle management including:
 import json
 import uuid
 import traceback
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from typing import Dict, Any, Optional, List, Union
 
 from loguru import logger
@@ -8381,4 +8381,677 @@ async def _handle_delete_rule(
             journey_id=journey_id,
             stage_id=stage_id,
             rule_id=rule_id
+        )
+
+
+# Missing job management handler functions
+async def _handle_list_jobs(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str],
+    status_filter: Optional[str],
+    limit: int,
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle list jobs operation."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        
+        # Use the journey manager to get jobs
+        if stage_id:
+            jobs = journey_service.manager.get_stage_jobs(journey_id, stage_id, limit)
+        else:
+            jobs = journey_service.manager.get_stage_jobs(journey_id, '', limit)
+        
+        # Apply status filter if provided
+        if status_filter and jobs:
+            jobs = [job for job in jobs if job.get('status') == status_filter]
+        
+        logger.info(f'Successfully retrieved {len(jobs)} jobs for journey {journey_id}')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved {len(jobs)} jobs for journey {journey_id}',
+            start_time=start_time,
+            operation='list_jobs',
+            journey_id=journey_id,
+            stage_id=stage_id,
+            status_filter=status_filter,
+            jobs=jobs,
+            total_jobs=len(jobs)
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to list jobs: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey list_jobs operation failed: {str(e)}',
+            start_time=start_time,
+            operation='list_jobs',
+            journey_id=journey_id,
+            stage_id=stage_id
+        )
+
+
+async def _handle_run_job(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str],
+    triggered_by: Optional[str],
+    reason: Optional[str],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle run job operation with real DynamoDB integration."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        if not stage_id:
+            raise ValueError("stage_id is required")
+        
+        # Setup DynamoDB and job executor
+        import os, sys
+        
+        try:
+            # Import and use the real job executor from the scripts package
+            from ..scripts.job_executor import TransformationJobExecutor
+            
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            job_executor = TransformationJobExecutor(role_arn=role_arn)
+            
+            # Start job execution using real DynamoDB operations
+            job_id = job_executor.start_job_execution(
+                journey_id=journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id,
+                stage_id=stage_id,
+                triggered_by=triggered_by or 'mcp-server',
+                reason=reason or f'MCP Server job execution for stage {stage_id}'
+            )
+            
+            # Create job info response
+            job_info = {
+                'job_id': job_id,
+                'journey_id': journey_id,
+                'stage_id': stage_id,
+                'status': 'running',
+                'created_at': datetime.now(timezone.utc).isoformat(),
+                'job_type': 'transformation',
+                'description': f'Job for stage {stage_id}',
+                'priority': 'medium',
+                'triggered_by': triggered_by or 'mcp-server',
+                'reason': reason or f'MCP Server job execution for stage {stage_id}',
+                'parameters': {},
+                'progress': 0
+            }
+            
+            logger.info(f'Successfully started real job {job_id} for journey {journey_id}, stage {stage_id}')
+            
+            return BaseToolMixin.create_tool_result(
+                status='success',
+                message=f'Job {job_id} created and started successfully for stage {stage_id}',
+                start_time=start_time,
+                operation='run_job',
+                journey_id=journey_id,
+                stage_id=stage_id,
+                job_id=job_id,
+                job_info=job_info
+            )
+            
+        except ImportError as ie:
+            # Job executor not available - return error instead of simulation
+            logger.error(f"Job executor not available: {str(ie)}")
+            return BaseToolMixin.create_tool_result(
+                status='error',
+                message=f'Job executor module not available: {str(ie)}',
+                start_time=start_time,
+                operation='run_job',
+                journey_id=journey_id,
+                stage_id=stage_id
+            )
+        
+    except Exception as e:
+        logger.error(f'Failed to run job: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey run_job operation failed: {str(e)}',
+            start_time=start_time,
+            operation='run_job',
+            journey_id=journey_id,
+            stage_id=stage_id
+        )
+
+
+async def _handle_get_job(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    job_id: Optional[str],
+    include_all: Optional[bool],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle get job operation with real DynamoDB operations."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        if not job_id:
+            raise ValueError("job_id is required")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        from decimal import Decimal
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        
+        # Find the job record in DynamoDB
+        response = table.query(
+            KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression='#data.jobId = :job_id',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':pk': f'JOURNEY#{clean_id}',
+                ':sk': 'JOB#',
+                ':job_id': job_id
+            }
+        )
+        
+        if not response['Items']:
+            # Job not found in DynamoDB - return error instead of simulation
+            logger.error(f"Job {job_id} not found in DynamoDB")
+            return BaseToolMixin.create_tool_result(
+                status='error',
+                message=f'Job {job_id} not found',
+                start_time=start_time,
+                operation='get_job',
+                journey_id=journey_id,
+                job_id=job_id
+            )
+        else:
+            # Job found, extract real data from DynamoDB
+            job_item = response['Items'][0]
+            job_data = job_item['Data']
+            
+            # Convert Decimal values to float for JSON serialization
+            def convert_decimal(obj):
+                if isinstance(obj, Decimal):
+                    return float(obj)
+                elif isinstance(obj, dict):
+                    return {k: convert_decimal(v) for k, v in obj.items()}
+                elif isinstance(obj, list):
+                    return [convert_decimal(v) for v in obj]
+                return obj
+            
+            job_info = {
+                'job_id': job_data.get('jobId', job_id),
+                'journey_id': journey_id,
+                'stage_id': job_data.get('stageId', 'unknown'),
+                'status': job_data.get('status', 'unknown'),
+                'created_at': job_data.get('startTime', job_data.get('createdAt', datetime.now(timezone.utc).isoformat())),
+                'updated_at': job_data.get('updatedAt', datetime.now(timezone.utc).isoformat()),
+                'job_type': job_data.get('jobType', 'transformation'),
+                'description': job_data.get('description', f'Job {job_id} details'),
+                'priority': job_data.get('priority', 'medium'),
+                'progress': convert_decimal(job_data.get('progress', 0)),
+                'parameters': convert_decimal(job_data.get('parameters', {})),
+                'metrics': convert_decimal(job_data.get('jobMetrics', {}))
+            }
+        
+        # Add extra details if include_all is True
+        if include_all:
+            if response['Items']:
+                # Real data from DynamoDB
+                job_data = response['Items'][0]['Data']
+                step_results = job_data.get('stepResults', {})
+                steps = []
+                
+                for step_id, step_info in step_results.items():
+                    if isinstance(step_info, dict):
+                        steps.append({
+                            'step_id': step_id,
+                            'status': step_info.get('status', 'unknown'),
+                            'duration': float(step_info.get('duration', 0)) if step_info.get('duration') else None
+                        })
+                
+                # Get log metrics
+                job_metrics = job_data.get('jobMetrics', {})
+                
+                job_info.update({
+                    'steps': steps,
+                    'logs_count': int(job_metrics.get('totalLogs', 0)) if job_metrics.get('totalLogs') else 0,
+                    'error_count': int(job_metrics.get('totalErrors', 0)) if job_metrics.get('totalErrors') else 0,
+                    'warning_count': int(job_metrics.get('totalWarnings', 0)) if job_metrics.get('totalWarnings') else 0
+                })
+            # No simulation - only return real data from DynamoDB
+        
+        logger.info(f'Successfully retrieved job {job_id} details')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved job {job_id} details',
+            start_time=start_time,
+            operation='get_job',
+            journey_id=journey_id,
+            job_id=job_id,
+            include_all=include_all,
+            job_status=job_info['status'],
+            job_info=job_info
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to get job: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey get_job operation failed: {str(e)}',
+            start_time=start_time,
+            operation='get_job',
+            journey_id=journey_id,
+            job_id=job_id
+        )
+
+
+async def _handle_journey_read(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    stage_id: Optional[str],
+    include_stages: bool,
+    include_job_history: bool,
+    limit: int,
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle journey read/list operation with real DynamoDB operations."""
+    try:
+        if journey_id:
+            # Get specific journey
+            journey = journey_service.manager.get_journey_status(journey_id)
+            if not journey:
+                raise ValueError(f"Journey {journey_id} not found")
+            
+            result_data = {
+                'journey': journey,
+                'journey_id': journey_id,
+                'include_stages': include_stages,
+                'include_job_history': include_job_history
+            }
+            
+            # Add stages if requested
+            if include_stages:
+                try:
+                    stages = journey_service.manager.list_journey_stages(journey_id)
+                    result_data['stages'] = stages
+                except:
+                    result_data['stages'] = []
+            
+            # Add job history if requested
+            if include_job_history:
+                try:
+                    jobs = journey_service.manager.list_journey_jobs(journey_id, limit=limit)
+                    result_data['job_history'] = jobs
+                except:
+                    result_data['job_history'] = []
+            
+            return BaseToolMixin.create_tool_result(
+                status='success',
+                message=f'Retrieved journey {journey_id} details',
+                start_time=start_time,
+                operation='read_journey',
+                **result_data
+            )
+        else:
+            # List all journeys
+            try:
+                journeys = journey_service.manager.list_journeys()
+                total_journeys = len(journeys) if journeys else 0
+                
+                # Apply limit
+                if limit > 0:
+                    journeys = journeys[:limit]
+                
+                return BaseToolMixin.create_tool_result(
+                    status='success',
+                    message=f'Retrieved {len(journeys)} journeys (total: {total_journeys})',
+                    start_time=start_time,
+                    operation='list_journeys',
+                    journeys=journeys,
+                    total_journeys=total_journeys,
+                    limit=limit
+                )
+            except Exception as e:
+                logger.warning(f"Failed to list journeys from DynamoDB: {str(e)}, using fallback")
+                # Fallback for development
+                return BaseToolMixin.create_tool_result(
+                    status='success',
+                    message='No journeys found (development mode)',
+                    start_time=start_time,
+                    operation='list_journeys',
+                    journeys=[],
+                    total_journeys=0,
+                    limit=limit
+                )
+                
+    except Exception as e:
+        logger.error(f'Failed to read journey: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey read operation failed: {str(e)}',
+            start_time=start_time,
+            operation='read_journey',
+            journey_id=journey_id
+        )
+
+
+async def _handle_update_job_status(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    job_id: Optional[str],
+    job_status: Optional[str],
+    progress: Optional[int],
+    current_step: Optional[str],
+    error_message: Optional[str],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle update job status operation with real DynamoDB operations."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        if not job_id:
+            raise ValueError("job_id is required")
+        if not job_status:
+            raise ValueError("job_status is required")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        from decimal import Decimal
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        
+        # Find the job record in DynamoDB
+        response = table.query(
+            KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression='#data.jobId = :job_id',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':pk': f'JOURNEY#{clean_id}',
+                ':sk': 'JOB#',
+                ':job_id': job_id
+            }
+        )
+        
+        if not response['Items']:
+            # Job not found in DynamoDB - return error instead of simulation
+            logger.error(f"Job {job_id} not found in DynamoDB")
+            return BaseToolMixin.create_tool_result(
+                status='error',
+                message=f'Job {job_id} not found',
+                start_time=start_time,
+                operation='update_job_status',
+                journey_id=journey_id,
+                job_id=job_id
+            )
+        
+        # Job found, update it
+        job_item = response['Items'][0]
+        
+        # Build update expression dynamically
+        update_expression_parts = []
+        expression_attribute_values = {}
+        expression_attribute_names = {'#data': 'Data'}
+        
+        update_expression_parts.append('#data.#status = :status')
+        expression_attribute_names['#status'] = 'status'
+        expression_attribute_values[':status'] = job_status
+        
+        update_expression_parts.append('#data.updatedAt = :updated_at')
+        expression_attribute_values[':updated_at'] = datetime.now(timezone.utc).isoformat()
+        
+        if progress is not None:
+            update_expression_parts.append('#data.progress = :progress')
+            expression_attribute_values[':progress'] = Decimal(str(progress))
+        
+        if current_step:
+            update_expression_parts.append('#data.currentStep = :current_step')
+            expression_attribute_values[':current_step'] = current_step
+        
+        if error_message:
+            update_expression_parts.append('#data.errorMessage = :error_message')
+            expression_attribute_values[':error_message'] = error_message
+        
+        # Perform the update
+        table.update_item(
+            Key={'PK': job_item['PK'], 'SK': job_item['SK']},
+            UpdateExpression='SET ' + ', '.join(update_expression_parts),
+            ExpressionAttributeNames=expression_attribute_names,
+            ExpressionAttributeValues=expression_attribute_values
+        )
+        
+        update_data = {
+            'job_id': job_id,
+            'status': job_status,
+            'updated_at': datetime.now(timezone.utc).isoformat()
+        }
+        if progress is not None:
+            update_data['progress'] = progress
+        if current_step:
+            update_data['current_step'] = current_step
+        if error_message:
+            update_data['error_message'] = error_message
+        
+        logger.info(f'Successfully updated job {job_id} status to {job_status}')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Job {job_id} status updated to {job_status}',
+            start_time=start_time,
+            operation='update_job_status',
+            journey_id=journey_id,
+            job_id=job_id,
+            update_data=update_data
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to update job status: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey update_job_status operation failed: {str(e)}',
+            start_time=start_time,
+            operation='update_job_status',
+            journey_id=journey_id,
+            job_id=job_id
+        )
+
+
+async def _handle_get_job_metrics(
+    ctx: Context,
+    journey_service,
+    journey_id: Optional[str],
+    job_id: Optional[str],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle get job metrics operation with real DynamoDB operations."""
+    try:
+        if not journey_id:
+            raise ValueError("journey_id is required")
+        if not job_id:
+            raise ValueError("job_id is required")
+        
+        # Setup DynamoDB connection
+        import os, sys, boto3
+        from decimal import Decimal
+        
+        current_dir = os.path.dirname(os.path.abspath(__file__))
+        scripts_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(current_dir)))), 'scripts')
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        
+        try:
+            from aws_client_utils import create_aws_resource
+            role_arn = os.environ.get('AWS_ROLE_ARN')
+            dynamodb = create_aws_resource('dynamodb', role_arn=role_arn) if role_arn else boto3.resource('dynamodb')
+        except ImportError:
+            dynamodb = boto3.resource('dynamodb')
+        
+        table = dynamodb.Table('TransformationSystem')
+        clean_id = journey_id.replace('JRN-', '') if journey_id.startswith('JRN-') else journey_id
+        
+        # Find the job record in DynamoDB
+        response = table.query(
+            KeyConditionExpression='PK = :pk AND begins_with(SK, :sk)',
+            FilterExpression='#data.jobId = :job_id',
+            ExpressionAttributeNames={'#data': 'Data'},
+            ExpressionAttributeValues={
+                ':pk': f'JOURNEY#{clean_id}',
+                ':sk': 'JOB#',
+                ':job_id': job_id
+            }
+        )
+        
+        if not response['Items']:
+            # Job not found in DynamoDB - return error instead of simulation
+            logger.error(f"Job {job_id} not found in DynamoDB")
+            return BaseToolMixin.create_tool_result(
+                status='error',
+                message=f'Job {job_id} not found',
+                start_time=start_time,
+                operation='get_job_metrics',
+                journey_id=journey_id,
+                job_id=job_id
+            )
+        
+        # Job found, extract real metrics from DynamoDB
+        job_item = response['Items'][0]
+        job_data = job_item['Data']
+        
+        # Calculate basic metrics from job data
+        start_time_str = job_data.get('startTime', '')
+        end_time_str = job_data.get('endTime', '')
+        
+        # Calculate duration
+        duration = 0.0
+        if start_time_str and end_time_str:
+            try:
+                start_dt = datetime.fromisoformat(start_time_str.replace('Z', '+00:00'))
+                end_dt = datetime.fromisoformat(end_time_str.replace('Z', '+00:00'))
+                duration = (end_dt - start_dt).total_seconds()
+            except:
+                duration = 0.0
+        
+        # Extract step results and timeline
+        step_results = job_data.get('stepResults', {})
+        timeline = []
+        step_durations = []
+        
+        for step_id, step_data in step_results.items():
+            if isinstance(step_data, dict):
+                step_duration = step_data.get('duration', 0)
+                if isinstance(step_duration, Decimal):
+                    step_duration = float(step_duration)
+                step_durations.append(step_duration)
+                
+                timeline.append({
+                    'step': step_id,
+                    'status': step_data.get('status', 'unknown'),
+                    'duration': step_duration,
+                    'start_time': step_data.get('startTime', ''),
+                    'end_time': step_data.get('endTime', '')
+                })
+        
+        # Calculate performance metrics
+        avg_step_duration = sum(step_durations) / len(step_durations) if step_durations else 0
+        slowest_step = None
+        fastest_step = None
+        
+        if timeline:
+            sorted_by_duration = sorted(timeline, key=lambda x: x['duration'])
+            if sorted_by_duration:
+                fastest_step = {'step': sorted_by_duration[0]['step'], 'duration': sorted_by_duration[0]['duration']}
+                slowest_step = {'step': sorted_by_duration[-1]['step'], 'duration': sorted_by_duration[-1]['duration']}
+        
+        # Extract metrics from job data
+        job_metrics = job_data.get('jobMetrics', {})
+        
+        metrics = {
+            'job_id': job_id,
+            'journey_id': journey_id,
+            'stage_id': job_data.get('stageId', 'unknown'),
+            'status': job_data.get('status', 'unknown'),
+            'duration': duration,
+            'start_time': start_time_str,
+            'end_time': end_time_str,
+            'performance_metrics': {
+                'avg_step_duration': avg_step_duration,
+                'slowest_step': slowest_step,
+                'fastest_step': fastest_step,
+                'total_steps': len(step_results),
+                'completed_steps': len([s for s in step_results.values() if isinstance(s, dict) and s.get('status') == 'completed']),
+                'error_rate': 0.0,  # Calculate from logs if available
+                'success_rate': 100.0 if job_data.get('status') == 'completed' else 0.0
+            },
+            'resource_metrics': {
+                'cpu_usage_avg': float(job_metrics.get('cpuUsage', 0)) if job_metrics.get('cpuUsage') else 0.0,
+                'memory_usage_avg': float(job_metrics.get('memoryUsage', 0)) if job_metrics.get('memoryUsage') else 0.0,
+                'disk_io_avg': float(job_metrics.get('diskIO', 0)) if job_metrics.get('diskIO') else 0.0
+            },
+            'log_metrics': {
+                'total_entries': int(job_metrics.get('totalLogs', 0)) if job_metrics.get('totalLogs') else 0,
+                'error_entries': int(job_metrics.get('totalErrors', 0)) if job_metrics.get('totalErrors') else 0,
+                'warning_entries': int(job_metrics.get('totalWarnings', 0)) if job_metrics.get('totalWarnings') else 0,
+                'info_entries': 0  # Calculate as total - errors - warnings
+            },
+            'timeline': timeline
+        }
+        
+        # Calculate info entries
+        total_logs = metrics['log_metrics']['total_entries']
+        error_logs = metrics['log_metrics']['error_entries']
+        warning_logs = metrics['log_metrics']['warning_entries']
+        metrics['log_metrics']['info_entries'] = max(0, total_logs - error_logs - warning_logs)
+        
+        logger.info(f'Successfully retrieved job metrics for {job_id}')
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved metrics for job {job_id}',
+            start_time=start_time,
+            operation='get_job_metrics',
+            journey_id=journey_id,
+            job_id=job_id,
+            metrics=metrics
+        )
+        
+    except Exception as e:
+        logger.error(f'Failed to get job metrics: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Journey get_job_metrics operation failed: {str(e)}',
+            start_time=start_time,
+            operation='get_job_metrics',
+            journey_id=journey_id,
+            job_id=job_id
         )

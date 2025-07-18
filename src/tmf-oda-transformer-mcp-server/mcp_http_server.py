@@ -325,9 +325,24 @@ TOOLS = {
                 "stage_name": {"type": "string", "description": "Stage name", "default": ""},
                 "step_name": {"type": "string", "description": "Step name", "default": ""},
                 "log_level": {"type": "string", "description": "Log level", "enum": ["error", "warning", "info", "debug"], "default": ""},
+                "log_message": {"type": "string", "description": "Log message content", "default": ""},
+                "log_details": {"type": "object", "description": "Additional log details (JSON object)", "default": {}},
+                "log_source": {"type": "string", "description": "Log source identifier", "default": "mcp-server"},
                 "search_query": {"type": "string", "description": "Search query", "default": ""},
+                "level_filter": {"type": "string", "description": "Filter by log level", "default": ""},
+                "step_filter": {"type": "string", "description": "Filter by step name", "default": ""},
+                "time_from": {"type": "string", "description": "Filter logs from timestamp (ISO format)", "default": ""},
+                "time_to": {"type": "string", "description": "Filter logs to timestamp (ISO format)", "default": ""},
+                "report_type": {"type": "string", "description": "Type of report (summary, performance, error_analysis, custom)", "default": ""},
+                "report_title": {"type": "string", "description": "Title for generated reports", "default": ""},
+                "report_content": {"type": "object", "description": "Custom report content (JSON object)", "default": {}},
+                "output_file": {"type": "string", "description": "Output file path for export operations", "default": ""},
+                "export_format": {"type": "string", "description": "Export format", "enum": ["json", "csv", "txt", "html"], "default": "json"},
                 "limit": {"type": "integer", "description": "Maximum results", "default": 100},
-                "export_format": {"type": "string", "description": "Export format", "enum": ["json", "csv", "txt", "html"], "default": "json"}
+                "offset": {"type": "integer", "description": "Number of results to skip (pagination)", "default": 0},
+                "include_details": {"type": "boolean", "description": "Include detailed information in results", "default": True},
+                "analysis_period": {"type": "string", "description": "Analysis period (24h, 7d, 30d, all)", "default": "24h"},
+                "include_recommendations": {"type": "boolean", "description": "Include recommendations in analysis", "default": True}
             },
             "required": []
         }
@@ -687,6 +702,9 @@ async def debug_mcp_methods():
 @app.post("/tools/{tool_name}")
 async def call_tool_rest(tool_name: str, request: Request):
     """REST API endpoint for calling tools (legacy compatibility)."""
+    # Initialize final_args immediately to avoid UnboundLocalError
+    final_args = {}
+    
     try:
         data = await request.json()
         
@@ -709,8 +727,11 @@ async def call_tool_rest(tool_name: str, request: Request):
                 detail=f"Missing required parameters for tool '{tool_name}': {', '.join(missing_required)}"
             )
 
+        # Get schema properties for validation
+        schema_props = tool_info["inputSchema"]["properties"]
+
         # Validate enum values for string properties
-        for prop_name, prop_info in tool_info["inputSchema"]["properties"].items():
+        for prop_name, prop_info in schema_props.items():
             if prop_info.get("type") == "string" and "enum" in prop_info:
                 if prop_name in data and data[prop_name] not in prop_info["enum"]:
                     raise HTTPException(
@@ -722,8 +743,6 @@ async def call_tool_rest(tool_name: str, request: Request):
         tool_func = tool_info["func"]
         
         # Apply defaults for missing arguments
-        schema_props = tool_info["inputSchema"]["properties"]
-        final_args = {}
         
         for prop_name, prop_info in schema_props.items():
             if prop_name in data:
