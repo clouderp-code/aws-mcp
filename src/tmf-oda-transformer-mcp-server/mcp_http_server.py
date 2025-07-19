@@ -674,12 +674,13 @@ async def server_info():
 
 @app.get("/tools")
 async def list_tools_simple():
-    """Simple tools list for compatibility."""
+    """Simple tools list for compatibility - now includes parameter schemas."""
     return {
         "tools": [
             {
                 "name": tool_name,
-                "description": tool_info["description"]
+                "description": tool_info["description"],
+                "inputSchema": tool_info["inputSchema"]
             }
             for tool_name, tool_info in TOOLS.items()
         ]
