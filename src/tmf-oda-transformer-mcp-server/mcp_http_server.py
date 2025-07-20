@@ -38,54 +38,62 @@ LOG_DIR.mkdir(exist_ok=True)
 # Set log level based on debug flag
 LOG_LEVEL = "DEBUG" if args.debug else "INFO"
 
-# Configure loguru for console output only
+# Configure loguru for both console and file output
 logger.remove()  # Remove default handler
+
+# Add console handler
 logger.add(
     sys.stdout,
     level=LOG_LEVEL,
-    format="{time:HH:mm:ss} | {level} | {module}:{function} | {message}",
+    format="{time:HH:mm:ss} | {level} | SERVER | {module}:{function} | {message}",
     colorize=True,
-    catch=True  # Catch logging errors
+    catch=True
 )
 
-# Custom file logger that works reliably
-LOG_FILE = LOG_DIR / f"mcp_server_{datetime.now().strftime('%Y-%m-%d')}.log"
+# Add server log file handler
+server_log_file = LOG_DIR / f"server_{datetime.now().strftime('%Y-%m-%d')}.log"
+logger.add(
+    server_log_file,
+    level=LOG_LEVEL,
+    format="{time:YYYY-MM-DD HH:mm:ss} | {level} | SERVER | {module}:{function}:{line} | {message}",
+    rotation="100 MB",
+    retention="30 days",
+    catch=True
+)
 
-def log_to_file(level: str, module: str, function: str, line: int, message: str):
-    """Write log entry directly to file with proper formatting."""
-    try:
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        log_entry = f"{timestamp} | {level} | {module}:{function}:{line} | {message}\n"
-        with open(LOG_FILE, "a", encoding="utf-8") as f:
-            f.write(log_entry)
-            f.flush()
-    except Exception as e:
-        print(f"File logging error: {e}")
-
-# Enhanced logger that writes to both console and file
+# Create a separate dual logger for server operations  
 class DualLogger:
-    def __init__(self, loguru_logger):
-        self.loguru = loguru_logger
+    def __init__(self):
+        self.server_log = LOG_DIR / f"server_{datetime.now().strftime('%Y-%m-%d')}.log"
+        
+    def _write_to_file(self, level: str, message: str):
+        """Write to server log file."""
+        try:
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            log_entry = f"{timestamp} | {level} | SERVER | {message}\n"
+            with open(self.server_log, "a", encoding="utf-8") as f:
+                f.write(log_entry)
+                f.flush()
+        except Exception as e:
+            print(f"Server logging error: {e}")
         
     def info(self, message: str):
-        self.loguru.info(message)
-        log_to_file("INFO", "mcp_http_server", "dual_logger", 0, message)
+        print(f"[SERVER] {message}")
+        logger.info(message)
+        self._write_to_file("INFO", message)
         
     def debug(self, message: str):
-        self.loguru.debug(message)
         if LOG_LEVEL == "DEBUG":
-            log_to_file("DEBUG", "mcp_http_server", "dual_logger", 0, message)
-            
-    def error(self, message: str):
-        self.loguru.error(message)
-        log_to_file("ERROR", "mcp_http_server", "dual_logger", 0, message)
+            print(f"[SERVER DEBUG] {message}")
+        logger.debug(message)
+        self._write_to_file("DEBUG", message)
         
-    def warning(self, message: str):
-        self.loguru.warning(message)
-        log_to_file("WARNING", "mcp_http_server", "dual_logger", 0, message)
+    def error(self, message: str):
+        print(f"[SERVER ERROR] {message}")
+        logger.error(message)
+        self._write_to_file("ERROR", message)
 
-# Replace the logger with our dual logger
-dual_logger = DualLogger(logger)
+dual_logger = DualLogger()
 
 # Also configure Python's logging to capture uvicorn and other HTTP errors
 import logging
@@ -114,7 +122,6 @@ try:
         run_jobs_tool
     )
     from awslabs.tmf_oda_transformer_mcp_server.tools.utility_tools import logs_and_reports_tool
-    from awslabs.tmf_oda_transformer_mcp_server.tools.simple_journeys_tool import simple_journeys_tool
     print("✅ MCP server and tools imported successfully")
 except ImportError as e:
     print(f"❌ Error importing MCP server: {e}")
@@ -247,7 +254,8 @@ TOOLS = {
                         "get_job_logs", "get_job_reports", "add_log_entry", "search_logs", "get_logs_by_level",
                         "export_job_logs", "get_error_summary", "list_available_logs",
                         "generate_summary_report", "create_job_report", "generate_performance_report",
-                        "export_complete", "import_complete", "dashboard", "get_journey_summary"
+                        "export_complete", "import_complete", "dashboard", "get_journey_summary",
+                        "clean_all", "get_comprehensive"
                     ],
                     "default": "read"
                 },
@@ -255,7 +263,7 @@ TOOLS = {
                 "job_id": {"type": "string", "description": "Job ID for job-related operations", "default": ""},
                 "stage_id": {"type": "string", "description": "Stage ID for stage/job operations", "default": ""},
                 "rule_id": {"type": "string", "description": "Rule ID for rule operations", "default": ""},
-                "journey_data": {"type": "object", "description": "Journey data for create/update operations", "default": None},
+                "journey_data": {"type": "object", "description": "Journey data for create/update operations (can include 'include_default_stages': true)", "default": None},
                 "stage_data": {"type": "object", "description": "Stage data for stage operations", "default": None},
                 "rule_data": {"type": "object", "description": "Rule data for rule operations", "default": None},
                 "job_data": {"type": "object", "description": "Job data for job operations", "default": None},
@@ -346,11 +354,6 @@ TOOLS = {
             },
             "required": []
         }
-    },
-    "simple-journeys": {
-        "func": simple_journeys_tool.execute,
-        "description": "Simple journey management tool following manage_journey.py pattern",
-        "inputSchema": simple_journeys_tool.get_tool_definition()["inputSchema"]
     }
 }
 
@@ -740,20 +743,62 @@ async def call_tool_rest(tool_name: str, request: Request):
                         detail=f"Invalid value for parameter '{prop_name}' for tool '{tool_name}': must be one of {', '.join(prop_info['enum'])}"
                     )
 
-        # Call tool function
-        tool_func = tool_info["func"]
+        # Apply defaults for missing arguments AND include ALL JSON data
+        final_args = {}
         
-        # Apply defaults for missing arguments
+        # First, add all data from the JSON request
+        for key, value in data.items():
+            final_args[key] = value
         
+        # Then apply schema defaults for missing arguments
         for prop_name, prop_info in schema_props.items():
-            if prop_name in data:
-                final_args[prop_name] = data[prop_name]
-            elif "default" in prop_info:
+            if prop_name not in final_args and "default" in prop_info:
                 final_args[prop_name] = prop_info["default"]
+        
+        # Filter out unknown parameters to prevent "unexpected keyword argument" errors
+        # Only keep parameters that are in the tool's schema
+        filtered_args = {}
+        unknown_params = {}
+        
+        for key, value in final_args.items():
+            if key in schema_props:
+                filtered_args[key] = value
+            else:
+                unknown_params[key] = value
+        
+        # Add any unknown parameters to the appropriate data parameter if they exist
+        if unknown_params and 'journey_data' in schema_props:
+            # If journey_data exists in schema, merge unknown params into it
+            if filtered_args.get('journey_data') is None:
+                filtered_args['journey_data'] = {}
+            if isinstance(filtered_args['journey_data'], dict):
+                filtered_args['journey_data'].update(unknown_params)
+        
+        # Use filtered arguments
+        final_args = filtered_args
+        
+        # Get tool function
+        tool_func = tool_info["func"]
         
         # Log the tool call for REST API
         logger.info(f"🔧 REST API Tool Call: {tool_name}")
         logger.debug(f"REST API arguments: {json.dumps(final_args, indent=2, default=str)}")
+        
+        # Add debug output to server logs
+        dual_logger.debug(f"=== DEBUGGING TOOL CALL: {tool_name} ===")
+        dual_logger.debug(f"Raw request data: {data}")
+        dual_logger.debug(f"Filtered arguments: {final_args}")
+        dual_logger.debug(f"Unknown parameters: {unknown_params}")
+        dual_logger.debug(f"Schema properties: {list(schema_props.keys())}")
+        dual_logger.debug(f"=== END DEBUG ===")
+        
+        # Add print statements for debugging
+        print(f"=== DEBUGGING TOOL CALL: {tool_name} ===")
+        print(f"Raw request data: {data}")
+        print(f"Filtered arguments: {final_args}")
+        print(f"Unknown parameters: {unknown_params}")
+        print(f"Schema properties: {list(schema_props.keys())}")
+        print(f"=== END DEBUG ===")
         
         result = await tool_func(ctx, **final_args)
         

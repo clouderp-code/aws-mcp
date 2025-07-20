@@ -48,7 +48,7 @@ def test_imports():
         from awslabs.tmf_oda_transformer_mcp_server.services import (
             # SchemaAnalysisService,      # Removed service
             # DatabaseAnalysisService,    # Removed service
-            JourneyService,
+            SimpleJourneyService,
             ValidationService
         )
         write_result("Services imported successfully", True)

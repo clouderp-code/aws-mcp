@@ -34,7 +34,7 @@ from pydantic import Field
 from typing import Annotated
 
 from ..models import LogLevel, ReportType, LogEntry, ReportData
-from ..services import JourneyService
+from ..services import SimpleJourneyService
 from .base import BaseToolMixin
 
 # Import test utilities
@@ -533,7 +533,7 @@ class EnhancedLogsService:
     """Enhanced service for logs and reports management."""
     
     def __init__(self):
-        self.journey_service = JourneyService()
+        self.journey_service = SimpleJourneyService()
         logger.info("Enhanced logs and reports service initialized")
     
     async def get_job_logs(self, journey_id: str, job_id: str, stage_name: Optional[str] = None,

@@ -16,12 +16,12 @@
 
 from .schema_service import SchemaAnalysisService
 from .database_service import DatabaseAnalysisService
-from .journey_service import JourneyService
+from .simple_journey_service import SimpleJourneyService
 from .validation_service import ValidationService
 
 __all__ = [
     'SchemaAnalysisService',
     'DatabaseAnalysisService',
-    'JourneyService',
+    'SimpleJourneyService',
     'ValidationService',
 ] 

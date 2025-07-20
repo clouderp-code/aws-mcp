@@ -65,7 +65,7 @@ async def run_test_imports(ctx: Context, include_performance: bool = False) -> D
             from ..services import (
                 # SchemaAnalysisService,      # Commented out for focus on core execution tools
                 # DatabaseAnalysisService,    # Commented out for focus on core execution tools
-                JourneyService,
+                SimpleJourneyService,
                 ValidationService
             )
             imports_tested.append(('Services', True, 'All available service classes imported successfully'))
