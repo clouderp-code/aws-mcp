@@ -18,27 +18,69 @@ GREEN='\033[0;32m'
 BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 PURPLE='\033[0;35m'
+CYAN='\033[0;36m'
 NC='\033[0m' # No Color
+
+# Logging configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$SCRIPT_DIR/../../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/test_journey_crud_$(date +%Y-%m-%d_%H-%M-%S).log"
+EXECUTION_ID="CRUD_$(date +%s)"
+
+# Initialize logging
+setup_logging() {
+    echo "=== Journey CRUD Lifecycle Test Log - $(date) ===" > "$LOG_FILE"
+    echo "Execution ID: $EXECUTION_ID" >> "$LOG_FILE"
+    echo "Server URL: $SERVER_URL" >> "$LOG_FILE"
+    echo "Test Journey Name: $TEST_JOURNEY_NAME" >> "$LOG_FILE"
+    echo "ODA Component Type: $ODA_COMPONENT_TYPE" >> "$LOG_FILE"
+    echo "Log File: $LOG_FILE" >> "$LOG_FILE"
+    echo "=========================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+}
+
+# Enhanced logging functions
+log_to_file() {
+    local level="$1"
+    local message="$2"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | $level | $message" >> "$LOG_FILE"
+}
 
 # Helper functions
 log_info() {
-    echo -e "${BLUE}ℹ️  $1${NC}"
+    local message="$1"
+    echo -e "${BLUE}ℹ️  $message${NC}"
+    log_to_file "INFO" "$message"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
-}
-
-log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    local message="$1"
+    echo -e "${GREEN}✅ $message${NC}"
+    log_to_file "SUCCESS" "$message"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    local message="$1"
+    echo -e "${RED}❌ $message${NC}"
+    log_to_file "ERROR" "$message"
+}
+
+log_warning() {
+    local message="$1"
+    echo -e "${YELLOW}⚠️  $message${NC}"
+    log_to_file "WARNING" "$message"
 }
 
 log_step() {
-    echo -e "${PURPLE}🔄 $1${NC}"
+    local message="$1"
+    echo -e "${PURPLE}🔄 $message${NC}"
+    log_to_file "STEP" "$message"
+}
+
+log_debug() {
+    local message="$1"
+    log_to_file "DEBUG" "$message"
 }
 
 # Function to get DynamoDB record count
@@ -66,9 +108,12 @@ get_journey_record_count() {
 call_api() {
     local action="$1"
     local data="$2"
-    curl -s -X POST "$SERVER_URL/tools/journeys" \
+    log_debug "API Call - Action: $action, Data: $data"
+    local response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
         -H "Content-Type: application/json" \
-        -d "$data"
+        -d "$data")
+    log_debug "API Response: $response"
+    echo "$response"
 }
 
 # Function to extract journey ID from response
@@ -89,12 +134,17 @@ check_api_success() {
     fi
 }
 
-echo -e "${BLUE}"
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║                 🧪 Journey CRUD Lifecycle Test              ║"
-echo "║              Complete Create → Update → Delete              ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-echo -e "${NC}"
+# Test Header
+echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
+echo -e "${YELLOW}║              🔄 Journey CRUD Lifecycle Test                 ║${NC}"
+echo -e "${YELLOW}║          Create → Update → Delete → Verify                  ║${NC}"
+echo -e "${YELLOW}╚══════════════════════════════════════════════════════════════╝${NC}"
+echo ""
+
+log_info "Starting Journey CRUD Lifecycle Test"
+log_info "Execution ID: $EXECUTION_ID"
+log_info "Log file: $LOG_FILE"
+log_info "Test Journey Name: $TEST_JOURNEY_NAME"
 
 # Phase 1: Initial State
 echo -e "\n${PURPLE}📊 PHASE 1: Initial State Assessment${NC}"
@@ -122,19 +172,18 @@ log_step "Creating journey with comprehensive metadata"
 
 CREATE_DATA="{
     \"action\": \"create\",
-    \"journey_data\": {
-        \"name\": \"$TEST_JOURNEY_NAME\",
-        \"description\": \"$TEST_DESCRIPTION\",
-        \"odaComponentType\": \"$ODA_COMPONENT_TYPE\",
-        \"sourceSystem\": \"TestSystem\",
-        \"targetSystem\": \"TMF-ODA\",
-        \"priority\": \"high\",
-        \"estimatedDuration\": \"2h 30m\",
-        \"tags\": [\"test\", \"crud\", \"validation\"],
-        \"owner\": \"test-user\",
-        \"version\": \"1.0.0\",
-        \"environment\": \"test\"
-    }
+    \"name\": \"$TEST_JOURNEY_NAME\",
+    \"description\": \"$TEST_DESCRIPTION\",
+    \"odaComponentType\": \"$ODA_COMPONENT_TYPE\",
+    \"sourceSystem\": \"TestSystem\",
+    \"targetSystem\": \"TMF-ODA\",
+    \"priority\": \"high\",
+    \"estimatedDuration\": \"2h 30m\",
+    \"tags\": [\"test\", \"crud\", \"validation\"],
+    \"owner\": \"test-user\",
+    \"version\": \"1.0.0\",
+    \"environment\": \"test\",
+    \"createdBy\": \"test-system\"
 }"
 
 CREATE_RESPONSE=$(call_api "create" "$CREATE_DATA")
@@ -143,8 +192,13 @@ if check_api_success "$CREATE_RESPONSE"; then
     JOURNEY_ID=$(extract_journey_id "$CREATE_RESPONSE")
     if [ -n "$JOURNEY_ID" ]; then
         log_success "Journey created successfully: $JOURNEY_ID"
+        
+        # Extract stages information from create response
+        STAGES_ADDED=$(echo "$CREATE_RESPONSE" | jq -r '.result.totalStages // 6')
+        TOTAL_STAGES=$STAGES_ADDED
+        log_info "Journey created with $STAGES_ADDED default stages automatically"
     else
-        log_error "Journey created but ID not found in response"
+        log_error "Journey created but no ID returned"
         exit 1
     fi
 else
@@ -152,43 +206,22 @@ else
     exit 1
 fi
 
-# Phase 3: Add Default Stages
-echo -e "\n${PURPLE}🏗️  PHASE 3: Adding Six Default Transformation Stages${NC}"
-echo "===================================================="
-
-log_step "Adding default transformation stages to journey"
-
-ADD_STAGES_DATA="{
-    \"action\": \"add_default_stages\",
-    \"journey_id\": \"$JOURNEY_ID\"
-}"
-
-ADD_STAGES_RESPONSE=$(call_api "add_default_stages" "$ADD_STAGES_DATA")
-
-if check_api_success "$ADD_STAGES_RESPONSE"; then
-    STAGES_ADDED=$(echo "$ADD_STAGES_RESPONSE" | jq -r '.result.stages_added // 0')
-    TOTAL_STAGES=$(echo "$ADD_STAGES_RESPONSE" | jq -r '.result.total_stages // 0')
-    log_success "Default stages added successfully: $STAGES_ADDED/$TOTAL_STAGES stages"
-    log_info "Expected stages: raw_analysis, stripped_schema, tmf_mapping, migration_planning, data_migration, verification_validation"
-else
-    log_warning "Failed to add default stages - continuing with test"
-fi
-
 # Verify both journey and stages in DynamoDB
 log_step "Verifying journey and stages creation in DynamoDB"
 JOURNEY_RECORDS_AFTER_STAGES=$(get_journey_record_count "$JOURNEY_ID")
-log_info "Journey records after stage creation: $JOURNEY_RECORDS_AFTER_STAGES"
+log_info "Journey records after creation: $JOURNEY_RECORDS_AFTER_STAGES"
 
-if [ "$JOURNEY_RECORDS_AFTER_STAGES" -gt 1 ]; then
-    log_success "Journey and stages successfully stored in DynamoDB"
-    EXPECTED_RECORDS=$((1 + ${STAGES_ADDED:-6}))  # 1 metadata + stages
-    log_info "Expected records: ~$EXPECTED_RECORDS (1 metadata + $STAGES_ADDED stages)"
+EXPECTED_RECORDS=$((1 + ${STAGES_ADDED:-6}))  # 1 metadata + stages
+log_info "Expected records: ~$EXPECTED_RECORDS (1 metadata + $STAGES_ADDED stages)"
+
+if [ "$JOURNEY_RECORDS_AFTER_STAGES" -ge "$EXPECTED_RECORDS" ]; then
+    log_success "Journey and stages verified in DynamoDB: $JOURNEY_RECORDS_AFTER_STAGES records"
 else
-    log_warning "Only journey metadata found in DynamoDB"
+    log_warning "Expected ~$EXPECTED_RECORDS records but found $JOURNEY_RECORDS_AFTER_STAGES"
 fi
 
 # Phase 4: Journey Update
-echo -e "\n${PURPLE}🔄 PHASE 4: Journey Metadata Update${NC}"
+echo -e "\n${PURPLE}🔄 PHASE 3: Journey Metadata Update${NC}"
 echo "==================================="
 
 log_step "Updating journey metadata"
@@ -196,15 +229,13 @@ log_step "Updating journey metadata"
 UPDATE_DATA="{
     \"action\": \"update\",
     \"journey_id\": \"$JOURNEY_ID\",
-    \"journey_data\": {
-        \"description\": \"UPDATED: $TEST_DESCRIPTION - Modified in CRUD test\",
-        \"priority\": \"critical\",
-        \"estimatedDuration\": \"3h 15m\",
-        \"tags\": [\"test\", \"crud\", \"validation\", \"updated\"],
-        \"version\": \"1.1.0\",
-        \"lastModified\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
-        \"status\": \"active\"
-    }
+    \"description\": \"UPDATED: $TEST_DESCRIPTION - Modified in CRUD test\",
+    \"priority\": \"critical\",
+    \"estimatedDuration\": \"3h 15m\",
+    \"tags\": [\"test\", \"crud\", \"validation\", \"updated\"],
+    \"version\": \"1.1.0\",
+    \"lastModified\": \"$(date -u +%Y-%m-%dT%H:%M:%SZ)\",
+    \"status\": \"active\"
 }"
 
 UPDATE_RESPONSE=$(call_api "update" "$UPDATE_DATA")
@@ -217,8 +248,8 @@ else
 fi
 
 # Phase 5: Verification of Update
-echo -e "\n${PURPLE}🔍 PHASE 5: Update Verification${NC}"
-echo "==============================="
+echo -e "\n${PURPLE}🔍 PHASE 4: Update Verification${NC}"
+echo "============================="
 
 log_step "Verifying journey update via API"
 
@@ -249,16 +280,14 @@ else
 fi
 
 # Phase 6: Pre-Delete State
-echo -e "\n${PURPLE}📋 PHASE 6: Pre-Delete State Assessment${NC}"
-echo "========================================"
+echo -e "\n${PURPLE}📋 PHASE 5: Pre-Delete State Assessment${NC}"
+echo "======================================="
 
-log_step "Checking state before deletion"
-
-# Get current counts
+# Get current state before deletion
 CURRENT_DB_COUNT=$(get_dynamodb_count)
 CURRENT_JOURNEY_RECORDS=$(get_journey_record_count "$JOURNEY_ID")
 
-LIST_RESPONSE_PRE_DELETE=$(call_api "list")
+LIST_RESPONSE_PRE_DELETE=$(call_api "list" '{"action": "list"}')
 CURRENT_JOURNEY_COUNT=$(echo "$LIST_RESPONSE_PRE_DELETE" | jq -r '.result.total_journeys // 0')
 
 log_info "DynamoDB records before delete: $CURRENT_DB_COUNT"
@@ -266,7 +295,7 @@ log_info "Journey-specific records before delete: $CURRENT_JOURNEY_RECORDS"
 log_info "Total journeys before delete: $CURRENT_JOURNEY_COUNT"
 
 # Phase 7: Journey Deletion
-echo -e "\n${PURPLE}🗑️  PHASE 7: Journey Deletion${NC}"
+echo -e "\n${PURPLE}🗑️  PHASE 6: Journey Deletion${NC}"
 echo "=============================="
 
 log_step "Deleting journey and all related records"
@@ -286,7 +315,7 @@ else
 fi
 
 # Phase 8: Post-Delete Verification
-echo -e "\n${PURPLE}✅ PHASE 8: Post-Delete Verification${NC}"
+echo -e "\n${PURPLE}✅ PHASE 7: Post-Delete Verification${NC}"
 echo "===================================="
 
 log_step "Verifying complete deletion"
@@ -299,7 +328,7 @@ FINAL_DB_COUNT=$(get_dynamodb_count)
 FINAL_JOURNEY_RECORDS=$(get_journey_record_count "$JOURNEY_ID")
 
 # Check API journey count
-LIST_RESPONSE_FINAL=$(call_api "list")
+LIST_RESPONSE_FINAL=$(call_api "list" '{"action": "list"}')
 FINAL_JOURNEY_COUNT=$(echo "$LIST_RESPONSE_FINAL" | jq -r '.result.total_journeys // 0')
 
 # Calculate reductions
@@ -318,7 +347,7 @@ echo "Journey-specific records remaining: $FINAL_JOURNEY_RECORDS"
 echo "Expected deletion: ~$((1 + ${STAGES_ADDED:-6})) records (1 metadata + ${STAGES_ADDED:-6} stages)"
 
 # Phase 9: Results Summary
-echo -e "\n${PURPLE}🎯 PHASE 9: CRUD Lifecycle Results Summary${NC}"
+echo -e "\n${PURPLE}🎯 PHASE 8: CRUD Lifecycle Results Summary${NC}"
 echo "==========================================="
 
 # Validation checks
@@ -367,11 +396,31 @@ if [ "$ALL_CHECKS_PASSED" = true ]; then
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo -e "${GREEN}🎉 CRUD LIFECYCLE TEST COMPLETED SUCCESSFULLY! 🎉${NC}"
+    
+    # Final success logging
+    log_success "CRUD Lifecycle Test Completed Successfully"
+    log_info "Journey created: $JOURNEY_ID"
+    log_info "Stages added: ${STAGES_ADDED:-6}"
+    log_info "DynamoDB records deleted: $DB_REDUCTION"
+    log_info "Test execution completed at: $(date)"
+    log_info "Log file saved to: $LOG_FILE"
+    
+    echo ""
+    echo -e "${CYAN}📋 Test logs saved to: $LOG_FILE${NC}"
     exit 0
 else
     echo "║ Overall Status: ❌ SOME TESTS FAILED"
     echo "╚══════════════════════════════════════════════════════════════╝"
     echo -e "${NC}"
     echo -e "${RED}❌ CRUD LIFECYCLE TEST FAILED - CHECK ERRORS ABOVE${NC}"
+    
+    # Final failure logging
+    log_error "CRUD Lifecycle Test Failed"
+    log_error "One or more validation checks failed"
+    log_info "Test execution completed at: $(date)"
+    log_info "Log file saved to: $LOG_FILE"
+    
+    echo ""
+    echo -e "${CYAN}📋 Test logs saved to: $LOG_FILE${NC}"
     exit 1
 fi 

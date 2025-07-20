@@ -17,34 +17,75 @@ NC='\033[0m' # No Color
 # Configuration
 SERVER_URL="http://localhost:8000"
 
-# Logging functions
+# Logging configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$SCRIPT_DIR/../../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/test_journey_create_$(date +%Y-%m-%d_%H-%M-%S).log"
+EXECUTION_ID="CREATE_$(date +%s)"
+
+# Initialize logging
+setup_logging() {
+    echo "=== Journey Creation Test Log - $(date) ===" > "$LOG_FILE"
+    echo "Execution ID: $EXECUTION_ID" >> "$LOG_FILE"
+    echo "Server URL: $SERVER_URL" >> "$LOG_FILE"
+    echo "Log File: $LOG_FILE" >> "$LOG_FILE"
+    echo "=========================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+}
+
+# Enhanced logging functions
+log_to_file() {
+    local level="$1"
+    local message="$2"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | $level | $message" >> "$LOG_FILE"
+}
+
 log_info() {
-    echo -e "${CYAN}ℹ️  $1${NC}"
+    local message="$1"
+    echo -e "${CYAN}ℹ️  $message${NC}"
+    log_to_file "INFO" "$message"
 }
 
 log_success() {
-    echo -e "${GREEN}✅ $1${NC}"
+    local message="$1"
+    echo -e "${GREEN}✅ $message${NC}"
+    log_to_file "SUCCESS" "$message"
 }
 
 log_error() {
-    echo -e "${RED}❌ $1${NC}"
+    local message="$1"
+    echo -e "${RED}❌ $message${NC}"
+    log_to_file "ERROR" "$message"
 }
 
 log_warning() {
-    echo -e "${YELLOW}⚠️  $1${NC}"
+    local message="$1"
+    echo -e "${YELLOW}⚠️  $message${NC}"
+    log_to_file "WARNING" "$message"
 }
 
 log_step() {
-    echo -e "${BLUE}🔄 $1${NC}"
+    local message="$1"
+    echo -e "${PURPLE}🔄 $message${NC}"
+    log_to_file "STEP" "$message"
+}
+
+log_debug() {
+    local message="$1"
+    log_to_file "DEBUG" "$message"
 }
 
 # API helper functions
 call_api() {
     local action="$1"
     local data="$2"
-    curl -s -X POST "$SERVER_URL/tools/journeys" \
+    log_debug "API Call - Action: $action, Data: $data"
+    local response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
         -H "Content-Type: application/json" \
-        -d "$data"
+        -d "$data")
+    log_debug "API Response: $response"
+    echo "$response"
 }
 
 check_api_success() {
@@ -52,9 +93,9 @@ check_api_success() {
     echo "$response" | jq -e '.result.status == "success"' >/dev/null 2>&1
 }
 
-get_dynamodb_count() {
+get_total_dynamodb_records() {
     aws dynamodb scan \
-        --table-name TMF_ODA_Transformer \
+        --table-name TransformationSystem \
         --select COUNT \
         --query 'Count' \
         --output text 2>/dev/null || echo "0"
@@ -64,7 +105,7 @@ get_journey_record_count() {
     local journey_id="$1"
     clean_id=${journey_id#JRN-}
     aws dynamodb scan \
-        --table-name TMF_ODA_Transformer \
+        --table-name TransformationSystem \
         --filter-expression "begins_with(PK, :pk)" \
         --expression-attribute-values "{\":pk\":{\"S\":\"JOURNEY#$clean_id\"}}" \
         --select COUNT \
@@ -72,19 +113,26 @@ get_journey_record_count() {
         --output text 2>/dev/null || echo "0"
 }
 
+# Initialize logging
+setup_logging
+
 # Test Header
 echo -e "${PURPLE}"
 echo "╔══════════════════════════════════════════════════════════════╗"
 echo "║              🏗️  Journey Creation Test (Persistent)        ║"
 echo "║           Create Journey + Stages (No Cleanup)              ║"
 echo "╚══════════════════════════════════════════════════════════════╝"
-echo -e "${NC}\n"
+echo -e "${NC}"
+
+log_info "Starting Journey Creation Test"
+log_info "Execution ID: $EXECUTION_ID"
+log_info "Log file: $LOG_FILE"
 
 # Phase 1: Initial State
 echo -e "${PURPLE}📊 PHASE 1: Initial State Assessment${NC}"
 echo "=================================================="
 log_step "Getting initial DynamoDB record count"
-INITIAL_DB_COUNT=$(get_dynamodb_count)
+INITIAL_DB_COUNT=$(get_total_dynamodb_records)
 log_info "Initial DynamoDB records: $INITIAL_DB_COUNT"
 
 log_step "Getting initial journey count via API"
@@ -152,7 +200,7 @@ echo -e "\n${PURPLE}📊 PHASE 4: Final State Verification${NC}"
 echo "====================================="
 
 log_step "Verifying journey and stages creation in DynamoDB"
-FINAL_DB_COUNT=$(get_dynamodb_count)
+FINAL_DB_COUNT=$(get_total_dynamodb_records)
 JOURNEY_RECORDS=$(get_journey_record_count "$JOURNEY_ID")
 log_info "Total DynamoDB records: $FINAL_DB_COUNT"
 log_info "Journey-specific records: $JOURNEY_RECORDS"
@@ -181,5 +229,16 @@ echo -e "${NC}"
 
 echo -e "${GREEN}🎉 JOURNEY CREATION COMPLETED - DATA PERSISTED IN DYNAMODB! 🎉${NC}"
 echo -e "${CYAN}💡 To view the data in DynamoDB:${NC}"
-echo -e "${CYAN}   aws dynamodb scan --table-name TMF_ODA_Transformer --query 'Items[*].[PK.S,SK.S,EntityType.S]' --output table${NC}"
+echo -e "${CYAN}   aws dynamodb scan --table-name TransformationSystem --query 'Items[*].[PK.S,SK.S,EntityType.S]' --output table${NC}"
 echo -e "${CYAN}💡 To clean up later, run: ./clean_journeys_data.sh${NC}" 
+
+# Final logging
+log_success "Journey Creation Test Completed Successfully"
+log_info "Journey ID: $JOURNEY_ID"
+log_info "Total DynamoDB records created: $((FINAL_DB_COUNT - INITIAL_DB_COUNT))"
+log_info "Journey-specific records: $JOURNEY_RECORDS"
+log_info "Test execution completed at: $(date)"
+log_info "Log file saved to: $LOG_FILE"
+
+echo ""
+echo -e "${CYAN}📋 Test logs saved to: $LOG_FILE${NC}" 

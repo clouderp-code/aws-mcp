@@ -29,21 +29,10 @@ SERVER_URL="${1:-http://localhost:8000}"
 FORCE_MODE=false
 TIMEOUT=30
 
-# Check for --force flag
-if [[ "$2" == "--force" ]] || [[ "$1" == "--force" ]]; then
+# Check for force mode
+if [[ "$*" == *"--force"* ]]; then
     FORCE_MODE=true
-    if [[ "$1" == "--force" ]]; then
-        SERVER_URL="http://localhost:8000"
-    fi
 fi
-
-# Logging configuration
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="$SCRIPT_DIR/cleanup_journeys_$(date +%Y%m%d_%H%M%S).log"
-echo "Journey cleanup started at $(date)" > "$LOG_FILE"
-echo "Server URL: $SERVER_URL" >> "$LOG_FILE"
-echo "Force mode: $FORCE_MODE" >> "$LOG_FILE"
-echo "=============================================" >> "$LOG_FILE"
 
 # Colors for output
 RED='\033[0;31m'
@@ -54,6 +43,70 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Logging configuration
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+LOG_DIR="$SCRIPT_DIR/../../logs"
+mkdir -p "$LOG_DIR"
+LOG_FILE="$LOG_DIR/clean_journeys_$(date +%Y-%m-%d_%H-%M-%S).log"
+EXECUTION_ID="CLEAN_$(date +%s)"
+
+# Initialize logging
+setup_logging() {
+    echo "=== Journey Data Cleanup Log - $(date) ===" > "$LOG_FILE"
+    echo "Execution ID: $EXECUTION_ID" >> "$LOG_FILE"
+    echo "Server URL: $SERVER_URL" >> "$LOG_FILE"
+    echo "Force Mode: $FORCE_MODE" >> "$LOG_FILE"
+    echo "Log File: $LOG_FILE" >> "$LOG_FILE"
+    echo "=========================================" >> "$LOG_FILE"
+    echo "" >> "$LOG_FILE"
+}
+
+# Enhanced logging functions
+log_to_file() {
+    local level="$1"
+    local message="$2"
+    echo "$(date '+%Y-%m-%d %H:%M:%S') | $level | $message" >> "$LOG_FILE"
+}
+
+# Logging functions
+log_info() {
+    local message="$1"
+    echo -e "${BLUE}ℹ️  $message${NC}"
+    log_to_file "INFO" "$message"
+}
+
+log_success() {
+    local message="$1"
+    echo -e "${GREEN}✅ $message${NC}"
+    log_to_file "SUCCESS" "$message"
+}
+
+log_error() {
+    local message="$1"
+    echo -e "${RED}❌ $message${NC}"
+    log_to_file "ERROR" "$message"
+}
+
+log_warning() {
+    local message="$1"
+    echo -e "${YELLOW}⚠️  $message${NC}"
+    log_to_file "WARNING" "$message"
+}
+
+log_step() {
+    local message="$1"
+    echo -e "${PURPLE}🔄 $message${NC}"
+    log_to_file "STEP" "$message"
+}
+
+log_debug() {
+    local message="$1"
+    log_to_file "DEBUG" "$message"
+}
+
+# Initialize logging
+setup_logging
 
 # Counters
 TOTAL_JOURNEYS=0
@@ -336,6 +389,12 @@ verify_cleanup() {
 # MAIN EXECUTION
 # =============================================================================
 
+# Initialize logging with our enhanced system
+log_info "Starting Journey Data Cleanup"
+log_info "Execution ID: $EXECUTION_ID"
+log_info "Server URL: $SERVER_URL"
+log_info "Force mode: $FORCE_MODE"
+
 print_header "TMF ODA TRANSFORMER - JOURNEY DATA CLEANUP"
 
 log_message "${PURPLE}📋 Cleanup log will be saved to: $LOG_FILE${NC}"
@@ -463,10 +522,29 @@ if [[ $FAILED_DELETIONS -eq 0 ]]; then
     log_message "\n${GREEN}🎉 Cleanup completed successfully!${NC}"
     log_message "${BLUE}✨ All journey data has been removed from the system${NC}"
     log_message "${PURPLE}📋 Full cleanup log saved to: $LOG_FILE${NC}"
+    
+    # Enhanced logging
+    log_success "Journey Data Cleanup Completed Successfully"
+    log_info "Total journeys deleted: $DELETED_JOURNEYS"
+    log_info "Success rate: $(( (DELETED_JOURNEYS * 100) / TOTAL_JOURNEYS ))%"
+    log_info "Cleanup execution completed at: $(date)"
+    
+    echo ""
+    echo -e "${CYAN}📋 Detailed logs saved to: $LOG_FILE${NC}"
     exit 0
 else
     log_message "\n${YELLOW}⚠️  Cleanup completed with some failures${NC}"
     log_message "${BLUE}📋 Check the log above for details about failed deletions${NC}"
     log_message "${PURPLE}📋 Full cleanup log saved to: $LOG_FILE${NC}"
+    
+    # Enhanced logging
+    log_warning "Journey Data Cleanup Completed With Failures"
+    log_info "Total journeys processed: $TOTAL_JOURNEYS"
+    log_info "Successfully deleted: $DELETED_JOURNEYS"
+    log_error "Failed deletions: $FAILED_DELETIONS"
+    log_info "Cleanup execution completed at: $(date)"
+    
+    echo ""
+    echo -e "${CYAN}📋 Detailed logs saved to: $LOG_FILE${NC}"
     exit 1
 fi 
