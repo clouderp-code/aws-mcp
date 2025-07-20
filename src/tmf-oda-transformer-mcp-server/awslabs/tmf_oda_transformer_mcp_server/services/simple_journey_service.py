@@ -1189,3 +1189,372 @@ class SimpleJourneyService:
         except Exception as e:
             logger.error(f"❌ Failed to add default stages to journey {journey_id}: {str(e)}")
             raise
+
+    # =====================================================================
+    # SECOND BRAIN RULE MANAGEMENT METHODS  
+    # =====================================================================
+    
+    def _validate_rule_structure(self, rule_data: Dict[str, Any]) -> bool:
+        """Validate Second Brain rule structure and content."""
+        required_fields = ['title', 'description', 'type', 'priority', 'scope', 'content']
+        
+        # Valid configuration
+        valid_rule_types = [
+            'field_mapping', 'contextual_recommendations', 'data_interpretation',
+            'validation_rules', 'business_logic', 'compliance_check'
+        ]
+        valid_priorities = ['low', 'medium', 'high', 'critical']
+        valid_scopes = ['global', 'project', 'stage']
+        
+        # Check required fields
+        for field in required_fields:
+            if field not in rule_data:
+                logger.error(f'❌ Missing required field: {field}')
+                return False
+        
+        # Validate rule type
+        if rule_data['type'] not in valid_rule_types:
+            logger.error(f'❌ Invalid rule type: {rule_data["type"]}. Valid types: {valid_rule_types}')
+            return False
+        
+        # Validate priority
+        if rule_data['priority'] not in valid_priorities:
+            logger.error(f'❌ Invalid priority: {rule_data["priority"]}. Valid priorities: {valid_priorities}')
+            return False
+        
+        # Validate scope
+        if rule_data['scope'] not in valid_scopes:
+            logger.error(f'❌ Invalid scope: {rule_data["scope"]}. Valid scopes: {valid_scopes}')
+            return False
+        
+        # Validate content structure
+        content = rule_data.get('content', {})
+        if not isinstance(content, dict):
+            logger.error('❌ Content must be a dictionary')
+            return False
+        
+        return True
+    
+    def _generate_rule_id(self, stage_id: str, rule_type: str) -> str:
+        """Generate a unique rule ID."""
+        import uuid
+        unique_id = str(uuid.uuid4())[:8]
+        return f'rule-{stage_id}-{rule_type}-{unique_id}'
+    
+    def _convert_floats_to_decimal(self, obj):
+        """Convert float values to Decimal for DynamoDB compatibility."""
+        from decimal import Decimal
+        if isinstance(obj, float):
+            return Decimal(str(obj))
+        elif isinstance(obj, dict):
+            return {k: self._convert_floats_to_decimal(v) for k, v in obj.items()}
+        elif isinstance(obj, list):
+            return [self._convert_floats_to_decimal(item) for item in obj]
+        else:
+            return obj
+
+    async def list_rules(self, journey_id: str, stage_id: Optional[str] = None, 
+                        rule_type: Optional[str] = None, priority: Optional[str] = None) -> Dict[str, Any]:
+        """List Second Brain rules for a journey with optional filtering."""
+        try:
+            clean_id = self._clean_journey_id(journey_id)
+            logger.info(f"📋 Listing rules for journey: {journey_id}")
+            
+            # Verify journey exists
+            existing_journey = await self.get_journey(journey_id)
+            if not existing_journey:
+                raise ValueError(f'Journey {journey_id} not found')
+            
+            # Query all rules for the journey using GSI1
+            try:
+                response = self.table.query(
+                    IndexName='GSI1',
+                    KeyConditionExpression='GSI1PK = :pk',
+                    ExpressionAttributeValues={
+                        ':pk': f'JOURNEY#{clean_id}#RULES'
+                    }
+                )
+            except Exception:
+                # Fallback to scanning if GSI1 doesn't exist
+                response = self.table.query(
+                    KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
+                    ExpressionAttributeValues={
+                        ':pk': f'JOURNEY#{clean_id}',
+                        ':sk_prefix': 'RULE#'
+                    }
+                )
+            
+            rules = []
+            for item in response.get('Items', []):
+                rule_data = item.get('Data', {})
+                
+                # Apply filters
+                if stage_id and rule_data.get('stageId') != stage_id:
+                    continue
+                if rule_type and rule_data.get('type') != rule_type:
+                    continue
+                if priority and rule_data.get('priority') != priority:
+                    continue
+                
+                rules.append({
+                    'ruleId': rule_data.get('ruleId'),
+                    'stageId': rule_data.get('stageId'),
+                    'title': rule_data.get('title'),
+                    'description': rule_data.get('description'),
+                    'type': rule_data.get('type'),
+                    'priority': rule_data.get('priority'),
+                    'scope': rule_data.get('scope'),
+                    'status': rule_data.get('status', 'active'),
+                    'createdAt': item.get('CreatedAt'),
+                    'updatedAt': item.get('UpdatedAt')
+                })
+            
+            logger.info(f"✅ Found {len(rules)} rules for journey {journey_id}")
+            
+            return {
+                'journey_id': journey_id,
+                'rules': rules,
+                'total_rules': len(rules),
+                'filters': {
+                    'stage_id': stage_id,
+                    'rule_type': rule_type,
+                    'priority': priority
+                }
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to list rules for journey {journey_id}: {str(e)}")
+            raise
+
+    async def get_rule(self, journey_id: str, rule_id: str) -> Optional[Dict[str, Any]]:
+        """Get a specific Second Brain rule by ID."""
+        try:
+            clean_id = self._clean_journey_id(journey_id)
+            logger.info(f"🔍 Getting rule {rule_id} for journey: {journey_id}")
+            
+            # Query all rules and find the one with matching rule_id
+            response = self.table.query(
+                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}',
+                    ':sk_prefix': 'RULE#'
+                }
+            )
+            
+            for item in response.get('Items', []):
+                rule_data = item.get('Data', {})
+                if rule_data.get('ruleId') == rule_id:
+                    logger.info(f"✅ Found rule: {rule_id}")
+                    return rule_data
+            
+            logger.warning(f"⚠️ Rule not found: {rule_id}")
+            return None
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to get rule {rule_id}: {str(e)}")
+            raise
+
+    async def add_rule(self, journey_id: str, stage_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Add a new Second Brain rule to a journey."""
+        try:
+            clean_id = self._clean_journey_id(journey_id)
+            logger.info(f"➕ Adding new rule to journey: {journey_id}, stage: {stage_id}")
+            
+            # Verify journey exists
+            existing_journey = await self.get_journey(journey_id)
+            if not existing_journey:
+                raise ValueError(f'Journey {journey_id} not found')
+            
+            # Validate rule structure
+            if not self._validate_rule_structure(rule_data):
+                raise ValueError('Invalid rule structure')
+            
+            # Generate rule ID if not provided
+            if 'ruleId' not in rule_data:
+                rule_data['ruleId'] = self._generate_rule_id(stage_id, rule_data['type'])
+            
+            # Convert floats to Decimal for DynamoDB
+            rule_data = self._convert_floats_to_decimal(rule_data)
+            
+            # Get current rules count for ordering
+            rules_result = await self.list_rules(journey_id, stage_id=stage_id)
+            rule_index = len(rules_result.get('rules', []))
+            
+            # Create DynamoDB item
+            timestamp = datetime.utcnow().isoformat().replace('+00:00', 'Z')
+            
+            rule_item = {
+                'PK': f'JOURNEY#{clean_id}',
+                'SK': f'RULE#{stage_id}#{rule_index:03d}#{rule_data["ruleId"]}',
+                'EntityType': 'SecondBrainRule',
+                'GSI1PK': f'JOURNEY#{clean_id}#RULES',
+                'GSI1SK': f'{stage_id}#{rule_data["priority"]}#{rule_index:03d}',
+                'CreatedAt': timestamp,
+                'UpdatedAt': timestamp,
+                'Data': {
+                    'ruleId': rule_data['ruleId'],
+                    'journeyId': clean_id,
+                    'stageId': stage_id,
+                    'title': rule_data['title'],
+                    'description': rule_data['description'],
+                    'type': rule_data['type'],
+                    'priority': rule_data['priority'],
+                    'scope': rule_data['scope'],
+                    'status': rule_data.get('status', 'active'),
+                    'content': rule_data['content'],
+                    'metadata': {
+                        'createdBy': rule_data.get('createdBy', 'mcp-server'),
+                        'version': rule_data.get('version', '1.0'),
+                        'tags': rule_data.get('tags', [stage_id, rule_data['type'], rule_data['priority']]),
+                        'applicableStages': rule_data.get('applicableStages', [stage_id]),
+                        'ruleEngine': 'second_brain_v1'
+                    }
+                }
+            }
+            
+            # Insert the rule
+            self.table.put_item(Item=rule_item)
+            
+            logger.info(f"✅ Successfully added rule: {rule_data['ruleId']}")
+            
+            return {
+                'journey_id': journey_id,
+                'stage_id': stage_id,
+                'rule_id': rule_data['ruleId'],
+                'success': True,
+                'message': f'Rule {rule_data["ruleId"]} added successfully to stage {stage_id}',
+                'rule_data': rule_data
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to add rule: {str(e)}")
+            raise
+
+    async def update_rule(self, journey_id: str, rule_id: str, rule_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Update an existing Second Brain rule."""
+        try:
+            clean_id = self._clean_journey_id(journey_id)
+            logger.info(f"✏️ Updating rule: {rule_id}")
+            
+            # Verify journey exists
+            existing_journey = await self.get_journey(journey_id)
+            if not existing_journey:
+                raise ValueError(f'Journey {journey_id} not found')
+            
+            # Get existing rule
+            existing_rule = await self.get_rule(journey_id, rule_id)
+            if not existing_rule:
+                raise ValueError(f'Rule {rule_id} not found')
+            
+            # Validate updated rule structure
+            if not self._validate_rule_structure(rule_data):
+                raise ValueError('Invalid rule structure')
+            
+            # Convert floats to Decimal
+            rule_data = self._convert_floats_to_decimal(rule_data)
+            
+            # Find the existing item in DynamoDB
+            stage_id = existing_rule['stageId']
+            response = self.table.query(
+                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}',
+                    ':sk_prefix': f'RULE#{stage_id}'
+                }
+            )
+            
+            target_item = None
+            for item in response.get('Items', []):
+                if item.get('Data', {}).get('ruleId') == rule_id:
+                    target_item = item
+                    break
+            
+            if not target_item:
+                raise ValueError(f'Rule item not found in database: {rule_id}')
+            
+            # Update the rule data
+            timestamp = datetime.utcnow().isoformat().replace('+00:00', 'Z')
+            
+            updated_data = existing_rule.copy()
+            updated_data.update(rule_data)
+            updated_data['ruleId'] = rule_id  # Preserve original rule ID
+            updated_data['journeyId'] = clean_id
+            updated_data['stageId'] = stage_id
+            
+            target_item['UpdatedAt'] = timestamp
+            target_item['Data'] = updated_data
+            
+            # Put the updated item
+            self.table.put_item(Item=target_item)
+            
+            logger.info(f"✅ Successfully updated rule: {rule_id}")
+            
+            return {
+                'journey_id': journey_id,
+                'rule_id': rule_id,
+                'success': True,
+                'message': f'Rule {rule_id} updated successfully',
+                'updated_data': updated_data
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to update rule {rule_id}: {str(e)}")
+            raise
+
+    async def delete_rule(self, journey_id: str, rule_id: str) -> Dict[str, Any]:
+        """Delete a Second Brain rule."""
+        try:
+            clean_id = self._clean_journey_id(journey_id)
+            logger.info(f"🗑️ Deleting rule: {rule_id}")
+            
+            # Verify journey exists
+            existing_journey = await self.get_journey(journey_id)
+            if not existing_journey:
+                raise ValueError(f'Journey {journey_id} not found')
+            
+            # Get existing rule to find the exact item
+            existing_rule = await self.get_rule(journey_id, rule_id)
+            if not existing_rule:
+                raise ValueError(f'Rule {rule_id} not found')
+            
+            stage_id = existing_rule['stageId']
+            
+            # Find the exact item to delete
+            response = self.table.query(
+                KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
+                ExpressionAttributeValues={
+                    ':pk': f'JOURNEY#{clean_id}',
+                    ':sk_prefix': f'RULE#{stage_id}'
+                }
+            )
+            
+            target_item = None
+            for item in response.get('Items', []):
+                if item.get('Data', {}).get('ruleId') == rule_id:
+                    target_item = item
+                    break
+            
+            if not target_item:
+                raise ValueError(f'Rule item not found in database: {rule_id}')
+            
+            # Delete the item
+            self.table.delete_item(
+                Key={
+                    'PK': target_item['PK'],
+                    'SK': target_item['SK']
+                }
+            )
+            
+            logger.info(f"✅ Successfully deleted rule: {rule_id}")
+            
+            return {
+                'journey_id': journey_id,
+                'rule_id': rule_id,
+                'deleted_rule': existing_rule,
+                'success': True,
+                'message': f'Rule {rule_id} deleted successfully'
+            }
+            
+        except Exception as e:
+            logger.error(f"❌ Failed to delete rule {rule_id}: {str(e)}")
+            raise

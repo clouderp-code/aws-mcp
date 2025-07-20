@@ -216,7 +216,7 @@ async def journeys_tool(
             'clean_all': 'clean_all'
         }
         
-        action = action_map.get(action.lower(), action.upper())
+        action = action_map.get(action.lower(), action.lower())
         
         # Create simplified journey service
         journey_service = SimpleJourneyService()
@@ -272,6 +272,23 @@ async def journeys_tool(
         elif action == JourneyAction.ADD_DEFAULT_STAGES:
             result = await _handle_add_default_stages(
                 ctx, journey_service, journey_id, start_time
+            )
+        elif action == JourneyAction.LIST_RULES:
+            result = await _handle_list_rules(
+                ctx, journey_service, journey_id, stage_id, rule_type, 
+                rule_data.get('priority') if rule_data else None, start_time
+            )
+        elif action == JourneyAction.ADD_RULE:
+            result = await _handle_add_rule(
+                ctx, journey_service, journey_id, stage_id, rule_data, start_time
+            )
+        elif action == JourneyAction.UPDATE_RULE:
+            result = await _handle_update_rule(
+                ctx, journey_service, journey_id, rule_id, rule_data, start_time
+            )
+        elif action == JourneyAction.DELETE_RULE:
+            result = await _handle_delete_rule(
+                ctx, journey_service, journey_id, rule_id, start_time
             )
         elif action == 'get_comprehensive':
             result = await _handle_get_comprehensive(
@@ -647,4 +664,186 @@ async def _handle_add_default_stages(
             start_time=start_time,
             operation='add_default_stages',
             journey_id=journey_id
+        )
+
+
+async def _handle_list_rules(
+    ctx,
+    journey_service,
+    journey_id: str,
+    stage_id: Optional[str],
+    rule_type: Optional[str],
+    priority: Optional[str],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle listing Second Brain rules for a journey."""
+    try:
+        logger.info(f'📋 Listing rules for journey {journey_id}')
+        
+        result = await journey_service.list_rules(
+            journey_id, 
+            stage_id=stage_id, 
+            rule_type=rule_type, 
+            priority=priority
+        )
+        
+        logger.info(f'✅ Found {result["total_rules"]} rules for journey {journey_id}')
+        
+        # Remove standard parameters from result to avoid conflicts
+        standard_params = {'status', 'message', 'start_time', 'operation', 'journey_id', 'timestamp', 'end_time', 'duration_seconds'}
+        filtered_result = {k: v for k, v in result.items() if k not in standard_params}
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved {result["total_rules"]} rules for journey {journey_id}',
+            start_time=start_time,
+            operation='list_rules',
+            journey_id=journey_id,
+            **filtered_result
+        )
+        
+    except Exception as e:
+        logger.error(f'❌ Failed to list rules for journey {journey_id}: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'List rules operation failed: {str(e)}',
+            start_time=start_time,
+            operation='list_rules',
+            journey_id=journey_id
+        )
+
+
+async def _handle_add_rule(
+    ctx,
+    journey_service,
+    journey_id: str,
+    stage_id: str,
+    rule_data: Dict[str, Any],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle adding a Second Brain rule to a journey."""
+    try:
+        logger.info(f'➕ Adding rule to journey {journey_id}, stage {stage_id}')
+        
+        if not stage_id:
+            raise ValueError('stage_id is required for add_rule operation')
+        
+        if not rule_data:
+            raise ValueError('rule_data is required for add_rule operation')
+        
+        result = await journey_service.add_rule(journey_id, stage_id, rule_data)
+        
+        logger.info(f'✅ Added rule {result["rule_id"]} to journey {journey_id}')
+        
+        # Remove standard parameters from result to avoid conflicts
+        standard_params = {'status', 'message', 'start_time', 'operation', 'journey_id', 'timestamp', 'end_time', 'duration_seconds'}
+        filtered_result = {k: v for k, v in result.items() if k not in standard_params}
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=result.get('message', f'Rule {result["rule_id"]} added successfully'),
+            start_time=start_time,
+            operation='add_rule',
+            journey_id=journey_id,
+            **filtered_result
+        )
+        
+    except Exception as e:
+        logger.error(f'❌ Failed to add rule to journey {journey_id}: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Add rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='add_rule',
+            journey_id=journey_id
+        )
+
+
+async def _handle_update_rule(
+    ctx,
+    journey_service,
+    journey_id: str,
+    rule_id: str,
+    rule_data: Dict[str, Any],
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle updating a Second Brain rule."""
+    try:
+        logger.info(f'✏️ Updating rule {rule_id} for journey {journey_id}')
+        
+        if not rule_id:
+            raise ValueError('rule_id is required for update_rule operation')
+        
+        if not rule_data:
+            raise ValueError('rule_data is required for update_rule operation')
+        
+        result = await journey_service.update_rule(journey_id, rule_id, rule_data)
+        
+        logger.info(f'✅ Updated rule {rule_id} for journey {journey_id}')
+        
+        # Remove standard parameters from result to avoid conflicts
+        standard_params = {'status', 'message', 'start_time', 'operation', 'journey_id', 'timestamp', 'end_time', 'duration_seconds'}
+        filtered_result = {k: v for k, v in result.items() if k not in standard_params}
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=result.get('message', f'Rule {rule_id} updated successfully'),
+            start_time=start_time,
+            operation='update_rule',
+            journey_id=journey_id,
+            **filtered_result
+        )
+        
+    except Exception as e:
+        logger.error(f'❌ Failed to update rule {rule_id}: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Update rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='update_rule',
+            journey_id=journey_id,
+            rule_id=rule_id
+        )
+
+
+async def _handle_delete_rule(
+    ctx,
+    journey_service,
+    journey_id: str,
+    rule_id: str,
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle deleting a Second Brain rule."""
+    try:
+        logger.info(f'🗑️ Deleting rule {rule_id} from journey {journey_id}')
+        
+        if not rule_id:
+            raise ValueError('rule_id is required for delete_rule operation')
+        
+        result = await journey_service.delete_rule(journey_id, rule_id)
+        
+        logger.info(f'✅ Deleted rule {rule_id} from journey {journey_id}')
+        
+        # Remove standard parameters from result to avoid conflicts
+        standard_params = {'status', 'message', 'start_time', 'operation', 'journey_id', 'timestamp', 'end_time', 'duration_seconds'}
+        filtered_result = {k: v for k, v in result.items() if k not in standard_params}
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=result.get('message', f'Rule {rule_id} deleted successfully'),
+            start_time=start_time,
+            operation='delete_rule',
+            journey_id=journey_id,
+            **filtered_result
+        )
+        
+    except Exception as e:
+        logger.error(f'❌ Failed to delete rule {rule_id}: {str(e)}')
+        return BaseToolMixin.create_tool_result(
+            status='error',
+            message=f'Delete rule operation failed: {str(e)}',
+            start_time=start_time,
+            operation='delete_rule',
+            journey_id=journey_id,
+            rule_id=rule_id
         ) 
