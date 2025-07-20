@@ -4,8 +4,14 @@
 # TMF ODA Transformer MCP Server - Journey Data Cleanup Script
 # =============================================================================
 # This script safely removes ALL journey data from the system
-# Usage: ./clean_journeys_data.sh [SERVER_URL] [--force]
+# Usage: ./clean_journeys_data.sh [--force] [SERVER_URL]
+#    or: ./clean_journeys_data.sh [SERVER_URL] [--force]
 # Default SERVER_URL: http://localhost:8000
+#
+# Examples:
+#   ./clean_journeys_data.sh --force                          # Use default URL with force mode
+#   ./clean_journeys_data.sh http://localhost:8080 --force    # Use custom URL with force mode
+#   ./clean_journeys_data.sh http://localhost:8080            # Use custom URL, prompt for confirmation
 # 
 # SAFETY FEATURES:
 # - Lists all journeys before deletion for review
@@ -24,15 +30,35 @@
 
 set -e
 
-# Configuration
-SERVER_URL="${1:-http://localhost:8000}"
+# Configuration - Parse arguments properly
+SERVER_URL="http://localhost:8000"  # Default value
 FORCE_MODE=false
 TIMEOUT=30
 
-# Check for force mode
-if [[ "$*" == *"--force"* ]]; then
-    FORCE_MODE=true
-fi
+# Parse command line arguments
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --force)
+            FORCE_MODE=true
+            shift
+            ;;
+        http://* | https://*)
+            SERVER_URL="$1"
+            shift
+            ;;
+        *)
+            # If it doesn't start with http/https and isn't --force, assume it's a server URL
+            if [[ "$1" != --* ]]; then
+                SERVER_URL="$1"
+            else
+                echo "Unknown option: $1" >&2
+                echo "Usage: $0 [SERVER_URL] [--force]" >&2
+                exit 1
+            fi
+            shift
+            ;;
+    esac
+done
 
 # Colors for output
 RED='\033[0;31m'
