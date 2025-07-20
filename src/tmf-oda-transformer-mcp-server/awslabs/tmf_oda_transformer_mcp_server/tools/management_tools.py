@@ -1,6 +1,11 @@
 """
-Simplified Journey Management Tools for TMF ODA Transformer MCP Server.
-Comprehensive journey lifecycle management with clean architecture.
+Core Journey Management Tools for TMF ODA Transformer MCP Server.
+Focused on journey, stage, and rule management with clean separation of concerns.
+
+🚀 SEPARATION OF CONCERNS:
+- This tool: Journey CRUD, stage management, rules management, essential job utilities
+- 'run-jobs' tool: Job creation, execution, status, cancel, retry, list
+- 'logs-and-reports' tool: Logs retrieval, search, reports generation, analysis
 """
 
 import os
@@ -73,45 +78,40 @@ from ..services.simple_journey_service import SimpleJourneyService
 
 
 class JourneyAction:
-    """Journey action constants."""
+    """Journey action constants - Focused on core journey management."""
+    # Core CRUD operations
     CREATE = 'create'
     READ = 'read'  
     UPDATE = 'update'
     DELETE = 'delete'
     LIST = 'list'
+    
+    # Stage management
     LIST_STAGES = 'list_stages'
     ADD_STAGE = 'add_stage'
     UPDATE_STAGE = 'update_stage'
     DELETE_STAGE = 'delete_stage'
     ADD_DEFAULT_STAGES = 'add_default_stages'
+    
+    # Rules management
     LIST_RULES = 'list_rules'
     ADD_RULE = 'add_rule'
     UPDATE_RULE = 'update_rule'
     DELETE_RULE = 'delete_rule'
-    LIST_JOBS = 'list_jobs'
-    GET_JOB = 'get_job'
-    RUN_JOB = 'run_job'
-    CANCEL_JOB = 'cancel_job'
+    
+    # Job management (only unique actions not in run-jobs tool)
     UPDATE_JOB_STATUS = 'update_job_status'
-    RETRY_JOB = 'retry_job'
     GET_JOB_METRICS = 'get_job_metrics'
     GET_JOB_TIMELINE = 'get_job_timeline'
     BATCH_CANCEL_JOBS = 'batch_cancel_jobs'
-    GET_JOB_LOGS = 'get_job_logs'
-    GET_JOB_REPORTS = 'get_job_reports'
-    ADD_LOG_ENTRY = 'add_log_entry'
-    SEARCH_LOGS = 'search_logs'
-    GET_LOGS_BY_LEVEL = 'get_logs_by_level'
-    EXPORT_JOB_LOGS = 'export_job_logs'
-    GET_ERROR_SUMMARY = 'get_error_summary'
-    LIST_AVAILABLE_LOGS = 'list_available_logs'
-    GENERATE_SUMMARY_REPORT = 'generate_summary_report'
-    CREATE_JOB_REPORT = 'create_job_report'
-    GENERATE_PERFORMANCE_REPORT = 'generate_performance_report'
+    
+    # Journey utilities
     EXPORT_COMPLETE = 'export_complete'
     IMPORT_COMPLETE = 'import_complete'
     DASHBOARD = 'dashboard'
     GET_JOURNEY_SUMMARY = 'get_journey_summary'
+    CLEAN_ALL = 'clean_all'
+    GET_COMPREHENSIVE = 'get_comprehensive'
 
 
 async def journeys_tool(
@@ -154,16 +154,23 @@ async def journeys_tool(
     report_title: str = "",
 ) -> Dict[str, Any]:
     """
-    Simplified journeys tool with clean architecture.
+    Core journey management tool with clean separation of concerns.
     
-    Actions supported:
-    - Basic CRUD: create, read, update, delete, list
-    - Stages: list_stages, add_stage, update_stage, delete_stage, add_default_stages  
-    - Rules: list_rules, add_rule, update_rule, delete_rule
-    - Jobs: list_jobs, get_job, run_job, update_job_status, get_job_metrics
-    - Logs: get_job_logs, search_logs, get_logs_by_level
-    - Reports: generate_summary_report, create_job_report
-    - Import/Export: export_complete, import_complete
+    Focused on journey, stage, and rule management ONLY.
+    For specialized operations, use dedicated tools:
+    
+    📋 Core Actions Supported:
+    - Journey CRUD: create, read, update, delete, list
+    - Stage Management: list_stages, add_stage, update_stage, delete_stage, add_default_stages  
+    - Rules Management: list_rules, add_rule, update_rule, delete_rule
+    - Job Utilities: update_job_status, get_job_metrics, get_job_timeline, batch_cancel_jobs
+    - Journey Utilities: export_complete, import_complete, dashboard, get_journey_summary
+    
+    🚀 For Job Operations, Use:
+    - run-jobs tool: job creation, execution, status, cancel, retry, list
+    
+    📊 For Logs & Reports, Use:
+    - logs-and-reports tool: logs retrieval, search, reports generation, analysis
     """
     try:
         start_time = datetime.now()
@@ -181,39 +188,41 @@ async def journeys_tool(
         # Log key parameters only
         tools_logger.debug(f"Parameters: action={action}, name={name}, description={description}, odaComponentType={odaComponentType}")
         
-        # Action mapping
+        # Action mapping - Focused on core journey management
         action_map = {
+            # Core CRUD operations
             'list': JourneyAction.LIST,
             'read': JourneyAction.READ,
             'create': JourneyAction.CREATE,
             'update': JourneyAction.UPDATE,
             'delete': JourneyAction.DELETE,
+            
+            # Stage management
             'list_stages': JourneyAction.LIST_STAGES,
             'add_stage': JourneyAction.ADD_STAGE,
             'update_stage': JourneyAction.UPDATE_STAGE,
             'delete_stage': JourneyAction.DELETE_STAGE,
             'add_default_stages': JourneyAction.ADD_DEFAULT_STAGES,
+            
+            # Rules management
             'list_rules': JourneyAction.LIST_RULES,
             'add_rule': JourneyAction.ADD_RULE,
             'update_rule': JourneyAction.UPDATE_RULE,
             'delete_rule': JourneyAction.DELETE_RULE,
-            'list_jobs': JourneyAction.LIST_JOBS,
-            'get_job': JourneyAction.GET_JOB,
-            'run_job': JourneyAction.RUN_JOB,
+            
+            # Job management (only unique actions not in run-jobs tool)
             'update_job_status': JourneyAction.UPDATE_JOB_STATUS,
             'get_job_metrics': JourneyAction.GET_JOB_METRICS,
-            'get_job_logs': JourneyAction.GET_JOB_LOGS,
-            'search_logs': JourneyAction.SEARCH_LOGS,
-            'get_logs_by_level': JourneyAction.GET_LOGS_BY_LEVEL,
-            'generate_summary_report': JourneyAction.GENERATE_SUMMARY_REPORT,
-            'create_job_report': JourneyAction.CREATE_JOB_REPORT,
+            'get_job_timeline': JourneyAction.GET_JOB_TIMELINE,
+            'batch_cancel_jobs': JourneyAction.BATCH_CANCEL_JOBS,
+            
+            # Journey utilities
             'export_complete': JourneyAction.EXPORT_COMPLETE,
             'import_complete': JourneyAction.IMPORT_COMPLETE,
             'dashboard': JourneyAction.DASHBOARD,
             'get_journey_summary': JourneyAction.GET_JOURNEY_SUMMARY,
-            # New enhanced actions
-            'get_comprehensive': 'get_comprehensive',
-            'clean_all': 'clean_all'
+            'clean_all': JourneyAction.CLEAN_ALL,
+            'get_comprehensive': JourneyAction.GET_COMPREHENSIVE
         }
         
         action = action_map.get(action.lower(), action.lower())

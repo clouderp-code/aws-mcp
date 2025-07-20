@@ -238,7 +238,7 @@ TOOLS = {
     },
     "journeys": {
         "func": journeys_tool,
-        "description": "Comprehensive journey management with CRUD operations (CREATE, READ, UPDATE, DELETE)",
+        "description": "Core journey management (CRUD, stages, rules). For jobs use 'run-jobs', for logs/reports use 'logs-and-reports'",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -249,11 +249,7 @@ TOOLS = {
                         "read", "list", "create", "update", "delete",
                         "list_stages", "add_stage", "update_stage", "delete_stage", "add_default_stages",
                         "list_rules", "add_rule", "update_rule", "delete_rule",
-                        "list_jobs", "get_job", "run_job", "cancel_job", "update_job_status", "retry_job",
-                        "get_job_metrics", "get_job_timeline", "batch_cancel_jobs",
-                        "get_job_logs", "get_job_reports", "add_log_entry", "search_logs", "get_logs_by_level",
-                        "export_job_logs", "get_error_summary", "list_available_logs",
-                        "generate_summary_report", "create_job_report", "generate_performance_report",
+                        "update_job_status", "get_job_metrics", "get_job_timeline", "batch_cancel_jobs",
                         "export_complete", "import_complete", "dashboard", "get_journey_summary",
                         "clean_all", "get_comprehensive"
                     ],
@@ -297,7 +293,7 @@ TOOLS = {
     },
     "run-jobs": {
         "func": run_jobs_tool,
-        "description": "Enhanced job management for transformation stages",
+        "description": "Enhanced job lifecycle management for transformation stages (create, run, status, get, cancel, retry, list)",
         "inputSchema": {
             "type": "object",
             "properties": {
@@ -312,9 +308,9 @@ TOOLS = {
                     "type": "string",
                     "description": "Action to perform on the job",
                     "default": "run",
-                    "enum": ["run", "create", "status", "cancel", "retry", "list"]
+                    "enum": ["run", "create", "status", "cancel", "retry", "list", "get"]
                 },
-                "job_id": {"type": "string", "description": "Job ID for status/cancel/retry operations", "default": ""},
+                "job_id": {"type": "string", "description": "Job ID for status/cancel/retry/get operations", "default": ""},
                 "triggered_by": {"type": "string", "description": "Who triggered this", "default": "mcp-server"},
                 "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"},
                 "job_config": {"type": "object", "description": "Optional job configuration parameters", "default": None},

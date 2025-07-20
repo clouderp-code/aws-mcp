@@ -11,6 +11,7 @@ The tool now supports multiple actions through a single endpoint:
 - **`run`** - Create and execute a job (default behavior)
 - **`create`** - Create a job without executing it
 - **`status`** - Get job status and progress information
+- **`get`** - Get comprehensive job information and detailed status
 - **`cancel`** - Cancel a running job (planned)
 - **`retry`** - Retry a failed job
 - **`list`** - List jobs for a specific stage
@@ -45,8 +46,8 @@ POST /tools/run-jobs
 |-----------|------|----------|---------|-------------|
 | `journey_id` | string | ✅ | - | Journey ID for the transformation process |
 | `stage_id` | string | ⚠️ | `raw_analysis` | Stage ID to execute (required for run, create, list actions) |
-| `action` | string | ❌ | `run` | Action to perform (run, create, status, cancel, retry, list) |
-| `job_id` | string | ⚠️ | `""` | Job ID (required for status, cancel, retry actions) |
+| `action` | string | ❌ | `run` | Action to perform (run, create, status, get, cancel, retry, list) |
+| `job_id` | string | ⚠️ | `""` | Job ID (required for status, get, cancel, retry actions) |
 | `triggered_by` | string | ❌ | `mcp-server` | Who triggered the job execution |
 | `reason` | string | ❌ | `MCP Server execution` | Reason for executing the job |
 | `job_config` | object | ❌ | `null` | Optional job configuration parameters |
@@ -92,7 +93,18 @@ curl -X POST http://localhost:8000/tools/run-jobs \
   }'
 ```
 
-### **4. Start Asynchronous Job**
+### **4. Get Comprehensive Job Information**
+```bash
+curl -X POST http://localhost:8000/tools/run-jobs \
+  -H "Content-Type: application/json" \
+  -d '{
+    "journey_id": "JRN-12345",
+    "action": "get",
+    "job_id": "JOB-001-20240101120000"
+  }'
+```
+
+### **5. Start Asynchronous Job**
 ```bash
 curl -X POST http://localhost:8000/tools/run-jobs \
   -H "Content-Type: application/json" \
@@ -109,7 +121,7 @@ curl -X POST http://localhost:8000/tools/run-jobs \
   }'
 ```
 
-### **5. List Jobs for a Stage**
+### **6. List Jobs for a Stage**
 ```bash
 curl -X POST http://localhost:8000/tools/run-jobs \
   -H "Content-Type: application/json" \
@@ -120,7 +132,7 @@ curl -X POST http://localhost:8000/tools/run-jobs \
   }'
 ```
 
-### **6. Retry Failed Job**
+### **7. Retry Failed Job**
 ```bash
 curl -X POST http://localhost:8000/tools/run-jobs \
   -H "Content-Type: application/json" \

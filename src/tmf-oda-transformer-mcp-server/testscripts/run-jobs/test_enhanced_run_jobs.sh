@@ -126,9 +126,9 @@ if [ $? -eq 0 ]; then
         echo "Verify Journey Response:" >> "$LOG_FILE"
         echo "$VERIFY_RESPONSE" | jq . >> "$LOG_FILE" 2>/dev/null || echo "$VERIFY_RESPONSE" >> "$LOG_FILE"
         
-        JOURNEY_NAME=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey_data.name // "Unknown"')
-        JOURNEY_STATUS=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey_data.status // "unknown"')
-        TOTAL_STAGES=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey_data.totalStages // 0')
+        JOURNEY_NAME=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey.name // "Unknown"')
+        JOURNEY_STATUS=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey.status // "unknown"')
+        TOTAL_STAGES=$(echo "$VERIFY_RESPONSE" | jq -r '.result.journey.stageSummary | keys | length // 0')
         
         log_message "INFO" "Journey Name: $JOURNEY_NAME"
         log_message "INFO" "Journey Status: $JOURNEY_STATUS"

@@ -16,7 +16,7 @@
 
 import os
 import sys
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, Optional
 
 
@@ -346,6 +346,7 @@ async def run_jobs_tool(
             - 'run': Create and execute a job (default)
             - 'create': Create job without executing
             - 'status': Get job status and progress
+            - 'get': Get comprehensive job information and details
             - 'cancel': Cancel a running job
             - 'retry': Retry a failed job
             - 'list': List jobs for the stage"""
@@ -355,8 +356,8 @@ async def run_jobs_tool(
         str,
         Field(
             default="",
-            description="""Job ID for status, cancel, or retry operations.
-            Required for status, cancel, and retry actions."""
+            description="""Job ID for status, get, cancel, or retry operations.
+            Required for status, get, cancel, and retry actions."""
         ),
     ] = "",
     triggered_by: Annotated[
@@ -404,6 +405,7 @@ async def run_jobs_tool(
     
     This tool provides comprehensive job management capabilities including:
     - Creating and executing transformation jobs for specific journey stages
+    - Retrieving detailed job information and comprehensive status
     - Monitoring job status and progress in real-time
     - Managing job lifecycle (create, run, cancel, retry)
     - Integration with journey management system
@@ -413,7 +415,7 @@ async def run_jobs_tool(
         ctx: MCP context for logging and state management
         journey_id: The journey ID for the transformation process
         stage_id: The stage ID to execute
-        action: Action to perform (run, create, status, cancel, retry, list)
+        action: Action to perform (run, create, status, get, cancel, retry, list)
         job_id: Job ID for operations requiring existing job reference
         triggered_by: Who triggered this job execution
         reason: The reason for executing this job
@@ -431,7 +433,7 @@ async def run_jobs_tool(
     await BaseToolMixin.validate_journey_id(ctx, journey_id)
     if action in ['run', 'create', 'list']:
         await BaseToolMixin.validate_stage_id(ctx, stage_id)
-    if action in ['status', 'cancel', 'retry'] and not job_id:
+    if action in ['status', 'cancel', 'retry', 'get'] and not job_id:
         raise ValueError(f"job_id is required for action '{action}'")
     
     # Check if TransformationJobExecutor is available
@@ -474,6 +476,10 @@ async def run_jobs_tool(
         elif action == "status":
             result = await _handle_job_status(
                 ctx, executor, journey_id, job_id, progress_callback, start_time
+            )
+        elif action == "get":
+            result = await _handle_job_get(
+                ctx, executor, journey_id, job_id, start_time
             )
         elif action == "cancel":
             result = await _handle_job_cancel(
@@ -900,6 +906,62 @@ async def _handle_job_list(
         )
 
 
+async def _handle_job_get(
+    ctx: Context,
+    executor,
+    journey_id: str,
+    job_id: str,
+    start_time: datetime
+) -> Dict[str, Any]:
+    """Handle getting detailed job information."""
+    try:
+        logger.info(f"📊 Getting detailed information for job {job_id}")
+        
+        # Get clean journey ID for job executor
+        clean_journey_id = _get_clean_journey_id(journey_id)
+        
+        # Get comprehensive job details
+        job_details = await _get_job_details(executor, clean_journey_id, job_id)
+        
+        if not job_details:
+            return BaseToolMixin.create_error_result(
+                f'Job {job_id} not found', start_time,
+                journey_id=journey_id,
+                job_id=job_id
+            )
+        
+        # Get additional job information like step progress and timeline
+        job_timeline = await _get_job_timeline(executor, clean_journey_id, job_id)
+        step_progress = await _get_job_step_progress(executor, clean_journey_id, job_id)
+        
+        # Build comprehensive job information
+        comprehensive_info = {
+            **job_details,
+            'timeline': job_timeline,
+            'step_progress': step_progress,
+            'retrieved_at': datetime.now(timezone.utc).isoformat()
+        }
+        
+        return BaseToolMixin.create_tool_result(
+            status='success',
+            message=f'Retrieved comprehensive information for job {job_id}',
+            start_time=start_time,
+            job_id=job_id,
+            journey_id=journey_id,
+            operation='get_job_details',
+            job_info=comprehensive_info
+        )
+        
+    except Exception as e:
+        logger.error(f"❌ Failed to get job details: {str(e)}")
+        return BaseToolMixin.create_error_result(
+            f'Failed to get details for job {job_id}: {str(e)}', start_time,
+            journey_id=journey_id,
+            job_id=job_id,
+            error_details=str(e)
+        )
+
+
 # =====================================================================
 # HELPER FUNCTIONS
 # =====================================================================
@@ -923,6 +985,36 @@ async def _get_job_details(executor, journey_id: str, job_id: str) -> Optional[D
     except Exception as e:
         logger.error(f"Failed to get job details for {job_id}: {str(e)}")
         return None
+
+
+async def _get_job_timeline(executor, journey_id: str, job_id: str) -> Dict[str, Any]:
+    """Get timeline information for a job."""
+    try:
+        job_data = executor.get_job_execution(journey_id, job_id)
+        if job_data:
+            timeline = {
+                'created_at': job_data.get('createdAt'),
+                'started_at': job_data.get('startTime'),
+                'updated_at': job_data.get('updatedAt'),
+                'ended_at': job_data.get('endTime'),
+                'duration_seconds': None
+            }
+            
+            # Calculate duration if both start and end times are available
+            if timeline['started_at'] and timeline['ended_at']:
+                try:
+                    from datetime import datetime as dt
+                    start = dt.fromisoformat(timeline['started_at'].replace('Z', '+00:00'))
+                    end = dt.fromisoformat(timeline['ended_at'].replace('Z', '+00:00'))
+                    timeline['duration_seconds'] = (end - start).total_seconds()
+                except Exception:
+                    pass
+            
+            return timeline
+        return {}
+    except Exception as e:
+        logger.error(f"Failed to get timeline for {job_id}: {str(e)}")
+        return {}
 
 
 async def _get_job_step_progress(executor, journey_id: str, job_id: str) -> Dict[str, Any]:
