@@ -46,6 +46,11 @@ class TransformationJobExecutor:
         else:
             self.logger.info("Job executor configured with default credential chain")
 
+    def _get_journey_pk(self, journey_id: str) -> str:
+        """Helper method to get the correct DynamoDB PK for a journey.
+        Uses the same format as journey service: JOURNEY#{journey_id}"""
+        return f'JOURNEY#{journey_id}'
+
     def start_job_execution(
         self,
         journey_id: str,
@@ -55,10 +60,16 @@ class TransformationJobExecutor:
     ) -> str:
         """Start a new job execution for a stage"""
         try:
+            self.logger.info(f'🚀 Starting job execution for journey: {journey_id}, stage: {stage_id}')
+            self.logger.info(f'📊 Using DynamoDB table: {self.table.table_name}')
+            
             # Get journey metadata
             journey = self.get_journey(journey_id)
             if not journey:
+                self.logger.error(f'❌ Journey {journey_id} not found - cannot create job')
                 raise Exception(f'Journey {journey_id} not found')
+
+            self.logger.info(f'✅ Journey {journey_id} found successfully')
 
             # Get stage definition from stage class (not DynamoDB)
             stage_def = self.get_stage_info(stage_id)
@@ -77,13 +88,15 @@ class TransformationJobExecutor:
             execution_number = self.get_next_execution_number(journey_id, stage_id)
             job_id = f'JOB-{execution_number:03d}-{timestamp}'
 
+            self.logger.info(f'📋 Generated job ID: {job_id}, execution number: {execution_number}')
+
             # Extract stage info with proper field mapping
             stage_name = stage_def.get('stage_name', stage_id)
             stage_order = stage_def.get('order', 0)  # Default order 0
             
             # Create job execution record
             job_data = {
-                'PK': f'JOURNEY#{journey_id}',
+                'PK': self._get_journey_pk(journey_id),
                 'SK': f'JOB#{stage_order:02d}#{stage_id}#{execution_number:03d}#{timestamp}',
                 'EntityType': 'JobExecution',
                 'GSI1PK': f'STAGE#{journey_id}#{stage_id}',
@@ -254,10 +267,37 @@ class TransformationJobExecutor:
     def get_journey(self, journey_id: str) -> Dict:
         """Get journey metadata"""
         try:
-            response = self.table.get_item(Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'})
-            return response.get('Item', {}).get('Data')
+            self.logger.info(f'🔍 Getting journey: {journey_id}')
+            
+            pk_value = self._get_journey_pk(journey_id)
+            self.logger.info(f'📋 Using PK: {pk_value}')
+            
+            response = self.table.get_item(Key={'PK': pk_value, 'SK': 'METADATA'})
+            
+            self.logger.info(f'📋 DynamoDB response keys: {list(response.keys())}')
+            
+            if 'Item' not in response:
+                self.logger.error(f'❌ Journey {journey_id} not found in DynamoDB (PK: {pk_value})')
+                return None
+            
+            item = response['Item']
+            self.logger.info(f'📝 Item keys: {list(item.keys())}')
+            
+            # Check if Data field exists
+            if 'Data' not in item:
+                self.logger.warning(f'⚠️ Journey {journey_id} found but has no Data field')
+                # For compatibility with journey management system, return the item itself if no Data field
+                return item
+            
+            journey_data = item['Data']
+            self.logger.info(f'✅ Successfully retrieved journey {journey_id} with data keys: {list(journey_data.keys()) if isinstance(journey_data, dict) else "not a dict"}')
+            
+            return journey_data
+            
         except Exception as e:
-            self.logger.error(f'Error getting journey {journey_id}: {str(e)}')
+            self.logger.error(f'❌ Error getting journey {journey_id}: {str(e)}')
+            import traceback
+            self.logger.error(f'Traceback: {traceback.format_exc()}')
             return None
 
     def get_stage_definition(self, journey_id: str, stage_id: str) -> Dict:
@@ -266,7 +306,7 @@ class TransformationJobExecutor:
             response = self.table.query(
                 KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
                 ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
+                    ':pk': self._get_journey_pk(journey_id),
                     ':sk_prefix': f'STAGE#',
                     ':stage_id': stage_id,
                 },
@@ -308,7 +348,7 @@ class TransformationJobExecutor:
             response = self.table.query(
                 KeyConditionExpression='PK = :pk AND begins_with(SK, :sk_prefix)',
                 ExpressionAttributeValues={
-                    ':pk': f'JOURNEY#{journey_id}',
+                    ':pk': self._get_journey_pk(journey_id),
                     ':sk_prefix': 'JOB#',
                     ':job_id': job_id,
                 },
@@ -330,7 +370,7 @@ class TransformationJobExecutor:
         """Update journey with current job info"""
         try:
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': 'METADATA'},
                 UpdateExpression='SET #data.currentJobs.#stage_id = :job_info, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={
                     '#data': 'Data',
@@ -366,7 +406,7 @@ class TransformationJobExecutor:
             sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
 
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': sk},
                 UpdateExpression='SET #data.stepResults.#step_id.#status = :status, #data.currentStepIndex = :step_index, #data.currentStepId = :step_id, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={
                     '#data': 'Data',
@@ -401,7 +441,7 @@ class TransformationJobExecutor:
             step_result_converted = self._convert_floats_to_decimal(step_result)
 
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': sk},
                 UpdateExpression='SET #data.stepResults.#step_id = :step_result, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={
                     '#data': 'Data',
@@ -443,7 +483,7 @@ class TransformationJobExecutor:
             sk = f'JOB#{int(job_data["stageOrder"]):02d}#{stage_id}#{int(execution_number):03d}#{timestamp}'
 
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': sk},
                 UpdateExpression='SET #data.progress = :progress, #data.jobMetrics.overallProgress = :progress, #data.currentStepIndex = :step_index, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={'#data': 'Data'},
                 ExpressionAttributeValues={
@@ -478,7 +518,7 @@ class TransformationJobExecutor:
 
             # Update job record
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': sk},
                 UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.#duration = :duration, #data.progress = :progress, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={
                     '#data': 'Data',
@@ -516,7 +556,7 @@ class TransformationJobExecutor:
 
             # Update job record
             self.table.update_item(
-                Key={'PK': f'JOURNEY#{journey_id}', 'SK': sk},
+                Key={'PK': self._get_journey_pk(journey_id), 'SK': sk},
                 UpdateExpression='SET #data.#status = :status, #data.endTime = :end_time, #data.errorMessage = :error_message, #data.updatedAt = :updated_at',
                 ExpressionAttributeNames={
                     '#data': 'Data',
@@ -542,7 +582,7 @@ class TransformationJobExecutor:
             # Update journey aggregates based on job completion
             if status == 'completed':
                 self.table.update_item(
-                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
+                    Key={'PK': self._get_journey_pk(journey_id), 'SK': 'METADATA'},
                     UpdateExpression='ADD #data.aggregates.completedJobs :inc SET #data.aggregates.totalJobs = #data.aggregates.totalJobs + :inc, #data.stageSummary.#stage_id.totalExecutions = #data.stageSummary.#stage_id.totalExecutions + :inc, #data.stageSummary.#stage_id.lastStatus = :status, #data.updatedAt = :updated_at',
                     ExpressionAttributeNames={
                         '#data': 'Data',
@@ -556,7 +596,7 @@ class TransformationJobExecutor:
                 )
             elif status == 'failed':
                 self.table.update_item(
-                    Key={'PK': f'JOURNEY#{journey_id}', 'SK': 'METADATA'},
+                    Key={'PK': self._get_journey_pk(journey_id), 'SK': 'METADATA'},
                     UpdateExpression='ADD #data.aggregates.failedJobs :inc SET #data.aggregates.totalJobs = #data.aggregates.totalJobs + :inc, #data.stageSummary.#stage_id.totalExecutions = #data.stageSummary.#stage_id.totalExecutions + :inc, #data.stageSummary.#stage_id.lastStatus = :status, #data.updatedAt = :updated_at',
                     ExpressionAttributeNames={
                         '#data': 'Data',

@@ -177,21 +177,31 @@ async def call_stripped_schema(request: Request):
 
 @app.post("/tools/run-jobs")
 async def call_run_jobs(request: Request):
-    """Call run jobs tool."""
+    """Call enhanced run jobs tool with comprehensive job management."""
     try:
         data = await request.json()
         
         journey_id = data.get("journey_id", "")
         stage_id = data.get("stage_id", "raw_analysis")
+        action = data.get("action", "run")
+        job_id = data.get("job_id", "")
         triggered_by = data.get("triggered_by", "http_api")
         reason = data.get("reason", "HTTP API request")
+        job_config = data.get("job_config", None)
+        wait_for_completion = data.get("wait_for_completion", True)
+        progress_callback = data.get("progress_callback", False)
         
         result = await run_jobs_tool(
             ctx=ctx,
             journey_id=journey_id,
             stage_id=stage_id,
+            action=action,
+            job_id=job_id,
             triggered_by=triggered_by,
-            reason=reason
+            reason=reason,
+            job_config=job_config,
+            wait_for_completion=wait_for_completion,
+            progress_callback=progress_callback
         )
         
         return {"result": result, "timestamp": datetime.now().isoformat()}
@@ -310,7 +320,7 @@ async def list_tools():
                 "name": "run-jobs",
                 "endpoint": "/tools/run-jobs",
                 "method": "POST",
-                "description": "Execute any transformation stage"
+                "description": "Enhanced job management for transformation stages (create, run, status, cancel, retry, list)"
             },
             {
                 "name": "get-job-logs",

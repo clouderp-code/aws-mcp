@@ -297,16 +297,31 @@ TOOLS = {
     },
     "run-jobs": {
         "func": run_jobs_tool,
-        "description": "Execute any transformation stage",
+        "description": "Enhanced job management for transformation stages",
         "inputSchema": {
             "type": "object",
             "properties": {
                 "journey_id": {"type": "string", "description": "Journey ID", "default": "JRN-DEMO-001"},
-                "stage_id": {"type": "string", "description": "Stage ID to execute", "default": "raw_analysis", "enum": ["raw_analysis", "stripped_schema", "data_mapping", "compliance_validation"]},
+                "stage_id": {
+                    "type": "string", 
+                    "description": "Stage ID to execute", 
+                    "default": "raw_analysis", 
+                    "enum": ["raw_analysis", "stripped_schema", "tmf_mapping", "migration_planning", "data_migration", "verification_validation"]
+                },
+                "action": {
+                    "type": "string",
+                    "description": "Action to perform on the job",
+                    "default": "run",
+                    "enum": ["run", "create", "status", "cancel", "retry", "list"]
+                },
+                "job_id": {"type": "string", "description": "Job ID for status/cancel/retry operations", "default": ""},
                 "triggered_by": {"type": "string", "description": "Who triggered this", "default": "mcp-server"},
-                "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"}
+                "reason": {"type": "string", "description": "Reason for execution", "default": "MCP Server execution"},
+                "job_config": {"type": "object", "description": "Optional job configuration parameters", "default": None},
+                "wait_for_completion": {"type": "boolean", "description": "Wait for job completion", "default": True},
+                "progress_callback": {"type": "boolean", "description": "Include real-time progress updates", "default": False}
             },
-            "required": ["journey_id", "stage_id"]
+            "required": ["journey_id"]
         }
     },
     "logs-and-reports": {
