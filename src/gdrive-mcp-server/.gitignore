@@ -162,6 +162,7 @@ cython_debug/
 # Google Drive API credentials and tokens - NEVER COMMIT THESE!
 credentials.json
 client_credentials.json
+service-account.json
 service-account*.json
 token.json
 token.pickle
