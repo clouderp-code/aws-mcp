@@ -1,0 +1,53 @@
+{
+  "call_id": "RTB-2025-040",
+  "topic": "Research Behavior Analysis - Competitive Evaluation Matrix",
+  "customer": {
+    "role": "Procurement Director",
+    "company": "National Retail Chain",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Daniel",
+    "role": "Strategic Solutions Consultant"
+  },
+  "call_duration_seconds": 600,
+  "research_analytics": {
+    "evaluation_criteria": ["Price", "Coverage", "SLA", "Support", "Integration"],
+    "competitor_analysis": "Systematic comparison",
+    "evaluation_timeline": "6 weeks",
+    "stakeholder_involvement": "Cross-functional team"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "We're conducting a comprehensive vendor evaluation for our 200+ store locations. I have a scoring matrix with weighted criteria for price, coverage, SLA terms, support quality, and POS system integration.",
+      "research_markers": "Systematic evaluation approach, comprehensive criteria"
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "That's a thorough approach for a multi-location deployment. I'd be happy to provide detailed responses for each criterion in your matrix. Have you established weightings for each category?",
+      "research_markers": "Acknowledging systematic approach, detail accommodation"
+    },
+    {
+      "timestamp": "03:00 – 07:00",
+      "speaker": "Customer",
+      "text": "SLA and coverage are weighted highest at 30% each, support at 20%, integration 15%, and price 5%. We're more focused on operational reliability than cost savings.",
+      "research_markers": "Criteria weighting revealed, priority clarification"
+    },
+    {
+      "timestamp": "07:00 – 10:00",
+      "speaker": "Agent",
+      "text": "Perfect alignment with our strengths. Our retail solution excels in SLA performance and coverage density. I'll prepare responses optimized for your weighted criteria and include retail-specific case studies.",
+      "research_markers": "Strength positioning, criteria optimization"
+    }
+  ],
+  "metadata": {
+    "evaluation_sophistication": "High",
+    "criteria_alignment": "Strong",
+    "competitive_positioning": "Optimized",
+    "decision_process_understanding": "Complete",
+    "win_probability": 0.75
+  }
+} 

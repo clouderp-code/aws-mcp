@@ -1,0 +1,53 @@
+{
+  "call_id": "EDG-2025-047",
+  "topic": "Edge Case - Competitor Acquisition Impact",
+  "customer": {
+    "role": "CTO",
+    "company": "TechFlow Solutions",
+    "account_id": "62847"
+  },
+  "agent": {
+    "name": "Carlos",
+    "role": "Strategic Account Manager"
+  },
+  "call_duration_seconds": 480,
+  "edge_case_analytics": {
+    "scenario": "Current provider acquired by competitor",
+    "customer_uncertainty": "High",
+    "switching_motivation": "Vendor stability concerns",
+    "opportunity_type": "Defensive displacement"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Carlos, our current provider NetCom just got acquired by MegaCorp. We're concerned about service changes and potential price increases. What options do we have?",
+      "edge_markers": "Acquisition trigger, uncertainty, opportunity window"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "I understand your concern. Acquisitions often lead to service disruptions and policy changes. We can provide stability with our independent ownership and proven track record.",
+      "edge_markers": "Stability positioning, competitive differentiation"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Customer",
+      "text": "That's exactly what we're worried about. We need assurance that our service levels won't change and pricing will remain predictable.",
+      "edge_markers": "Stability concerns, continuity requirements"
+    },
+    {
+      "timestamp": "05:00 – 08:00",
+      "speaker": "Agent",
+      "text": "As an independent company, we offer long-term contract stability with locked pricing and SLA guarantees. We've never been acquired and have no plans for ownership changes.",
+      "edge_markers": "Independence advantage, stability assurance"
+    }
+  ],
+  "metadata": {
+    "acquisition_opportunity": "High",
+    "stability_messaging": "Effective",
+    "competitive_advantage": "Independence",
+    "urgency_level": "Medium-High",
+    "displacement_probability": 0.75
+  }
+} 

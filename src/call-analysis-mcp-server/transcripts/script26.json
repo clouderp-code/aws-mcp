@@ -1,0 +1,56 @@
+{
+  "call_id": "PER-2025-023",
+  "topic": "Personality Matching - Analytical Customer Type",
+  "customer": {
+    "role": "CFO",
+    "company": "DataDriven Analytics Inc",
+    "account_id": "NEW_PROSPECT",
+    "personality_type": "Analytical, Detail-oriented"
+  },
+  "agent": {
+    "name": "Robert",
+    "role": "Enterprise Financial Consultant",
+    "communication_style": "Data-driven, methodical"
+  },
+  "call_duration_seconds": 540,
+  "personality_analytics": {
+    "customer_type": "Analytical",
+    "agent_adaptation": "Data-focused approach",
+    "communication_match": 0.9,
+    "decision_making_style": "Evidence-based",
+    "presentation_optimization": "ROI-focused"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "I need detailed cost analysis and ROI projections for our connectivity upgrade. Show me the numbers.",
+      "personality_markers": "Direct, data-focused, analytical approach"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Absolutely. I'll provide a comprehensive TCO analysis with 3-year projections. Let me start with your current costs and quantify the productivity gains from improved performance.",
+      "personality_markers": "Matching analytical approach, structured methodology"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Customer",
+      "text": "Good. I also need to see reliability statistics and compare your SLAs with competitors.",
+      "personality_markers": "Thorough evaluation, comparative analysis focus"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Agent",
+      "text": "Here's our 12-month availability report with 99.97% actual uptime. I'll send you a detailed SLA comparison chart showing our performance metrics versus the top three competitors.",
+      "personality_markers": "Fact-based response, comprehensive data provision"
+    }
+  ],
+  "metadata": {
+    "personality_adaptation": "Successful",
+    "analytical_needs_met": "Fully",
+    "data_presentation": "Optimized",
+    "decision_support": "Comprehensive",
+    "buying_process_alignment": "Excellent"
+  }
+} 

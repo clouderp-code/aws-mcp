@@ -1,0 +1,54 @@
+{
+  "call_id": "PFC-2025-044",
+  "topic": "Peak Time Analysis - Call Routing Optimization",
+  "customer": {
+    "role": "Branch Manager",
+    "company": "Community Bank Network",
+    "account_id": "83947"
+  },
+  "agent": {
+    "name": "Kevin",
+    "role": "Relationship Manager"
+  },
+  "call_duration_seconds": 300,
+  "peak_time_analytics": {
+    "call_time": "2:30 PM EST",
+    "peak_period": "2:00-4:00 PM",
+    "agent_availability": "Limited",
+    "call_quality": "Rushed",
+    "optimization_needed": "Route to specialist"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Kevin, I know you're busy during peak hours, but we need to discuss our branch connectivity upgrade before our board meeting tomorrow.",
+      "peak_markers": "Time pressure acknowledgment, urgent request"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Absolutely, let me give you my full attention. Peak hours are busy, but your branch upgrade is priority. What's the timeline for the board decision?",
+      "peak_markers": "Attention commitment, priority recognition"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "They meet at 9 AM tomorrow. I need cost estimates and implementation timeline for the three branch locations.",
+      "peak_markers": "Tight deadline, specific deliverables"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "I'll have detailed proposals for all three branches in your inbox by 7 AM tomorrow. This gives you time to review before the board meeting.",
+      "peak_markers": "Deadline accommodation, early delivery commitment"
+    }
+  ],
+  "metadata": {
+    "peak_time_handling": "Effective",
+    "urgency_accommodation": "Excellent",
+    "deadline_management": "Proactive",
+    "customer_priority": "Maintained",
+    "time_optimization": "Successful"
+  }
+} 

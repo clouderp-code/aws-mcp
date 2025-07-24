@@ -1,0 +1,53 @@
+{
+  "call_id": "NTQ-2025-015",
+  "topic": "Network Quality Impact on Sales Conversation",
+  "customer": {
+    "role": "Operations Manager",
+    "company": "Distribution Dynamics",
+    "account_id": "47291"
+  },
+  "agent": {
+    "name": "Derek",
+    "role": "Technical Account Manager"
+  },
+  "call_duration_seconds": 480,
+  "network_quality_correlation": {
+    "recent_service_issues": ["Latency spikes", "Packet loss"],
+    "customer_satisfaction_impact": -0.3,
+    "sales_conversation_difficulty": "Increased",
+    "trust_rebuilding_needed": true
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Derek, before we talk about any upgrades, I need to address the performance issues we've been having. Our warehouse management system has been sluggish for weeks.",
+      "quality_impact_markers": "Service issues affecting sales conversation"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "You're absolutely right to bring that up first. I've been monitoring your connection and I see the latency spikes. Let me explain what we've found and our plan to fix it before we discuss any expansion.",
+      "quality_impact_markers": "Acknowledging issues before sales pitch"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "Good, because honestly, it's hard to trust recommendations for more services when current ones aren't working properly.",
+      "quality_impact_markers": "Trust impact on sales credibility"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "I completely understand that perspective. Trust is earned, not given. We've identified routing issues and implemented fixes yesterday. I'll show you the performance data and only discuss upgrades once you're satisfied with current service.",
+      "quality_impact_markers": "Trust rebuilding approach, data-driven resolution"
+    }
+  ],
+  "metadata": {
+    "service_issues_impact": "High",
+    "sales_credibility": "Compromised initially",
+    "trust_rebuilding_strategy": "Effective",
+    "technical_transparency": "High",
+    "sales_conversation_recovery": "Successful"
+  }
+} 

@@ -1,0 +1,155 @@
+{
+    "call_id": "BIU-2025-002",
+    "topic": "Business Internet Upgrade Inquiry",
+    "customer": {
+      "role": "IT Manager",
+      "company": "EdgeWave Technologies",
+      "account_id": "18372"
+    },
+    "agent": {
+      "name": "Sarah",
+      "role": "Inside Sales Representative",
+      "company": "StarTel Business Solutions"
+    },
+    "call_duration_seconds": 360,
+    "transcript": [
+      {
+        "timestamp": "00:00 – 00:30",
+        "speaker": "Agent",
+        "text": "Hi, thank you for calling StarTel Business Solutions, this is Sarah. How can I help you today?"
+      },
+      {
+        "timestamp": "00:00 – 00:30",
+        "speaker": "Customer",
+        "text": "Hey, we’re currently on your 100 Mbps fiber plan, and we're looking to upgrade to something faster. We’ve been growing, and performance is becoming a bit of an issue."
+      },
+      {
+        "timestamp": "00:30 – 01:15",
+        "speaker": "Agent",
+        "text": "Great to hear that you’re growing! I’d be happy to help. May I have your business name and account ID to pull up your details?"
+      },
+      {
+        "timestamp": "00:30 – 01:15",
+        "speaker": "Customer",
+        "text": "Sure, it's EdgeWave Technologies. Account ID should be 18372."
+      },
+      {
+        "timestamp": "00:30 – 01:15",
+        "speaker": "Agent",
+        "text": "Thanks. Give me a second… Okay, I see your current plan. You’re on our Business Fiber 100 plan with static IP. Is that right?"
+      },
+      {
+        "timestamp": "00:30 – 01:15",
+        "speaker": "Customer",
+        "text": "Yep, that's the one."
+      },
+      {
+        "timestamp": "01:15 – 02:45",
+        "speaker": "Agent",
+        "text": "We have a couple of upgrade options. The next tier is 300 Mbps at $269/month, and we also offer a 500 Mbps plan with SLA guarantees and 24x7 NOC support for $429/month. Are you looking for just more speed, or also better support/uptime?"
+      },
+      {
+        "timestamp": "01:15 – 02:45",
+        "speaker": "Customer",
+        "text": "Honestly, uptime is becoming more important. We've had two slowdowns this month and our dev team was blocked. That SLA option sounds interesting."
+      },
+      {
+        "timestamp": "01:15 – 02:45",
+        "speaker": "Agent",
+        "text": "Got it. The 500 Mbps plan includes 99.95% uptime, proactive monitoring, and a dedicated support line. Plus, we can bundle in VoIP lines or MPLS/VPN if needed. Are you managing voice traffic in-house?"
+      },
+      {
+        "timestamp": "02:45 – 03:30",
+        "speaker": "Customer",
+        "text": "Yes, we use a separate VoIP provider right now. We’ve been thinking about consolidating."
+      },
+      {
+        "timestamp": "02:45 – 03:30",
+        "speaker": "Agent",
+        "text": "We can provide SIP trunking or managed VoIP — and we often bundle them with data plans at a discount. Would you be open to a quick demo on that?"
+      },
+      {
+        "timestamp": "02:45 – 03:30",
+        "speaker": "Customer",
+        "text": "Hmm, maybe. Not urgent, but send me details."
+      },
+      {
+        "timestamp": "03:30 – 04:30",
+        "speaker": "Agent",
+        "text": "Absolutely. I’ll email you a comparison sheet. For now, should I quote the 500 Mbps plan with SLA?"
+      },
+      {
+        "timestamp": "03:30 – 04:30",
+        "speaker": "Customer",
+        "text": "Yes, please do that. What’s the contract term?"
+      },
+      {
+        "timestamp": "03:30 – 04:30",
+        "speaker": "Agent",
+        "text": "We offer 12 or 24 months. With 24, you get 1 month free and priority install."
+      },
+      {
+        "timestamp": "03:30 – 04:30",
+        "speaker": "Customer",
+        "text": "Sounds fair. Let’s go with 24 months."
+      },
+      {
+        "timestamp": "04:30 – 05:15",
+        "speaker": "Agent",
+        "text": "Perfect. Just to confirm: EdgeWave at your current location, 500 Mbps fiber, 24-month term, SLA package, correct?"
+      },
+      {
+        "timestamp": "04:30 – 05:15",
+        "speaker": "Customer",
+        "text": "Correct."
+      },
+      {
+        "timestamp": "04:30 – 05:15",
+        "speaker": "Agent",
+        "text": "Awesome, I’ll send you the order summary and agreement to review. You can sign digitally and we’ll schedule provisioning."
+      },
+      {
+        "timestamp": "05:15 – 06:00",
+        "speaker": "Customer",
+        "text": "Perfect. Appreciate your help, Sarah."
+      },
+      {
+        "timestamp": "05:15 – 06:00",
+        "speaker": "Agent",
+        "text": "My pleasure! Keep an eye on your inbox. If you have questions, just reply or call me directly. Have a great day!"
+      },
+      {
+        "timestamp": "05:15 – 06:00",
+        "speaker": "Customer",
+        "text": "You too!"
+      }
+    ],
+    "metadata": {
+      "sentiment_score": 0.82,
+      "talk_to_listen_ratio": "Agent 46% / Customer 54%",
+      "objections_raised": 1,
+      "opportunities_identified": [
+        "Upgrade to 500 Mbps",
+        "VoIP Upsell Opportunity"
+      ],
+      "keywords": [
+        "slowdowns",
+        "SLA",
+        "upgrade",
+        "VoIP",
+        "static IP",
+        "contract"
+      ],
+      "call_outcome": "Upgrade to 500 Mbps, 24-month contract",
+      "follow_up_actions": [
+        "Email quote for 500 Mbps plan",
+        "Send VoIP solution info"
+      ],
+      "training_flags": [
+        "Handled reliability objection effectively",
+        "Explained SLA benefits clearly",
+        "Positioned upsell without pressure"
+      ]
+    }
+  }
+  

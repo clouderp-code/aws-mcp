@@ -1,0 +1,37 @@
+Call Analysis MCP Server
+Copyright 2024 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+This software includes third party software subject to the following copyrights:
+
+AWS SDK for Python (Boto3) - Apache License 2.0
+Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved.
+
+Loguru - MIT License
+Copyright (c) 2019 Delgan
+
+MCP Python SDK - MIT License  
+Copyright (c) Anthropic PBC
+
+Pydantic - MIT License
+Copyright (c) 2017 to present Pydantic Services Inc. and individual contributors.
+
+NLTK - Apache License 2.0
+Copyright (C) 2001-2023 NLTK Project
+
+spaCy - MIT License
+Copyright (c) 2016 ExplosionAI UG (haftungsbeschränkt)
+
+Transformers - Apache License 2.0
+Copyright 2018- The Hugging Face team. All rights reserved.
+
+NumPy - BSD License
+Copyright (c) 2005-2023, NumPy Developers.
+
+Pandas - BSD License
+Copyright (c) 2008-2011, AQR Capital Management, LLC, Lambda Foundry, Inc. and PyData Development Team
+
+scikit-learn - BSD License
+Copyright (c) 2007-2023 The scikit-learn developers.
+
+VADER Sentiment Analysis - MIT License
+Copyright (c) 2014 C.J. Hutto 

@@ -1,0 +1,54 @@
+{
+  "call_id": "EIC-2025-042",
+  "topic": "Economic Indicator Correlation - Market Downturn Impact",
+  "customer": {
+    "role": "CEO",
+    "company": "Tech Consulting Firm",
+    "account_id": "67429"
+  },
+  "agent": {
+    "name": "Mark",
+    "role": "Strategic Account Director"
+  },
+  "call_duration_seconds": 540,
+  "economic_analytics": {
+    "market_conditions": "Economic uncertainty",
+    "customer_industry_impact": "High",
+    "spending_patterns": "Cautious, delayed decisions",
+    "retention_risk": "Elevated",
+    "economic_sensitivity": 0.8
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "Mark, with the current economic climate, we're being much more cautious about any spending increases. Our clients are delaying projects, which affects our cash flow.",
+      "economic_markers": "Market impact acknowledgment, budget constraints"
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "I completely understand the caution in this environment. Rather than expansion, let's focus on optimizing your current spend to reduce costs while maintaining service levels.",
+      "economic_markers": "Economic sensitivity, cost optimization focus"
+    },
+    {
+      "timestamp": "03:00 – 06:00",
+      "speaker": "Customer",
+      "text": "That would be helpful. We need to demonstrate cost management to our board while ensuring we can scale up quickly when the market recovers.",
+      "economic_markers": "Board pressure, future scalability planning"
+    },
+    {
+      "timestamp": "06:00 – 09:00",
+      "speaker": "Agent",
+      "text": "I can restructure your plan to reduce monthly costs by 15% now, with contractual rights to scale up within 30 days when market conditions improve. This shows fiscal responsibility while maintaining flexibility.",
+      "economic_markers": "Economic accommodation, flexibility provision"
+    }
+  ],
+  "metadata": {
+    "economic_adaptation": "Proactive",
+    "cost_optimization": "Achieved",
+    "flexibility_provision": "Built-in",
+    "relationship_preservation": "Strong",
+    "market_sensitivity": "High"
+  }
+} 

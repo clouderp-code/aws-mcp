@@ -1,0 +1,54 @@
+{
+  "call_id": "ADV-2025-048", 
+  "topic": "Advanced Sentiment Tracking - Multi-call Journey",
+  "customer": {
+    "role": "Operations Manager",
+    "company": "Regional Healthcare System",
+    "account_id": "54739"
+  },
+  "agent": {
+    "name": "Maria",
+    "role": "Healthcare Account Manager"
+  },
+  "call_duration_seconds": 300,
+  "sentiment_journey": {
+    "call_1_sentiment": -0.2,
+    "call_2_sentiment": 0.1,
+    "current_call_sentiment": 0.7,
+    "sentiment_trajectory": "Improving",
+    "relationship_recovery": "Successful"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I wanted to follow up on the improvements we implemented after our last conversation. How is the reliability now?",
+      "sentiment_markers": "Proactive follow-up, improvement focus"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Much better! No outages this month, and the technical team you assigned has been very responsive. I'm actually impressed with the turnaround.",
+      "sentiment_markers": "Positive feedback, satisfaction improvement"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "I'm so glad to hear that. We really value your partnership and wanted to ensure we exceeded your expectations moving forward.",
+      "sentiment_markers": "Relationship focus, commitment reinforcement"
+    },
+    {
+      "timestamp": "03:30 – 05:00",
+      "speaker": "Customer",
+      "text": "You definitely have. This level of attention and follow-through has restored our confidence in the partnership.",
+      "sentiment_markers": "Trust rebuilt, relationship strengthened"
+    }
+  ],
+  "metadata": {
+    "sentiment_recovery": "Achieved",
+    "relationship_repair": "Successful",
+    "service_improvement": "Validated",
+    "loyalty_strengthening": "High",
+    "trust_rebuilding": "Complete"
+  }
+} 

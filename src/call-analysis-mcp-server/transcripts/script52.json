@@ -1,0 +1,34 @@
+{
+  "call_id": "FUT-2025-052",
+  "customer": {
+    "role": "VP Growth",
+    "company": "Scaling Software Company",
+    "account_id": "78345"
+  },
+  "agent": {
+    "name": "Michael",
+    "role": "Growth Solutions Architect"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "Based on your growth metrics and our predictive modeling, you'll likely need 5x your current bandwidth within 18 months. Let's design a scaling architecture now to avoid future bottlenecks."
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "That's exactly the kind of forward-thinking we need. How do we build in that scalability without over-provisioning today?"
+    },
+    {
+      "timestamp": "03:00 – 06:00",
+      "speaker": "Agent",
+      "text": "Our growth-ready architecture starts with your current needs but includes pre-built expansion paths. We can trigger automatic scaling at predetermined growth milestones, ensuring seamless performance as you scale."
+    },
+    {
+      "timestamp": "06:00 – 09:00",
+      "speaker": "Customer",
+      "text": "Perfect. This proactive approach is exactly what we need. When can we implement this growth-ready infrastructure?"
+    }
+  ]
+} 

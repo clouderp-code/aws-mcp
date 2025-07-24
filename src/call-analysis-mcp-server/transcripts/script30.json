@@ -1,0 +1,54 @@
+{
+  "call_id": "CTM-2025-027",
+  "topic": "Contract Term Analysis - Enterprise Negotiation",
+  "customer": {
+    "role": "Procurement Director",
+    "company": "Global Logistics Corp",
+    "account_id": "84726"
+  },
+  "agent": {
+    "name": "Richard",
+    "role": "Enterprise Contract Specialist"
+  },
+  "call_duration_seconds": 720,
+  "contract_analytics": {
+    "current_term": "24 months",
+    "proposed_term": "36 months",
+    "term_discount": "12%",
+    "early_termination_clauses": "Flexible",
+    "total_contract_value": "$432,000"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "Our current contract expires next quarter. We need flexibility given market uncertainty, but also want the best pricing possible.",
+      "contract_markers": "Renewal timing, flexibility vs cost balance"
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "I understand that balance. Let me propose a 36-month term with a 12% discount, but we'll include flexibility clauses for scaling up or down by 25% without penalties.",
+      "contract_markers": "Term optimization, flexibility provision"
+    },
+    {
+      "timestamp": "03:00 – 06:00",
+      "speaker": "Customer",
+      "text": "The discount is attractive. What about early termination if we get acquired or need to restructure?",
+      "contract_markers": "Risk mitigation, corporate flexibility"
+    },
+    {
+      "timestamp": "03:00 – 06:00",
+      "speaker": "Agent",
+      "text": "We can include a corporate change clause allowing early termination with 90 days notice in case of acquisition or major restructuring, with minimal penalties.",
+      "contract_markers": "Risk accommodation, enterprise flexibility"
+    }
+  ],
+  "metadata": {
+    "contract_optimization": "Successful",
+    "risk_mitigation": "Addressed",
+    "pricing_advantage": "Achieved",
+    "flexibility_balance": "Excellent",
+    "enterprise_satisfaction": "High"
+  }
+} 

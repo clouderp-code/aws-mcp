@@ -1,0 +1,53 @@
+{
+  "call_id": "UPT-2025-029",
+  "topic": "Upsell Timing Optimization - Growth Signal Detection",
+  "customer": {
+    "role": "CTO",
+    "company": "ScaleApp Technologies",
+    "account_id": "62851"
+  },
+  "agent": {
+    "name": "Elena",
+    "role": "Growth Account Manager"
+  },
+  "call_duration_seconds": 420,
+  "upsell_timing": {
+    "growth_signals_detected": ["Team expansion", "Usage spike", "New funding"],
+    "optimal_timing_score": 0.95,
+    "upsell_readiness": "High",
+    "expansion_revenue_potential": "$24,000"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Congratulations on your Series B funding announcement! I saw the news about expanding your development team by 50%.",
+      "timing_markers": "Funding awareness, growth recognition, timing optimization"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Thanks! Yes, we're scaling rapidly. Already feeling some strain on our current internet capacity during peak development hours.",
+      "timing_markers": "Growth confirmation, capacity concerns, perfect timing"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "Perfect timing to discuss this. With 50% more developers, your bandwidth needs will likely double. I'd recommend upgrading to our Enterprise plan before you hit capacity limits.",
+      "timing_markers": "Proactive positioning, growth-based needs assessment"
+    },
+    {
+      "timestamp": "03:30 – 07:00",
+      "speaker": "Customer",
+      "text": "That makes sense. We can't afford slowdowns during this growth phase. What's the upgrade path and timeline?",
+      "timing_markers": "Ready to proceed, growth phase urgency"
+    }
+  ],
+  "metadata": {
+    "timing_optimization": "Perfect",
+    "growth_signal_utilization": "Excellent",
+    "upsell_conversion": "Very likely",
+    "revenue_expansion": "Significant",
+    "customer_satisfaction": "Maintained"
+  }
+} 

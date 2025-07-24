@@ -1,0 +1,56 @@
+{
+  "call_id": "BIU-2025-001",
+  "customer": {
+    "name": "Laura Spencer",
+    "company": "Spencer Logistics",
+    "existing_plan": "Business Basic Internet - 100 Mbps",
+    "customer_segment": "SMB"
+  },
+  "agent": {
+    "name": "James Lee",
+    "department": "Sales - Telco Services"
+  },
+  "transcript": [
+    {
+      "speaker": "Customer",
+      "text": "Hi, we're having slower speeds lately, and I'm wondering if we can upgrade our business internet."
+    },
+    {
+      "speaker": "Agent",
+      "text": "Of course, Laura. Let me check your current plan. I see you're on our 100 Mbps Business Basic. May I ask how many employees are currently using this connection?"
+    },
+    {
+      "speaker": "Customer",
+      "text": "We have around 25 people, and we've also added some cloud-based tools recently."
+    },
+    {
+      "speaker": "Agent",
+      "text": "Got it. Based on your usage, I'd recommend upgrading to our Business Pro 500 plan, which offers 500 Mbps and prioritization for video calls and large file transfers."
+    },
+    {
+      "speaker": "Customer", 
+      "text": "That sounds good. What would the monthly charge be for that?"
+    },
+    {
+      "speaker": "Agent",
+      "text": "It would be $149 per month, and we're currently waiving installation fees for all upgrades this month."
+    },
+    {
+      "speaker": "Customer",
+      "text": "Hmm, that's a bit more than I expected. Is there any room to negotiate that price?"
+    },
+    {
+      "speaker": "Agent",
+      "text": "Let me check with my manager. Alternatively, we do have a 300 Mbps plan at $119 if that better suits your budget."
+    },
+    {
+      "speaker": "Customer",
+      "text": "Actually, I think we'll go with the 500 Mbps. Let's proceed."
+    },
+    {
+      "speaker": "Agent",
+      "text": "Perfect! I'll send over the digital agreement and schedule the upgrade for Monday. Anything else I can help with today?"
+    }
+  ]
+}
+  

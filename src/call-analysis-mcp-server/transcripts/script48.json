@@ -1,0 +1,54 @@
+{
+  "call_id": "CCB-2025-045",
+  "topic": "Callback Effectiveness - Follow-up Success Measurement",
+  "customer": {
+    "role": "Operations Director",
+    "company": "Freight Solutions LLC",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Sandra",
+    "role": "Business Development Manager"
+  },
+  "call_duration_seconds": 360,
+  "callback_analytics": {
+    "callback_timing": "24 hours after initial contact",
+    "customer_availability": "Optimal",
+    "information_retention": "High",
+    "momentum_preservation": "Excellent",
+    "follow_up_effectiveness": 0.9
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Hi! I'm calling back as promised about the multi-location connectivity for your freight terminals. I've prepared the customized solutions we discussed yesterday.",
+      "callback_markers": "Promise fulfillment, preparation demonstration"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Perfect timing, Sandra. I've been thinking about our conversation and discussed it with my team. They're excited about the redundancy features you mentioned.",
+      "callback_markers": "Positive reception, internal discussion, feature interest"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Agent",
+      "text": "Excellent! Based on your team's interest in redundancy, I've designed a solution with automatic failover for all six terminals. Here's how it would work during your peak shipping seasons.",
+      "callback_markers": "Customized presentation, seasonal consideration"
+    },
+    {
+      "timestamp": "04:00 – 06:00",
+      "speaker": "Customer",
+      "text": "This looks comprehensive. When can we schedule the technical review with your engineering team?",
+      "callback_markers": "Positive response, next step initiation"
+    }
+  ],
+  "metadata": {
+    "callback_success": "High",
+    "momentum_maintained": "Yes",
+    "progression_achieved": "Significant",
+    "technical_engagement": "Requested",
+    "conversion_advancement": "Strong"
+  }
+} 

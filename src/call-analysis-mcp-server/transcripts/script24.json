@@ -1,0 +1,55 @@
+{
+  "call_id": "DEM-2025-021",
+  "topic": "Demographic Segmentation - Industry Specialization",
+  "customer": {
+    "role": "Practice Administrator",
+    "company": "Westside Dental Associates",
+    "account_id": "NEW_PROSPECT",
+    "practice_size": "4 dentists, 12 staff"
+  },
+  "agent": {
+    "name": "Linda",
+    "role": "Healthcare Vertical Specialist"
+  },
+  "call_duration_seconds": 480,
+  "demographic_analytics": {
+    "industry_segment": "Healthcare - Dental",
+    "practice_size_category": "Medium",
+    "typical_bandwidth_needs": "50-100 Mbps",
+    "compliance_requirements": "HIPAA",
+    "industry_expertise_match": 0.95
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "We need internet that can handle our digital X-ray system and patient scheduling software. Also worried about HIPAA compliance.",
+      "demographic_markers": "Dental-specific applications, compliance awareness"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Perfect! I specialize in dental practices. Digital X-rays require reliable upload speeds, and patient scheduling needs consistent connectivity. Our dental package includes HIPAA-compliant features specifically designed for practices your size.",
+      "demographic_markers": "Industry specialization, size-appropriate solutions"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "Do you work with many dental practices? We'd love references.",
+      "demographic_markers": "Seeking industry credibility"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Absolutely! We serve over 200 dental practices regionally. I can provide references from practices similar to yours - 3-5 dentist offices with digital imaging systems.",
+      "demographic_markers": "Industry depth, peer references, size matching"
+    }
+  ],
+  "metadata": {
+    "industry_specialization": "Dental healthcare",
+    "vertical_expertise": "High",
+    "peer_references": "Available",
+    "solution_fit": "Excellent",
+    "segment_targeting": "Precise"
+  }
+} 

@@ -1,0 +1,53 @@
+{
+  "call_id": "CUL-2025-018",
+  "topic": "Cultural Sensitivity - International Business",
+  "customer": {
+    "role": "Regional Director",
+    "company": "Asia Pacific Trading Ltd",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Maria",
+    "role": "International Business Manager"
+  },
+  "call_duration_seconds": 480,
+  "cultural_analytics": {
+    "cultural_awareness_score": 0.9,
+    "communication_style": "Respectful, patient",
+    "international_business_sensitivity": "High",
+    "relationship_building_approach": "Long-term focused"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Maria, we are expanding our operations to support clients across Asia. We need connectivity that respects different regulatory requirements in each country.",
+      "cultural_markers": "International scope, regulatory awareness"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "I appreciate you considering us for this expansion. Cross-border compliance is indeed complex. We have established partnerships in Singapore, Hong Kong, and Tokyo specifically to navigate local regulations properly.",
+      "cultural_markers": "Respectful acknowledgment, regional expertise"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "Excellent. We also need to consider time zone support. Our trading happens around the clock.",
+      "cultural_markers": "Global operations awareness"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Of course. We provide follow-the-sun support with native language technicians in each region. This ensures culturally appropriate support at any hour.",
+      "cultural_markers": "Cultural sensitivity, global support understanding"
+    }
+  ],
+  "metadata": {
+    "international_expertise": "Demonstrated",
+    "cultural_sensitivity": "High",
+    "regulatory_awareness": "Strong",
+    "global_relationship_building": "Effective",
+    "cross_cultural_trust": "Established"
+  }
+} 

@@ -1,0 +1,55 @@
+{
+  "call_id": "PCH-2025-032",
+  "topic": "Personalized Coaching - Individual Improvement Plan",
+  "customer": {
+    "role": "Operations Manager",
+    "company": "Retail Distribution Inc",
+    "account_id": "73629"
+  },
+  "agent": {
+    "name": "Carlos",
+    "role": "Account Manager",
+    "coaching_focus": "Listening skills improvement"
+  },
+  "call_duration_seconds": 540,
+  "coaching_analytics": {
+    "talk_time_percentage": 75,
+    "interruption_count": 4,
+    "discovery_questions": 2,
+    "coaching_opportunity": "Active listening, customer needs discovery",
+    "improvement_potential": "High"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Carlos, we've been having some connectivity issues during our peak shipping season, and I wanted to discuss—",
+      "coaching_markers": "Customer trying to explain issue"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I know exactly what you need! Our Premium Business plan has enhanced reliability and better bandwidth. Let me tell you about all the features that would solve your problems.",
+      "coaching_markers": "Interrupting customer, assuming needs, feature dumping"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Customer",
+      "text": "Well, actually the issue is more specific to our warehouse management system timing out during—",
+      "coaching_markers": "Customer trying to provide specific details"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Agent",
+      "text": "System timeouts are usually bandwidth issues. Our enterprise package has guaranteed speeds and priority routing that prevents timeouts. The installation takes just two weeks and—",
+      "coaching_markers": "Another interruption, not listening to specifics"
+    }
+  ],
+  "metadata": {
+    "listening_score": 0.3,
+    "needs_discovery": "Failed",
+    "customer_frustration": "Increasing",
+    "coaching_needed": "Immediate",
+    "specific_improvements": ["Wait for customer to finish", "Ask follow-up questions", "Confirm understanding"]
+  }
+} 

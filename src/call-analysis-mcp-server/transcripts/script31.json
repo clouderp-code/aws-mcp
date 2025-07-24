@@ -1,0 +1,55 @@
+{
+  "call_id": "DIS-2025-028",
+  "topic": "Discount Effectiveness - Retention Scenario",
+  "customer": {
+    "role": "CFO",
+    "company": "Medical Devices Ltd",
+    "account_id": "39847",
+    "churn_risk": "High"
+  },
+  "agent": {
+    "name": "Sandra",
+    "role": "Customer Retention Specialist"
+  },
+  "call_duration_seconds": 480,
+  "discount_analytics": {
+    "churn_probability_before": 0.8,
+    "discount_offered": "20% for 12 months",
+    "churn_probability_after": 0.2,
+    "retention_cost": "$3,600",
+    "customer_lifetime_value": "$180,000"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Sandra, I've been reviewing all our vendor contracts. Your competitor is offering the same service for 25% less. I need to consider switching.",
+      "discount_markers": "Competitive pressure, price comparison, churn signal"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "I appreciate you giving me the opportunity to address this. Given your loyalty and the value you bring, I can offer you a 20% discount for the next 12 months while we work on a long-term value plan.",
+      "discount_markers": "Retention discount, loyalty recognition, time-bound offer"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Customer",
+      "text": "That's closer to competitive. What happens after the 12 months? I don't want to face the same issue next year.",
+      "discount_markers": "Future pricing concern, sustainability question"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Agent",
+      "text": "Fair question. During those 12 months, I'll work with you to identify additional services that add value to your operations, creating a comprehensive package that justifies the full pricing.",
+      "discount_markers": "Value-building strategy, long-term retention approach"
+    }
+  ],
+  "metadata": {
+    "retention_success": "High probability",
+    "discount_effectiveness": "Strong",
+    "competitive_response": "Adequate",
+    "long_term_strategy": "Planned",
+    "roi_of_retention": "Positive"
+  }
+} 

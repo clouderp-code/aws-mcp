@@ -1,0 +1,55 @@
+{
+  "call_id": "PEL-2025-026",
+  "topic": "Price Elasticity Analysis - Small Business Segment",
+  "customer": {
+    "role": "Owner",
+    "company": "Corner Bakery & Cafe",
+    "account_id": "NEW_PROSPECT",
+    "business_size": "Small"
+  },
+  "agent": {
+    "name": "Tommy",
+    "role": "SMB Pricing Specialist"
+  },
+  "call_duration_seconds": 360,
+  "pricing_analytics": {
+    "price_sensitivity": "High",
+    "optimal_price_point": "$89/month",
+    "elasticity_coefficient": -1.2,
+    "conversion_probability_at_price": 0.9,
+    "segment_pricing_strategy": "Value-focused"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "I need basic internet for credit card processing and some customer wifi. Budget is tight - what's your cheapest option?",
+      "pricing_markers": "Price-sensitive, basic needs, budget constraints"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I understand budget is important for small businesses. Our Small Business Essential plan is $89 monthly for 100 Mbps - perfect for payment processing and guest wifi without overpaying for features you don't need.",
+      "pricing_markers": "Segment-appropriate pricing, needs matching"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "That's reasonable. Other companies quoted $150-200. What's included at that price?",
+      "pricing_markers": "Price comparison, value inquiry"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "Everything you need - reliable internet, basic router, 24/7 support, and no setup fees. We keep it simple and affordable for businesses like yours.",
+      "pricing_markers": "Value bundling, affordability emphasis"
+    }
+  ],
+  "metadata": {
+    "price_optimization": "Effective",
+    "segment_targeting": "Accurate",
+    "competitive_advantage": "Significant",
+    "value_positioning": "Strong",
+    "conversion_likelihood": "High"
+  }
+} 

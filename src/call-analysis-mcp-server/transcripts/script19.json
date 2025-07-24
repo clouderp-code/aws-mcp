@@ -1,0 +1,56 @@
+{
+  "call_id": "MCJ-2025-016",
+  "topic": "Multi-channel Journey Analytics - Web to Call",
+  "customer": {
+    "role": "IT Manager",
+    "company": "Digital Marketing Pro",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Kevin",
+    "role": "Inside Sales Representative"
+  },
+  "call_duration_seconds": 300,
+  "multichannel_journey": {
+    "previous_touchpoints": [
+      {"channel": "Website", "action": "Downloaded pricing guide", "timestamp": "2 days ago"},
+      {"channel": "Email", "action": "Clicked comparison chart", "timestamp": "Yesterday"},
+      {"channel": "Web chat", "action": "Asked about installation timeline", "timestamp": "1 hour ago"}
+    ],
+    "journey_stage": "Evaluation/Comparison",
+    "digital_engagement_score": 0.8
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "Hi! I see you downloaded our pricing guide and were asking about installation timelines in chat. I wanted to follow up personally to answer any questions.",
+      "journey_markers": "Acknowledging previous digital interactions"
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "Yes, I've been researching options. Your pricing seems competitive, but I'm concerned about the 2-3 week installation timeline mentioned in chat.",
+      "journey_markers": "Evaluation stage, specific concern from previous channel"
+    },
+    {
+      "timestamp": "01:00 – 03:00",
+      "speaker": "Agent",
+      "text": "I understand the timeline concern. For digital marketing agencies, speed is crucial. Let me check our express installation options - we can often do priority installs in 5-7 business days for businesses like yours.",
+      "journey_markers": "Industry-specific understanding, addressing digital concern"
+    },
+    {
+      "timestamp": "03:00 – 05:00",
+      "speaker": "Customer",
+      "text": "That would be much better. I was comparing you with two other providers who both quoted 10+ days.",
+      "journey_markers": "Competitive comparison, timeline as differentiator"
+    }
+  ],
+  "metadata": {
+    "digital_to_voice_conversion": "Successful",
+    "journey_context_utilization": "Excellent",
+    "personalization_effectiveness": "High",
+    "competitive_advantage": "Timeline differentiation",
+    "channel_synergy": "Strong"
+  }
+} 

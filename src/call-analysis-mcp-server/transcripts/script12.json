@@ -1,0 +1,36 @@
+{
+  "call_id": "LTV-2025-009",
+  "customer": {
+    "role": "IT Director",
+    "company": "ScaleUp Logistics",
+    "account_id": "38492",
+    "current_monthly_spend": "$1,200",
+    "account_tenure": "14 months"
+  },
+  "agent": {
+    "name": "Robert",
+    "role": "Strategic Account Manager"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Robert, we're happy with our current service. But we're opening four new distribution centers this year and need to plan our network infrastructure."
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "That's fantastic growth! Four new centers is significant expansion. Are you looking to replicate your current setup or enhance capabilities?"
+    },
+    {
+      "timestamp": "04:00 – 06:00",
+      "speaker": "Customer",
+      "text": "We want to standardize on higher bandwidth and add redundancy. Also considering SD-WAN to connect everything seamlessly."
+    },
+    {
+      "timestamp": "06:00 – 08:00",
+      "speaker": "Agent",
+      "text": "Perfect timing. Our SD-WAN solution would connect all locations with centralized management. For four new sites plus upgrading existing, we're looking at significant infrastructure enhancement."
+    }
+  ]
+} 

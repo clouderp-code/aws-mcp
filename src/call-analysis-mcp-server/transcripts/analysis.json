@@ -1,0 +1,696 @@
+{
+  "analytics_summary": {
+    "total_calls": 52,
+    "categories": [
+      "Real-time AI Assistance & Voice Analytics",
+      "Predictive Analytics & Conversation Flow", 
+      "Language Intelligence & Network Quality",
+      "Compliance & Territory Intelligence",
+      "Revenue Optimization & System Integration",
+      "Training Analytics & Operational Efficiency",
+      "Customer Behavior & Advanced Scenarios"
+    ],
+    "last_updated": "2025-01-11"
+  },
+  "call_analytics": {
+    "BIU-2025-001": {
+      "topic": "Business Internet Upgrade Inquiry",
+      "topic_category": "Revenue Optimization & System Integration",
+      "metadata": {
+        "duration_seconds": 420,
+        "talk_to_listen_ratio": "Agent 60% / Customer 40%",
+        "sentiment_score": 0.75,
+        "call_outcome": "Upsell Successful",
+        "training_flags": [
+          "Handled price objection effectively",
+          "Good needs qualification",
+          "Provided tiered pricing options"
+        ],
+        "risk_flags": [],
+        "opportunity_score": 0.92,
+        "customer_satisfaction_score": 9
+      }
+    },
+    "BIU-2025-002": {
+      "topic": "Business Internet Upgrade Inquiry",
+      "topic_category": "Revenue Optimization & System Integration", 
+      "metadata": {
+        "sentiment_score": 0.82,
+        "talk_to_listen_ratio": "Agent 46% / Customer 54%",
+        "objections_raised": 1,
+        "opportunities_identified": [
+          "Upgrade to 500 Mbps",
+          "VoIP Upsell Opportunity"
+        ],
+        "keywords": [
+          "slowdowns",
+          "SLA",
+          "upgrade",
+          "VoIP",
+          "static IP",
+          "contract"
+        ],
+        "call_outcome": "Upgrade to 500 Mbps, 24-month contract",
+        "follow_up_actions": [
+          "Email quote for 500 Mbps plan",
+          "Send VoIP solution info"
+        ],
+        "training_flags": [
+          "Handled reliability objection effectively",
+          "Explained SLA benefits clearly",
+          "Positioned upsell without pressure"
+        ]
+      }
+    },
+    "RTA-2025-001": {
+      "topic": "Real-time AI Assistance - Competitor Mention Alert",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "ai_assistance_events": [
+        {
+          "timestamp": "01:30",
+          "trigger": "Competitor mention detected",
+          "ai_suggestion": "FiberLink positioning: Emphasize 99.99% SLA vs their 99.5%",
+          "agent_action": "Used suggestion"
+        }
+      ],
+      "metadata": {
+        "sentiment_score": 0.75,
+        "ai_assistance_effectiveness": 0.9,
+        "competitive_positioning_score": 0.95,
+        "real_time_coaching_used": true,
+        "conversion_probability": 0.8
+      }
+    },
+    "VEA-2025-002": {
+      "topic": "Voice Stress Detection - Customer Frustration",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "voice_analytics": {
+        "customer_stress_level": "High (0.85)",
+        "agent_confidence_level": "Medium (0.6)", 
+        "speaking_pace": "Customer: Fast, Agent: Normal",
+        "tone_analysis": "Customer: Frustrated/Urgent, Agent: Professional/Calm"
+      },
+      "metadata": {
+        "initial_stress_score": 0.85,
+        "final_stress_score": 0.4,
+        "stress_reduction_achieved": true,
+        "agent_empathy_score": 0.9,
+        "escalation_handled_effectively": true,
+        "churn_risk_mitigated": true
+      }
+    },
+    "EPA-2025-003": {
+      "topic": "Energy Level Matching - High Energy Customer",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "energy_analytics": {
+        "customer_energy_level": "Very High (0.9)",
+        "agent_energy_level": "High (0.8)",
+        "energy_matching_score": 0.85,
+        "conversation_momentum": "Excellent"
+      },
+      "metadata": {
+        "energy_matching_effectiveness": 0.9,
+        "conversation_engagement": "Very High",
+        "urgency_handling": "Excellent", 
+        "startup_positioning": "Strong",
+        "conversion_probability": 0.85
+      }
+    },
+    "SPA-2025-004": {
+      "topic": "Speaking Pace Analysis - Rushed Customer",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "pace_analytics": {
+        "customer_speaking_rate": "180 WPM (Fast)",
+        "agent_speaking_rate": "140 WPM (Normal)",
+        "pace_adjustment_needed": true,
+        "optimal_pace_for_customer": "160 WPM"
+      },
+      "metadata": {
+        "pace_matching_score": 0.8,
+        "efficiency_rating": "High",
+        "customer_satisfaction_pace": 9,
+        "time_pressure_handled": true,
+        "multi_location_opportunity": "$18,000 annual"
+      }
+    },
+    "SIL-2025-005": {
+      "topic": "Silence Pattern Analysis - Technical Decision Maker",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "silence_analytics": {
+        "total_silence_time": "45 seconds",
+        "thinking_pauses": 8,
+        "average_pause_length": "5.6 seconds",
+        "pause_context": "Technical evaluation"
+      },
+      "metadata": {
+        "technical_depth_score": 0.95,
+        "thinking_time_respected": true,
+        "patience_score": 0.9,
+        "technical_credibility": "High",
+        "decision_maker_confidence": 0.85
+      }
+    },
+    "TON-2025-006": {
+      "topic": "Tone Analysis - Professional Authority Building",
+      "topic_category": "Real-time AI Assistance & Voice Analytics",
+      "tone_analytics": {
+        "agent_authority_score": 0.9,
+        "customer_respect_indicators": "High",
+        "professional_tone_consistency": 0.95,
+        "technical_credibility_tone": "Expert level"
+      },
+      "metadata": {
+        "authority_establishment": "Successful",
+        "credibility_score": 0.95,
+        "technical_leadership": "Demonstrated",
+        "customer_trust_level": "High",
+        "solution_authority": "Expert"
+      }
+    },
+    "PLS-2025-007": {
+      "topic": "Predictive Lead Scoring - High-Value Prospect",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "predictive_analytics": {
+        "initial_lead_score": 0.75,
+        "real_time_score_adjustments": [
+          {"timestamp": "02:00", "factor": "Budget confirmed $50K+", "score_change": 0.1},
+          {"timestamp": "04:30", "factor": "Decision maker authority", "score_change": 0.05},
+          {"timestamp": "08:00", "factor": "Timeline urgency", "score_change": 0.1}
+        ],
+        "final_lead_score": 0.9,
+        "closure_probability": 0.85,
+        "predicted_deal_size": "$75,000"
+      },
+      "metadata": {
+        "lead_qualification_score": 0.9,
+        "budget_fit": "Excellent",
+        "authority_level": "High", 
+        "urgency_score": 0.8,
+        "technical_complexity": "High",
+        "predicted_close_date": "45 days"
+      }
+    },
+    "CFO-2025-008": {
+      "topic": "Conversation Flow Optimization - Discovery Sequence",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "conversation_flow": {
+        "optimal_sequence_followed": true,
+        "discovery_questions": [
+          "Current provider and service",
+          "Pain points and challenges", 
+          "Compliance requirements",
+          "Budget and decision process",
+          "Timeline and urgency"
+        ],
+        "flow_effectiveness": 0.9,
+        "stage_transitions": "Smooth"
+      },
+      "metadata": {
+        "discovery_completion": 0.95,
+        "sequence_optimization": "Followed best practice",
+        "industry_specialization": "Healthcare",
+        "pain_point_identification": "Clear",
+        "next_stage_readiness": "High"
+      }
+    },
+    "LTV-2025-009": {
+      "topic": "Customer Lifetime Value Prediction - Expansion Potential",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "ltv_analytics": {
+        "current_annual_value": "$14,400",
+        "predicted_3_year_ltv": "$84,000",
+        "expansion_indicators": [
+          "Rapid business growth",
+          "New facility openings",
+          "Technology investment appetite",
+          "Multi-location infrastructure needs"
+        ],
+        "expansion_probability": 0.8,
+        "predicted_expansion_timeline": "6-12 months"
+      },
+      "metadata": {
+        "expansion_opportunity_value": "$45,000",
+        "technology_sophistication": "High",
+        "growth_trajectory": "Rapid",
+        "strategic_value": "High",
+        "account_development_potential": "Excellent"
+      }
+    },
+    "CHF-2025-010": {
+      "topic": "Churn Prediction Modeling - Early Warning Signals",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "churn_prediction": {
+        "30_day_churn_probability": 0.15,
+        "60_day_churn_probability": 0.35,
+        "90_day_churn_probability": 0.65,
+        "risk_factors": [
+          "Cost reduction initiative",
+          "Contract renewal approaching",
+          "CFO involvement (financial focus)",
+          "Market pricing pressure"
+        ],
+        "intervention_recommended": true
+      },
+      "metadata": {
+        "churn_risk_level": "Medium-High",
+        "retention_strategy": "Value-based positioning",
+        "competitive_pressure": "Active",
+        "intervention_urgency": "High",
+        "account_value_at_risk": "$18,000"
+      }
+    },
+    "QAF-2025-011": {
+      "topic": "Quota Achievement Forecasting - Performance Prediction",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "quota_analytics": {
+        "deal_contribution_to_quota": "32%",
+        "probability_weighted_value": "$37,500",
+        "quota_impact": "High - potential quota achiever",
+        "forecasting_confidence": 0.85
+      },
+      "metadata": {
+        "deal_size": "$48,000",
+        "quota_contribution": "$48,000",
+        "closure_timeline": "This month",
+        "quota_achievement_impact": "Significant",
+        "agent_performance_boost": "High"
+      }
+    },
+    "SDF-2025-012": {
+      "topic": "Seasonal Demand Forecasting - Tax Season Capacity",
+      "topic_category": "Predictive Analytics & Conversation Flow",
+      "seasonal_analytics": {
+        "historical_pattern": "40% bandwidth increase January-April",
+        "predicted_demand": "Same pattern expected",
+        "capacity_planning": "Upgrade recommended",
+        "seasonal_revenue_opportunity": "$2,400"
+      },
+      "metadata": {
+        "seasonal_upgrade_value": "$200/month x 4 months",
+        "capacity_planning_success": true,
+        "customer_satisfaction": "High",
+        "retention_strengthening": "Significant"
+      }
+    },
+    "LNG-2025-013": {
+      "topic": "Language Intelligence - Technical Jargon Optimization",
+      "topic_category": "Language Intelligence & Network Quality",
+      "language_analytics": {
+        "jargon_level": "Appropriate for audience",
+        "technical_complexity_score": 0.3,
+        "customer_comprehension": "High",
+        "language_effectiveness": 0.9
+      },
+      "metadata": {
+        "audience_appropriateness": 0.95,
+        "jargon_avoidance": "Excellent",
+        "analogy_effectiveness": "High",
+        "customer_engagement": "Strong",
+        "technical_translation": "Successful"
+      }
+    },
+    "EMP-2025-014": {
+      "topic": "Empathy Language Detection - Service Recovery",
+      "topic_category": "Language Intelligence & Network Quality",
+      "empathy_analytics": {
+        "empathy_phrases_used": 8,
+        "emotional_acknowledgment": "High",
+        "compassionate_response_score": 0.9,
+        "customer_stress_reduction": "Significant"
+      },
+      "metadata": {
+        "stress_de-escalation": "Successful",
+        "emotional_connection": "Strong",
+        "service_recovery": "Excellent",
+        "customer_satisfaction_improvement": 0.8,
+        "loyalty_preservation": "High"
+      }
+    },
+    "NTQ-2025-015": {
+      "topic": "Network Quality Impact on Sales Conversation",
+      "topic_category": "Language Intelligence & Network Quality",
+      "network_quality_correlation": {
+        "recent_service_issues": ["Latency spikes", "Packet loss"],
+        "customer_satisfaction_impact": -0.3,
+        "sales_conversation_difficulty": "Increased",
+        "trust_rebuilding_needed": true
+      },
+      "metadata": {
+        "service_issues_impact": "High",
+        "sales_credibility": "Compromised initially",
+        "trust_rebuilding_strategy": "Effective",
+        "technical_transparency": "High",
+        "sales_conversation_recovery": "Successful"
+      }
+    },
+    "MCJ-2025-016": {
+      "topic": "Multi-channel Journey Analytics - Web to Call",
+      "topic_category": "Language Intelligence & Network Quality",
+      "multichannel_journey": {
+        "previous_touchpoints": [
+          {"channel": "Website", "action": "Downloaded pricing guide", "timestamp": "2 days ago"},
+          {"channel": "Email", "action": "Clicked comparison chart", "timestamp": "Yesterday"},
+          {"channel": "Web chat", "action": "Asked about installation timeline", "timestamp": "1 hour ago"}
+        ],
+        "journey_stage": "Evaluation/Comparison",
+        "digital_engagement_score": 0.8
+      },
+      "metadata": {
+        "digital_to_voice_conversion": "Successful",
+        "journey_context_utilization": "Excellent",
+        "personalization_effectiveness": "High",
+        "competitive_advantage": "Timeline differentiation",
+        "channel_synergy": "Strong"
+      }
+    },
+    "VOC-2025-017": {
+      "topic": "Vocabulary Effectiveness - Authority Language",
+      "topic_category": "Language Intelligence & Network Quality",
+      "vocabulary_analytics": {
+        "authority_words_used": ["guarantee", "ensure", "proven", "industry-leading"],
+        "confidence_building_phrases": 12,
+        "technical_credibility_vocabulary": "Advanced",
+        "executive_level_communication": 0.95
+      },
+      "metadata": {
+        "executive_confidence": "High",
+        "technical_authority": "Established",
+        "vocabulary_sophistication": "Advanced",
+        "credibility_building": "Successful",
+        "decision_maker_engagement": "Strong"
+      }
+    },
+    "CUL-2025-018": {
+      "topic": "Cultural Sensitivity - International Business",
+      "topic_category": "Language Intelligence & Network Quality",
+      "cultural_analytics": {
+        "cultural_awareness_score": 0.9,
+        "communication_style": "Respectful, patient",
+        "international_business_sensitivity": "High",
+        "relationship_building_approach": "Long-term focused"
+      },
+      "metadata": {
+        "international_expertise": "Demonstrated",
+        "cultural_sensitivity": "High",
+        "regulatory_awareness": "Strong",
+        "global_relationship_building": "Effective",
+        "cross_cultural_trust": "Established"
+      }
+    },
+    "COM-2025-019": {
+      "topic": "Compliance Analytics - TCPA Adherence",
+      "topic_category": "Compliance & Territory Intelligence",
+      "compliance_monitoring": {
+        "tcpa_compliance_score": 1.0,
+        "required_disclosures": ["Recording consent", "HIPAA notice"],
+        "disclosure_completion": "100%",
+        "call_time_compliance": "Within business hours",
+        "consent_verification": "Documented"
+      },
+      "metadata": {
+        "tcpa_compliance": "Full",
+        "hipaa_compliance": "Addressed",
+        "consent_management": "Proper",
+        "disclosure_completeness": "100%",
+        "legal_risk": "Minimal"
+      }
+    },
+    "GEO-2025-020": {
+      "topic": "Geographic Performance Analysis - Regional Success Patterns",
+      "topic_category": "Compliance & Territory Intelligence",
+      "geographic_analytics": {
+        "region": "Southwest US",
+        "regional_success_rate": 0.78,
+        "local_competitive_advantages": ["Local data center", "Regional partnerships"],
+        "market_penetration": "Medium",
+        "regional_pricing_optimization": "Active"
+      },
+      "metadata": {
+        "local_market_knowledge": "Strong",
+        "infrastructure_advantage": "Significant",
+        "regional_partnerships": "Leveraged",
+        "competitive_positioning": "Strong",
+        "market_expansion_opportunity": "$12,000"
+      }
+    },
+    "DEM-2025-021": {
+      "topic": "Demographic Segmentation - Industry Specialization",
+      "topic_category": "Compliance & Territory Intelligence",
+      "demographic_analytics": {
+        "industry_segment": "Healthcare - Dental",
+        "practice_size_category": "Medium",
+        "typical_bandwidth_needs": "50-100 Mbps",
+        "compliance_requirements": "HIPAA",
+        "industry_expertise_match": 0.95
+      },
+      "metadata": {
+        "industry_specialization": "Dental healthcare",
+        "vertical_expertise": "High",
+        "peer_references": "Available",
+        "solution_fit": "Excellent",
+        "segment_targeting": "Precise"
+      }
+    },
+    "ASP-2025-022": {
+      "topic": "Agent Specialization - Technical vs Sales Routing",
+      "topic_category": "Compliance & Territory Intelligence",
+      "specialization_analytics": {
+        "customer_technical_level": "Expert",
+        "agent_technical_depth": "Expert",
+        "specialization_match": 0.98,
+        "technical_credibility": "Immediate",
+        "sales_engineering_effectiveness": 0.95
+      },
+      "metadata": {
+        "technical_match": "Perfect",
+        "credibility_establishment": "Immediate", 
+        "expert_level_conversation": true,
+        "sales_engineering_success": "High",
+        "solution_architecture": "Advanced"
+      }
+    },
+    "PER-2025-023": {
+      "topic": "Personality Matching - Analytical Customer Type",
+      "topic_category": "Compliance & Territory Intelligence",
+      "personality_analytics": {
+        "customer_type": "Analytical",
+        "agent_adaptation": "Data-focused approach",
+        "communication_match": 0.9,
+        "decision_making_style": "Evidence-based",
+        "presentation_optimization": "ROI-focused"
+      },
+      "metadata": {
+        "personality_adaptation": "Successful",
+        "analytical_needs_met": "Fully",
+        "data_presentation": "Optimized",
+        "decision_support": "Comprehensive",
+        "buying_process_alignment": "Excellent"
+      }
+    },
+    "LAN-2025-024": {
+      "topic": "Language and Accent Matching - Regional Adaptation",
+      "topic_category": "Compliance & Territory Intelligence",
+      "language_matching": {
+        "regional_dialect": "Southern US",
+        "cultural_familiarity": "High",
+        "communication_comfort": 0.95,
+        "rapport_building": "Excellent",
+        "regional_business_knowledge": "Strong"
+      },
+      "metadata": {
+        "cultural_connection": "Strong",
+        "regional_knowledge": "Demonstrated",
+        "communication_comfort": "High",
+        "local_business_understanding": "Excellent",
+        "relationship_foundation": "Solid"
+      }
+    },
+    "REV-2025-025": {
+      "topic": "Revenue Optimization - Bundle Effectiveness",
+      "topic_category": "Revenue Optimization & System Integration",
+      "revenue_analytics": {
+        "current_monthly_spend": "$1,800",
+        "bundle_opportunity": "Internet + Voice + Security",
+        "potential_bundle_savings": "18%",
+        "revenue_expansion": "$450/month",
+        "bundle_adoption_probability": 0.8
+      },
+      "metadata": {
+        "bundle_effectiveness": "High",
+        "cost_reduction_achieved": "$10,800 annually",
+        "vendor_consolidation": "Successful",
+        "operational_efficiency": "Improved",
+        "revenue_optimization": "Excellent"
+      }
+    },
+    "PEL-2025-026": {
+      "topic": "Price Elasticity Analysis - Small Business Segment",
+      "topic_category": "Revenue Optimization & System Integration",
+      "pricing_analytics": {
+        "price_sensitivity": "High",
+        "optimal_price_point": "$89/month",
+        "elasticity_coefficient": -1.2,
+        "conversion_probability_at_price": 0.9,
+        "segment_pricing_strategy": "Value-focused"
+      },
+      "metadata": {
+        "price_optimization": "Effective",
+        "segment_targeting": "Accurate",
+        "competitive_advantage": "Significant",
+        "value_positioning": "Strong",
+        "conversion_likelihood": "High"
+      }
+    },
+    "CTM-2025-027": {
+      "topic": "Contract Term Analysis - Enterprise Negotiation",
+      "topic_category": "Revenue Optimization & System Integration",
+      "contract_analytics": {
+        "current_term": "24 months",
+        "proposed_term": "36 months",
+        "term_discount": "12%",
+        "early_termination_clauses": "Flexible",
+        "total_contract_value": "$432,000"
+      },
+      "metadata": {
+        "contract_optimization": "Successful",
+        "risk_mitigation": "Addressed",
+        "pricing_advantage": "Achieved",
+        "flexibility_balance": "Excellent",
+        "enterprise_satisfaction": "High"
+      }
+    },
+    "DIS-2025-028": {
+      "topic": "Discount Effectiveness - Retention Scenario",
+      "topic_category": "Revenue Optimization & System Integration",
+      "discount_analytics": {
+        "churn_probability_before": 0.8,
+        "discount_offered": "20% for 12 months",
+        "churn_probability_after": 0.2,
+        "retention_cost": "$3,600",
+        "customer_lifetime_value": "$180,000"
+      },
+      "metadata": {
+        "retention_success": "High probability",
+        "discount_effectiveness": "Strong",
+        "competitive_response": "Adequate",
+        "long_term_strategy": "Planned",
+        "roi_of_retention": "Positive"
+      }
+    },
+    "UPT-2025-029": {
+      "topic": "Upsell Timing Optimization - Growth Signal Detection",
+      "topic_category": "Revenue Optimization & System Integration",
+      "upsell_timing": {
+        "growth_signals_detected": ["Team expansion", "Usage spike", "New funding"],
+        "optimal_timing_score": 0.95,
+        "upsell_readiness": "High",
+        "expansion_revenue_potential": "$24,000"
+      },
+      "metadata": {
+        "timing_optimization": "Perfect",
+        "growth_signal_utilization": "Excellent",
+        "upsell_conversion": "Very likely",
+        "revenue_expansion": "Significant",
+        "customer_satisfaction": "Maintained"
+      }
+    },
+    "TRN-2025-031": {
+      "topic": "Training Need Identification - Skill Gap Analysis",
+      "topic_category": "Training Analytics & Operational Efficiency",
+      "metadata": {
+        "skill_gaps_identified": ["Technical knowledge", "Consultative selling"],
+        "training_priority": "High",
+        "improvement_potential": "Significant"
+      }
+    },
+    "PCH-2025-032": {
+      "topic": "Personalized Coaching - Individual Improvement Plan",
+      "topic_category": "Training Analytics & Operational Efficiency",
+      "coaching_analytics": {
+        "talk_time_percentage": 75,
+        "interruption_count": 4,
+        "discovery_questions": 2,
+        "coaching_opportunity": "Active listening, customer needs discovery",
+        "improvement_potential": "High"
+      },
+      "metadata": {
+        "listening_score": 0.3,
+        "needs_discovery": "Failed",
+        "customer_frustration": "Increasing",
+        "coaching_needed": "Immediate",
+        "specific_improvements": ["Wait for customer to finish", "Ask follow-up questions", "Confirm understanding"]
+      }
+    },
+    "CBE-2025-037": {
+      "topic": "Customer Behavior Analytics - Purchase Decision Timeline",
+      "topic_category": "Customer Behavior & Advanced Scenarios",
+      "behavior_analytics": {
+        "decision_timeline": "45-60 days",
+        "research_phase_duration": "30 days",
+        "information_consumption_pattern": "Deep dive, multiple touchpoints",
+        "decision_maker_involvement": "CEO + CTO consensus",
+        "buying_signals": ["Budget allocation", "Timeline urgency", "Vendor comparison matrix"]
+      },
+      "metadata": {
+        "decision_style_match": "Excellent",
+        "timeline_accommodation": "Aligned",
+        "information_provision": "Comprehensive",
+        "stakeholder_inclusion": "Facilitated",
+        "conversion_probability": 0.8
+      }
+    },
+    "BSG-2025-039": {
+      "topic": "Buying Signal Detection - Budget Allocation Confirmed",
+      "topic_category": "Customer Behavior & Advanced Scenarios",
+      "buying_signals": {
+        "budget_status": "Approved and allocated",
+        "timeline_urgency": "High",
+        "authority_level": "Final decision maker",
+        "implementation_planning": "Active",
+        "signal_strength": 0.9
+      },
+      "metadata": {
+        "buying_readiness": "Immediate",
+        "budget_fit": "Perfect",
+        "authority_confirmed": "Yes",
+        "urgency_level": "High",
+        "close_probability": 0.95
+      }
+    },
+    "EIC-2025-042": {
+      "topic": "Economic Indicator Correlation - Market Downturn Impact",
+      "topic_category": "Customer Behavior & Advanced Scenarios",
+      "economic_analytics": {
+        "market_conditions": "Economic uncertainty",
+        "customer_industry_impact": "High",
+        "spending_patterns": "Cautious, delayed decisions",
+        "retention_risk": "Elevated",
+        "economic_sensitivity": 0.8
+      },
+      "metadata": {
+        "economic_adaptation": "Proactive",
+        "cost_optimization": "Achieved",
+        "flexibility_provision": "Built-in",
+        "relationship_preservation": "Strong",
+        "market_sensitivity": "High"
+      }
+    },
+    "FUT-2025-052": {
+      "topic": "Future-State Analytics - Predictive Customer Success",
+      "topic_category": "Customer Behavior & Advanced Scenarios",
+      "predictive_analytics": {
+        "growth_trajectory": "300% over 18 months",
+        "bandwidth_scaling_prediction": "5x current usage",
+        "proactive_planning": "Infrastructure roadmap",
+        "customer_success_probability": 0.95
+      },
+      "metadata": {
+        "predictive_accuracy": "High",
+        "proactive_value": "Demonstrated",
+        "future_planning": "Comprehensive",
+        "customer_success": "Ensured",
+        "growth_readiness": "Built-in"
+      }
+    }
+  }
+} 

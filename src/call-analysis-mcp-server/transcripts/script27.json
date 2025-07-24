@@ -1,0 +1,56 @@
+{
+  "call_id": "LAN-2025-024",
+  "topic": "Language and Accent Matching - Regional Adaptation",
+  "customer": {
+    "role": "Business Owner",
+    "company": "Southern Hospitality Hotels",
+    "account_id": "NEW_PROSPECT",
+    "location": "Atlanta, Georgia"
+  },
+  "agent": {
+    "name": "Billy",
+    "role": "Regional Account Manager - Southeast",
+    "communication_style": "Southern regional familiarity"
+  },
+  "call_duration_seconds": 360,
+  "language_matching": {
+    "regional_dialect": "Southern US",
+    "cultural_familiarity": "High",
+    "communication_comfort": 0.95,
+    "rapport_building": "Excellent",
+    "regional_business_knowledge": "Strong"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Y'all come highly recommended from the Georgia Hotel Association. We need reliable internet for our three properties here in Atlanta.",
+      "language_markers": "Southern dialect, local association reference"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Well, I appreciate that! The Georgia Hotel Association has been wonderful to work with. We've got quite a few hotel properties throughout metro Atlanta, and we understand y'all's needs real well.",
+      "language_markers": "Matching regional dialect, local market knowledge"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "That's good to hear. We need something that can handle convention crowds - sometimes our guest wifi gets swamped during big events.",
+      "language_markers": "Local business context, hospitality industry knowledge"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "Oh absolutely, especially during Dragon Con or when the convention center's busy. We can set up bandwidth that scales automatically during peak events.",
+      "language_markers": "Local event knowledge, industry-specific solution"
+    }
+  ],
+  "metadata": {
+    "cultural_connection": "Strong",
+    "regional_knowledge": "Demonstrated",
+    "communication_comfort": "High",
+    "local_business_understanding": "Excellent",
+    "relationship_foundation": "Solid"
+  }
+} 

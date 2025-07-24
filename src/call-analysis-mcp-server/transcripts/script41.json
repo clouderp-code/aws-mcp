@@ -1,0 +1,54 @@
+{
+  "call_id": "ICM-2025-038",
+  "topic": "Information Consumption - Technical Deep Dive Request",
+  "customer": {
+    "role": "Network Engineer",
+    "company": "Enterprise Data Corp",
+    "account_id": "NEW_PROSPECT",
+    "consumption_style": "Technical documentation focus"
+  },
+  "agent": {
+    "name": "Dr. Michael Torres",
+    "role": "Principal Technical Architect"
+  },
+  "call_duration_seconds": 900,
+  "information_analytics": {
+    "preferred_materials": ["Technical whitepapers", "Architecture diagrams", "Performance benchmarks"],
+    "detail_level_required": "Expert",
+    "documentation_requests": 8,
+    "technical_depth_score": 0.95
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "I need comprehensive technical documentation. Specifically, your network topology, redundancy architecture, and latency performance data across all your POPs.",
+      "consumption_markers": "Documentation-heavy approach, specific technical requirements"
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "Absolutely. I'll provide our complete technical architecture guide, real-time latency heatmaps, and redundancy schematics. What specific use cases should I focus the performance data on?",
+      "consumption_markers": "Matching information depth, customization offering"
+    },
+    {
+      "timestamp": "03:00 – 08:00",
+      "speaker": "Customer",
+      "text": "We run high-frequency trading algorithms that are latency-sensitive. Also need BGP routing policies and DDoS mitigation technical specifications.",
+      "consumption_markers": "Specialized technical requirements, detail-oriented"
+    },
+    {
+      "timestamp": "08:00 – 15:00",
+      "speaker": "Agent",
+      "text": "For HFT applications, I'll include our sub-millisecond routing optimizations, BGP policy examples for financial services, and our behavioral DDoS detection algorithms. I'll also arrange lab access for latency testing.",
+      "consumption_markers": "Expert-level technical provision, hands-on validation"
+    }
+  ],
+  "metadata": {
+    "information_depth": "Expert level",
+    "technical_credibility": "Established",
+    "documentation_quality": "Comprehensive",
+    "hands_on_validation": "Offered",
+    "technical_satisfaction": "High"
+  }
+} 

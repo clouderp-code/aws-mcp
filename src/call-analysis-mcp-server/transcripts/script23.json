@@ -1,0 +1,55 @@
+{
+  "call_id": "GEO-2025-020",
+  "topic": "Geographic Performance Analysis - Regional Success Patterns",
+  "customer": {
+    "role": "Franchise Owner",
+    "company": "QuickServe Restaurant Chain",
+    "account_id": "NEW_PROSPECT",
+    "location": "Austin, Texas"
+  },
+  "agent": {
+    "name": "Jake",
+    "role": "Regional Sales Manager - Southwest"
+  },
+  "call_duration_seconds": 360,
+  "geographic_analytics": {
+    "region": "Southwest US",
+    "regional_success_rate": 0.78,
+    "local_competitive_advantages": ["Local data center", "Regional partnerships"],
+    "market_penetration": "Medium",
+    "regional_pricing_optimization": "Active"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "We're opening three new QuickServe locations in Austin and need reliable internet for POS systems and guest wifi.",
+      "geo_markers": "Multi-location, local market expansion"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Great news! Austin is one of our strongest markets. We have a local data center just 15 miles away, which means excellent performance for your POS systems.",
+      "geo_markers": "Local infrastructure advantage, market knowledge"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "That's good to hear. What about pricing? We're comparing with other providers in the area.",
+      "geo_markers": "Regional competitive pricing inquiry"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "We're very competitive in the Austin market. Plus, we have a partnership with the local restaurant association that gives franchise owners additional discounts.",
+      "geo_markers": "Regional pricing strategy, local partnership advantage"
+    }
+  ],
+  "metadata": {
+    "local_market_knowledge": "Strong",
+    "infrastructure_advantage": "Significant",
+    "regional_partnerships": "Leveraged",
+    "competitive_positioning": "Strong",
+    "market_expansion_opportunity": "$12,000"
+  }
+} 

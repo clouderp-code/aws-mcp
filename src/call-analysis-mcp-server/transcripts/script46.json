@@ -1,0 +1,55 @@
+{
+  "call_id": "AVC-2025-043",
+  "topic": "Advanced Voice Coaching - Accent and Clarity Optimization",
+  "customer": {
+    "role": "Facilities Manager",
+    "company": "International Manufacturing Corp",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Priya",
+    "role": "Sales Representative",
+    "coaching_focus": "International customer communication"
+  },
+  "call_duration_seconds": 420,
+  "voice_coaching_analytics": {
+    "speaking_clarity": 0.7,
+    "accent_adaptation": "Needed",
+    "pace_optimization": "Slower required",
+    "cultural_sensitivity": "High importance",
+    "communication_effectiveness": 0.6
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "We have facilities in twelve countries and need connectivity solutions that work globally. The requirements vary significantly by region.",
+      "coaching_markers": "International scope, complex requirements"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Absolutely, we have global capabilities. Our international division can handle all twelve countries with localized support and compliance.",
+      "coaching_markers": "Speaking too quickly, complex sentence structure"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "Sorry, could you repeat that more slowly? I want to make sure I understand your global capabilities correctly.",
+      "coaching_markers": "Communication barrier, pace adjustment needed"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Of course. We work... in many countries. Each location... gets local support. And we follow... local rules and laws.",
+      "coaching_markers": "Pace adjustment made, simpler language used"
+    }
+  ],
+  "metadata": {
+    "pace_adjustment": "Implemented",
+    "language_simplification": "Applied",
+    "customer_understanding": "Improved",
+    "coaching_opportunity": "Clear",
+    "international_communication": "Developing"
+  }
+} 

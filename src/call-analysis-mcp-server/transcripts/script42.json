@@ -1,0 +1,54 @@
+{
+  "call_id": "BSG-2025-039",
+  "topic": "Buying Signal Detection - Budget Allocation Confirmed",
+  "customer": {
+    "role": "CFO",
+    "company": "Growth Logistics Inc",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Rachel",
+    "role": "Enterprise Sales Manager"
+  },
+  "call_duration_seconds": 420,
+  "buying_signals": {
+    "budget_status": "Approved and allocated",
+    "timeline_urgency": "High",
+    "authority_level": "Final decision maker",
+    "implementation_planning": "Active",
+    "signal_strength": 0.9
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Rachel, we've allocated $180K in this year's budget for network infrastructure upgrade. Need to move quickly to spend it before year-end.",
+      "buying_markers": "Budget confirmed, urgency established, spending deadline"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Excellent! That budget aligns well with our Enterprise solution. To ensure we meet your year-end deadline, I'll expedite the proposal and implementation timeline.",
+      "buying_markers": "Budget alignment confirmation, urgency matching"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Customer",
+      "text": "Perfect. I've already cleared this with our board. What do you need from me to fast-track the contract?",
+      "buying_markers": "Authority confirmation, process acceleration request"
+    },
+    {
+      "timestamp": "05:00 – 07:00",
+      "speaker": "Agent",
+      "text": "I'll send the contract today with expedited terms. We can have installation completed within three weeks to meet your budget deadline.",
+      "buying_markers": "Closing momentum, timeline commitment"
+    }
+  ],
+  "metadata": {
+    "buying_readiness": "Immediate",
+    "budget_fit": "Perfect",
+    "authority_confirmed": "Yes",
+    "urgency_level": "High",
+    "close_probability": 0.95
+  }
+} 

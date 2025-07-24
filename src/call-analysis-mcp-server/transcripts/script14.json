@@ -1,0 +1,55 @@
+{
+  "call_id": "QAF-2025-011",
+  "topic": "Quota Achievement Forecasting - Performance Prediction",
+  "customer": {
+    "role": "CEO",
+    "company": "TechInnovate Solutions",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "James",
+    "role": "Senior Sales Executive",
+    "monthly_quota": "$150,000",
+    "current_month_progress": "78%"
+  },
+  "call_duration_seconds": 540,
+  "quota_analytics": {
+    "deal_contribution_to_quota": "32%",
+    "probability_weighted_value": "$37,500",
+    "quota_impact": "High - potential quota achiever",
+    "forecasting_confidence": 0.85
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "James, we need enterprise internet for our new headquarters. Looking at 1GB fiber, plus backup connectivity for business continuity.",
+      "quota_markers": "Large deal potential, enterprise requirements"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Excellent. For headquarters-level requirements, I'd recommend our Premier Enterprise package. What's your timeline for decision and implementation?",
+      "quota_markers": "Premium solution positioning, timeline qualification"
+    },
+    {
+      "timestamp": "04:00 – 06:00",
+      "speaker": "Customer",
+      "text": "Need to be live by month-end for our grand opening. Budget approved at $50K annually for the right solution.",
+      "quota_markers": "Urgent timeline, budget confirmed, high-value deal"
+    },
+    {
+      "timestamp": "06:00 – 09:00",
+      "speaker": "Agent",
+      "text": "Perfect timing. I can expedite this for month-end delivery. The Premier package with backup connectivity comes to $48K annually - right in your budget range.",
+      "quota_markers": "Deal sizing matches quota needs, urgency alignment"
+    }
+  ],
+  "metadata": {
+    "deal_size": "$48,000",
+    "quota_contribution": "$48,000",
+    "closure_timeline": "This month",
+    "quota_achievement_impact": "Significant",
+    "agent_performance_boost": "High"
+  }
+} 

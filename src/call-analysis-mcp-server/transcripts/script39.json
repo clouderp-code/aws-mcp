@@ -1,0 +1,55 @@
+{
+  "call_id": "CDO-2025-036",
+  "topic": "Call Duration Optimization - Efficiency vs Quality",
+  "customer": {
+    "role": "Office Administrator",
+    "company": "Local Dental Practice",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Sarah",
+    "role": "SMB Sales Rep",
+    "call_efficiency_focus": "Streamlined discovery"
+  },
+  "call_duration_seconds": 180,
+  "efficiency_analytics": {
+    "call_duration_target": "3-5 minutes",
+    "actual_duration": "3 minutes",
+    "information_gathering": "Complete",
+    "solution_positioning": "Effective",
+    "efficiency_score": 0.95
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "Hi! I understand you need internet for your dental practice. Quick questions - how many staff, current speed, and any specific applications like digital X-rays?",
+      "efficiency_markers": "Rapid qualification, targeted questions"
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "Six staff, current speed is slow, and yes we do digital X-rays that take forever to upload.",
+      "efficiency_markers": "Concise response, clear pain point"
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Agent",
+      "text": "Perfect. Our Dental Pro package is $129/month for 200 Mbps with HIPAA compliance - specifically designed for practices your size with digital imaging. Installation in 5 days.",
+      "efficiency_markers": "Targeted solution, industry-specific, complete offering"
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Customer",
+      "text": "That sounds perfect. How do we proceed?",
+      "efficiency_markers": "Quick decision, efficient close"
+    }
+  ],
+  "metadata": {
+    "efficiency_rating": "Excellent",
+    "quality_maintained": true,
+    "customer_satisfaction": "High",
+    "time_optimization": "Successful",
+    "conversion_achieved": true
+  }
+} 

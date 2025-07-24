@@ -1,0 +1,35 @@
+{
+  "call_id": "ASP-2025-022",
+  "customer": {
+    "role": "Network Administrator",
+    "company": "CloudFirst Technologies",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Dr. Sarah Kim",
+    "role": "Principal Solutions Architect",
+    "certifications": ["CCIE", "CISSP", "AWS Solutions Architect"]
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "We need multi-homed BGP with diverse carrier paths for our cloud infrastructure. Looking for sub-10ms latency to AWS us-east-1."
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Excellent requirements. I'd recommend our dual-carrier setup with Cogent and Level3, plus AWS Direct Connect. We can achieve 3-5ms latency to us-east-1 from our Ashburn POP."
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "What about failover convergence times? We can't tolerate more than 30 seconds."
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Our BGP convergence is typically under 15 seconds with optimized timers. I can show you our route dampening configuration and provide test results from similar implementations."
+    }
+  ]
+} 

@@ -1,0 +1,35 @@
+{
+  "call_id": "CBE-2025-037",
+  "customer": {
+    "role": "CEO",
+    "company": "Emerging Tech Startup",
+    "account_id": "NEW_PROSPECT",
+    "decision_making_style": "Methodical, research-driven"
+  },
+  "agent": {
+    "name": "Amanda",
+    "role": "Strategic Account Executive"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Customer",
+      "text": "We're in the research phase for our connectivity infrastructure. I've been evaluating five providers over the past month. Need to make a decision by quarter-end."
+    },
+    {
+      "timestamp": "00:00 – 03:00",
+      "speaker": "Agent",
+      "text": "I appreciate your thorough approach. Since you're comparing multiple providers, what specific criteria are most important for your final decision?"
+    },
+    {
+      "timestamp": "03:00 – 06:00",
+      "speaker": "Customer",
+      "text": "Reliability is number one, then scalability as we grow, and cost predictability. I need to present a comprehensive comparison to my CTO next week."
+    },
+    {
+      "timestamp": "06:00 – 12:00",
+      "speaker": "Agent",
+      "text": "Perfect. I'll prepare a detailed comparison matrix showing how we perform against those three criteria versus your other options, plus include case studies from similar startups. Would a technical deep-dive with your CTO be helpful?"
+    }
+  ]
+} 

@@ -1,0 +1,34 @@
+{
+  "call_id": "EMP-2025-014",
+  "customer": {
+    "role": "Restaurant Manager",
+    "company": "Coastal Dining Group",
+    "account_id": "61849"
+  },
+  "agent": {
+    "name": "Amanda",
+    "role": "Customer Care Specialist"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "This outage happened during our dinner rush! We lost probably $3000 in sales because customers couldn't pay with cards."
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "I am so sorry this happened during your busiest time. I can only imagine how stressful that must have been for you and your staff. Let me see what I can do to make this right."
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Customer",
+      "text": "We had to turn away customers. Some regulars were really upset. This can't happen again."
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Agent",
+      "text": "I completely understand your concern about your regular customers - they're the heart of your business. I'm going to arrange for backup internet and a full service credit for tonight's outage."
+    }
+  ]
+} 

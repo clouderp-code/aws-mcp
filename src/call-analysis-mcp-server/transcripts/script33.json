@@ -1,0 +1,53 @@
+{
+  "call_id": "INT-2025-030",
+  "topic": "System Integration Analytics - CRM Data Correlation",
+  "customer": {
+    "role": "Sales Director",
+    "company": "TechSolutions Partners",
+    "account_id": "45729"
+  },
+  "agent": {
+    "name": "Marcus",
+    "role": "Sales Intelligence Analyst"
+  },
+  "call_duration_seconds": 360,
+  "integration_analytics": {
+    "crm_data_points": ["Previous purchases", "Support tickets", "Usage patterns"],
+    "salesforce_integration": "Active",
+    "customer_health_score": 0.85,
+    "predictive_insights": "Expansion ready"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Hi! I noticed in our system that you've been consistently increasing your bandwidth usage and recently opened two support tickets about performance during video conferences.",
+      "integration_markers": "CRM data utilization, proactive outreach, data-driven insights"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "That's right. We've been having some quality issues during client presentations. Good of you to notice and reach out.",
+      "integration_markers": "Issue confirmation, positive response to proactive approach"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Agent",
+      "text": "Based on your usage patterns and the QoS issues you're experiencing, I'd recommend our Premium plan with dedicated video conferencing prioritization. This would solve your current issues and accommodate growth.",
+      "integration_markers": "Data-driven recommendation, solution positioning"
+    },
+    {
+      "timestamp": "04:00 – 06:00",
+      "speaker": "Customer",
+      "text": "That's exactly what we need. I'm impressed you connected the dots from our support tickets to the upgrade recommendation.",
+      "integration_markers": "Solution fit recognition, data integration appreciation"
+    }
+  ],
+  "metadata": {
+    "data_utilization": "Excellent",
+    "proactive_service": "Effective",
+    "system_integration": "Seamless",
+    "customer_appreciation": "High",
+    "upsell_success": "Achieved"
+  }
+} 

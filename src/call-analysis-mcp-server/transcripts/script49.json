@@ -1,0 +1,54 @@
+{
+  "call_id": "ATA-2025-046",
+  "topic": "Administrative Task Optimization - Non-Revenue Time Reduction",
+  "customer": {
+    "role": "Practice Manager",
+    "company": "Specialized Medical Clinic",
+    "account_id": "74829"
+  },
+  "agent": {
+    "name": "Jennifer",
+    "role": "Healthcare Account Manager"
+  },
+  "call_duration_seconds": 240,
+  "admin_optimization": {
+    "call_type": "Service verification",
+    "admin_time_required": "2 minutes",
+    "automation_opportunity": "High",
+    "efficiency_gain": "75% time reduction",
+    "customer_satisfaction": "Maintained"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "Quick check-in on your new HIPAA-compliant connection. Our automated monitoring shows everything is running smoothly. Any issues on your end?",
+      "admin_markers": "Automated data utilization, efficient status check"
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "Everything's been perfect. Patient data transfers are much faster, and we haven't had any connectivity issues.",
+      "admin_markers": "Positive confirmation, value realization"
+    },
+    {
+      "timestamp": "01:00 – 03:00",
+      "speaker": "Agent",
+      "text": "Wonderful! I'll update your account status. You'll receive automated monthly performance reports, so I won't need to call for routine checks unless you request it.",
+      "admin_markers": "Process automation, reduced future admin burden"
+    },
+    {
+      "timestamp": "03:00 – 04:00",
+      "speaker": "Customer",
+      "text": "That's perfect. Automated reports sound ideal - saves time for both of us.",
+      "admin_markers": "Automation acceptance, mutual benefit recognition"
+    }
+  ],
+  "metadata": {
+    "admin_efficiency": "Optimized",
+    "automation_implementation": "Successful",
+    "customer_preference": "Aligned",
+    "time_savings": "Significant",
+    "process_improvement": "Achieved"
+  }
+} 

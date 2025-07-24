@@ -1,0 +1,54 @@
+{
+  "call_id": "LNG-2025-013",
+  "topic": "Language Intelligence - Technical Jargon Optimization",
+  "customer": {
+    "role": "Small Business Owner",
+    "company": "Local Coffee Roasters",
+    "account_id": "NEW_PROSPECT",
+    "technical_sophistication": "Low"
+  },
+  "agent": {
+    "name": "Tom",
+    "role": "SMB Sales Representative"
+  },
+  "call_duration_seconds": 420,
+  "language_analytics": {
+    "jargon_level": "Appropriate for audience",
+    "technical_complexity_score": 0.3,
+    "customer_comprehension": "High",
+    "language_effectiveness": 0.9
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "I just need reliable internet for my coffee shop. The current one keeps dropping out when it's busy.",
+      "language_markers": "Simple language, basic needs"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I understand completely. When you say it drops out during busy times, are you talking about when you have lots of customers using wifi, or when you're processing credit card payments?",
+      "language_markers": "Translated technical issue into business context"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Customer",
+      "text": "Both actually. Customers can't get online, and our payment system sometimes times out. It's really embarrassing.",
+      "language_markers": "Business impact focus, emotional language"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Agent",
+      "text": "That would be frustrating for everyone. It sounds like you need more bandwidth - that's basically more capacity for internet traffic. Think of it like having wider pipes for water flow.",
+      "language_markers": "Simple analogy, avoided jargon, empathetic"
+    }
+  ],
+  "metadata": {
+    "audience_appropriateness": 0.95,
+    "jargon_avoidance": "Excellent",
+    "analogy_effectiveness": "High",
+    "customer_engagement": "Strong",
+    "technical_translation": "Successful"
+  }
+} 

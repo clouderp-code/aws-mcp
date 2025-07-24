@@ -1,0 +1,54 @@
+{
+  "call_id": "CVF-2025-035",
+  "topic": "Call Volume Forecasting - Staffing Optimization",
+  "customer": {
+    "role": "Regional Manager",
+    "company": "Express Delivery Services",
+    "account_id": "91847"
+  },
+  "agent": {
+    "name": "David",
+    "role": "Regional Account Manager"
+  },
+  "call_duration_seconds": 300,
+  "operational_analytics": {
+    "call_volume_trend": "20% increase during holiday season",
+    "optimal_staffing": "12 agents during peak",
+    "current_staffing": "8 agents",
+    "service_level_impact": "Declining",
+    "capacity_planning": "Urgent"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "David, we need to add three more delivery locations before the holiday rush. Timeline is tight - can you expedite the installations?",
+      "operational_markers": "Seasonal demand spike, capacity urgency"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Absolutely! I see you're expanding for holiday capacity. We can fast-track installations with our seasonal deployment team. All three locations can be live within 10 days.",
+      "operational_markers": "Seasonal awareness, expedited service"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Customer",
+      "text": "Perfect. What about support during peak season? We can't afford any service interruptions during December.",
+      "operational_markers": "Peak season support concern"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "I'll assign you to our holiday support tier with guaranteed 2-hour response times and dedicated technicians. We know delivery companies can't afford downtime during peak season.",
+      "operational_markers": "Seasonal support optimization, industry understanding"
+    }
+  ],
+  "metadata": {
+    "seasonal_planning": "Excellent",
+    "capacity_management": "Proactive",
+    "service_level_protection": "Guaranteed",
+    "operational_efficiency": "High",
+    "customer_satisfaction": "Preserved"
+  }
+} 

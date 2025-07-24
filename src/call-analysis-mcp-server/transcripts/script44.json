@@ -1,0 +1,54 @@
+{
+  "call_id": "DMI-2025-041",
+  "topic": "Decision Maker Identification - Hidden Influencer Discovery",
+  "customer": {
+    "role": "IT Manager",
+    "company": "Family Office Holdings",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Patricia",
+    "role": "Relationship Manager"
+  },
+  "call_duration_seconds": 480,
+  "decision_maker_analytics": {
+    "primary_contact": "IT Manager",
+    "hidden_influencers": ["Security Consultant", "Board Member"],
+    "decision_complexity": "High",
+    "stakeholder_mapping": "Multi-level approval",
+    "influence_discovery": "Successful"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "I can make the technical recommendation, but given our client's sensitive financial data, our security consultant and one of the board members will need to approve any new vendors.",
+      "influence_markers": "Authority limitation, stakeholder identification"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "That makes perfect sense for a family office. Security is paramount. Would it be helpful if I prepared separate presentations for the security consultant focusing on our security features and compliance certifications?",
+      "influence_markers": "Stakeholder accommodation, specialized positioning"
+    },
+    {
+      "timestamp": "02:00 – 05:00",
+      "speaker": "Customer",
+      "text": "Yes, that would be ideal. The security consultant is particularly interested in data encryption and access controls. The board member wants to understand business continuity and risk mitigation.",
+      "influence_markers": "Stakeholder interests clarified, presentation customization needed"
+    },
+    {
+      "timestamp": "05:00 – 08:00",
+      "speaker": "Agent",
+      "text": "I'll prepare tailored materials for each stakeholder. For the security consultant, detailed encryption protocols and compliance reports. For the board member, business impact analysis and risk mitigation strategies.",
+      "influence_markers": "Multi-stakeholder strategy, customized approach"
+    }
+  ],
+  "metadata": {
+    "stakeholder_mapping": "Complete",
+    "influence_accommodation": "Planned",
+    "presentation_customization": "Multi-track",
+    "approval_complexity": "Managed",
+    "relationship_strategy": "Comprehensive"
+  }
+} 

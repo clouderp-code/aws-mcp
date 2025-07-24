@@ -1,0 +1,60 @@
+{
+  "call_id": "CHF-2025-010",
+  "topic": "Churn Prediction Modeling - Early Warning Signals",
+  "customer": {
+    "role": "CFO",
+    "company": "CostCutters Inc",
+    "account_id": "19847",
+    "contract_renewal": "Due in 4 months"
+  },
+  "agent": {
+    "name": "Patricia",
+    "role": "Customer Success Manager"
+  },
+  "call_duration_seconds": 420,
+  "churn_prediction": {
+    "30_day_churn_probability": 0.15,
+    "60_day_churn_probability": 0.35,
+    "90_day_churn_probability": 0.65,
+    "risk_factors": [
+      "Cost reduction initiative",
+      "Contract renewal approaching",
+      "CFO involvement (financial focus)",
+      "Market pricing pressure"
+    ],
+    "intervention_recommended": true
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Patricia, our board is pushing cost reduction across all vendors. I need to justify every expense, including our telecom costs.",
+      "churn_signals": "Cost pressure, board mandate, expense justification required"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I understand the pressure to optimize costs. Let me pull your usage analytics and show you the ROI we're delivering. Have you gotten competitive quotes yet?",
+      "churn_signals": "Proactive retention approach, competitive awareness"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Customer",
+      "text": "We've had a few vendors reach out with lower pricing. I need to do my due diligence before renewal.",
+      "churn_signals": "Competitive engagement, due diligence phase, renewal uncertainty"
+    },
+    {
+      "timestamp": "03:00 – 05:00",
+      "speaker": "Agent",
+      "text": "Absolutely smart approach. Before you make any decisions, let me prepare a comprehensive value analysis showing cost per incident, uptime value, and total cost of ownership comparison.",
+      "churn_signals": "Value-based retention strategy"
+    }
+  ],
+  "metadata": {
+    "churn_risk_level": "Medium-High",
+    "retention_strategy": "Value-based positioning",
+    "competitive_pressure": "Active",
+    "intervention_urgency": "High",
+    "account_value_at_risk": "$18,000"
+  }
+} 

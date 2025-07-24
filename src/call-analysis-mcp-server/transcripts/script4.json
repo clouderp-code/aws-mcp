@@ -1,0 +1,34 @@
+{
+  "call_id": "RTA-2025-001",
+  "customer": {
+    "role": "CFO",
+    "company": "MegaCorp Industries", 
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Jennifer",
+    "role": "Enterprise Sales Rep"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 00:30",
+      "speaker": "Customer",
+      "text": "We're evaluating business internet providers. FiberLink gave us a quote for 1GB at $800/month."
+    },
+    {
+      "timestamp": "00:30 – 01:30", 
+      "speaker": "Agent",
+      "text": "I appreciate you considering us in your evaluation. FiberLink is a solid provider. Before I respond to their quote, can you tell me about your uptime requirements and what happens if you experience service interruptions?"
+    },
+    {
+      "timestamp": "01:30 – 02:30",
+      "speaker": "Customer", 
+      "text": "Uptime is critical - we process financial transactions 24/7. Even short outages cost us thousands."
+    },
+    {
+      "timestamp": "01:30 – 02:30",
+      "speaker": "Agent",
+      "text": "That's exactly why I'd recommend our Enterprise plan over FiberLink. While they offer 99.5% uptime, our 99.99% SLA means 4x less downtime - about 4 minutes monthly vs their 22 minutes. For financial processing, that reliability difference is significant."
+    }
+  ]
+} 

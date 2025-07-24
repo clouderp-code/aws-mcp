@@ -1,0 +1,52 @@
+{
+  "call_id": "SDF-2025-012",
+  "topic": "Seasonal Demand Forecasting - Tax Season Capacity",
+  "customer": {
+    "role": "Managing Partner",
+    "company": "TaxPro Accounting Services",
+    "account_id": "43672"
+  },
+  "agent": {
+    "name": "Michelle",
+    "role": "Account Development Manager"
+  },
+  "call_duration_seconds": 360,
+  "seasonal_analytics": {
+    "historical_pattern": "40% bandwidth increase January-April",
+    "predicted_demand": "Same pattern expected",
+    "capacity_planning": "Upgrade recommended",
+    "seasonal_revenue_opportunity": "$2,400"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Hi! With tax season approaching, I wanted to check on your bandwidth capacity. Last year you experienced some slowdowns during peak filing periods.",
+      "seasonal_markers": "Proactive seasonal outreach, historical awareness"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Good timing! We're expecting 30% more clients this year and hired additional preparers. Definitely concerned about network performance.",
+      "seasonal_markers": "Growth expectations, capacity concerns"
+    },
+    {
+      "timestamp": "01:30 – 03:30",
+      "speaker": "Agent",
+      "text": "Based on your growth and our seasonal analytics, I'd recommend temporarily upgrading to 500 Mbps for January through April. We can scale back after tax season.",
+      "seasonal_markers": "Flexible seasonal solution, data-driven recommendation"
+    },
+    {
+      "timestamp": "03:30 – 06:00",
+      "speaker": "Customer",
+      "text": "That flexibility is perfect. What's the cost difference, and can we automate the scaling?",
+      "seasonal_markers": "Interest in seasonal automation, cost-conscious"
+    }
+  ],
+  "metadata": {
+    "seasonal_upgrade_value": "$200/month x 4 months",
+    "capacity_planning_success": true,
+    "customer_satisfaction": "High",
+    "retention_strengthening": "Significant"
+  }
+} 

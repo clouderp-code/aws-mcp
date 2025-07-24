@@ -1,0 +1,34 @@
+{
+  "call_id": "SPA-2025-004",
+  "customer": {
+    "role": "Operations Director",
+    "company": "FastTrack Logistics",
+    "account_id": "41873"
+  },
+  "agent": {
+    "name": "Sarah",
+    "role": "Account Manager"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 00:30",
+      "speaker": "Customer",
+      "text": "Sarah quick question our contract renews next month need pricing for three new warehouses in Phoenix Dallas and Atlanta can you get me numbers today?"
+    },
+    {
+      "timestamp": "00:00 – 00:30",
+      "speaker": "Agent",
+      "text": "Absolutely! Phoenix, Dallas, Atlanta - got it. What bandwidth requirements for each location? And do you need them all active by renewal date?"
+    },
+    {
+      "timestamp": "00:30 – 01:30",
+      "speaker": "Customer",
+      "text": "Phoenix five hundred meg Dallas one gig Atlanta five hundred all need to be live before renewal or we'll have to extend current provider temporarily which we don't want to do costs too much"
+    },
+    {
+      "timestamp": "00:30 – 01:30", 
+      "speaker": "Agent",
+      "text": "Perfect. I can have quotes in two hours and we'll expedite installs. Phoenix and Atlanta 500MB, Dallas 1GB, all live before renewal. I'll include our multi-site discount too."
+    }
+  ]
+} 

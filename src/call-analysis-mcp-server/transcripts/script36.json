@@ -1,0 +1,54 @@
+{
+  "call_id": "PKG-2025-033",
+  "topic": "Product Knowledge Gaps - Competitive Intelligence",
+  "customer": {
+    "role": "IT Director",
+    "company": "Financial Services Group",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Mike",
+    "role": "Business Development Rep"
+  },
+  "call_duration_seconds": 360,
+  "knowledge_analytics": {
+    "competitor_mentions": ["Verizon", "AT&T"],
+    "competitive_knowledge_score": 0.4,
+    "product_differentiation": "Weak",
+    "missed_opportunities": ["SLA comparison", "Financial industry features"],
+    "knowledge_gap_severity": "Moderate"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "We're comparing your service with Verizon and AT&T. Verizon is promising 99.99% uptime and AT&T has specialized financial services compliance features.",
+      "knowledge_markers": "Competitive comparison, specific requirements"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Well, we're very competitive with those companies. Our service is reliable too, and we have good customer support.",
+      "knowledge_markers": "Vague competitive response, no specific differentiation"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Customer",
+      "text": "Can you match their SLA terms? And what about SOX compliance features for financial institutions?",
+      "knowledge_markers": "Specific technical and compliance requirements"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Agent",
+      "text": "I'd need to check on the specific SLA details and compliance features. Can I get back to you on those points?",
+      "knowledge_markers": "Knowledge gap, needs to research basic competitive info"
+    }
+  ],
+  "metadata": {
+    "competitive_preparedness": "Poor",
+    "industry_knowledge": "Lacking",
+    "differentiation_ability": "Weak",
+    "credibility_impact": "Negative",
+    "training_priority": ["Competitive battlecards", "Financial industry requirements", "SLA positioning"]
+  }
+} 

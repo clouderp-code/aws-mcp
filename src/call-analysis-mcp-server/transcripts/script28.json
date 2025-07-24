@@ -1,0 +1,54 @@
+{
+  "call_id": "REV-2025-025",
+  "topic": "Revenue Optimization - Bundle Effectiveness",
+  "customer": {
+    "role": "IT Director",
+    "company": "Growth Manufacturing Inc",
+    "account_id": "51937"
+  },
+  "agent": {
+    "name": "Diana",
+    "role": "Revenue Optimization Specialist"
+  },
+  "call_duration_seconds": 540,
+  "revenue_analytics": {
+    "current_monthly_spend": "$1,800",
+    "bundle_opportunity": "Internet + Voice + Security",
+    "potential_bundle_savings": "18%",
+    "revenue_expansion": "$450/month",
+    "bundle_adoption_probability": 0.8
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "We're happy with our internet service, but our phone and security systems are with different vendors. Billing is becoming a nightmare.",
+      "revenue_markers": "Multi-vendor pain point, consolidation opportunity"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "I understand that frustration. Managing multiple vendors is time-consuming and often more expensive. Let me show you our integrated bundle that could simplify your operations and reduce costs.",
+      "revenue_markers": "Bundle positioning, value proposition"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "What kind of savings are we talking about? We're currently spending about $800 on phones and $400 on security separately.",
+      "revenue_markers": "Budget transparency, cost optimization focus"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "With our complete bundle, you'd pay $2,100 total monthly instead of your current $3,000 across three vendors. That's $900 monthly savings plus simplified billing and unified support.",
+      "revenue_markers": "Significant savings offer, operational benefits"
+    }
+  ],
+  "metadata": {
+    "bundle_effectiveness": "High",
+    "cost_reduction_achieved": "$10,800 annually",
+    "vendor_consolidation": "Successful",
+    "operational_efficiency": "Improved",
+    "revenue_optimization": "Excellent"
+  }
+} 

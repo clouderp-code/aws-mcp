@@ -1,0 +1,34 @@
+{
+  "call_id": "TON-2025-006",
+  "customer": {
+    "role": "CTO",
+    "company": "Enterprise Solutions Inc",
+    "account_id": "72941"
+  },
+  "agent": {
+    "name": "Rebecca",
+    "role": "Enterprise Solutions Architect"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Rebecca, we're evaluating MPLS vs SD-WAN for our multi-site architecture. I need someone who really understands the trade-offs."
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "Absolutely. The key consideration is predictable performance versus cost flexibility. MPLS gives you guaranteed bandwidth and latency, while SD-WAN offers dynamic path selection but with less predictability. What's driving your evaluation?"
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Customer",
+      "text": "Primarily cost reduction, but we can't sacrifice performance for our trading applications. Sub-5ms latency requirements."
+    },
+    {
+      "timestamp": "01:30 – 03:00",
+      "speaker": "Agent",
+      "text": "For trading with sub-5ms requirements, I'd recommend our hybrid approach - MPLS for critical trading paths with SD-WAN overlay for other traffic. This gives you guaranteed performance where needed while reducing overall costs by 30-40%."
+    }
+  ]
+} 

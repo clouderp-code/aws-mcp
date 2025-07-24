@@ -1,0 +1,55 @@
+{
+  "call_id": "RPL-2025-034",
+  "topic": "Role-playing Scenario Generation - Objection Handling",
+  "customer": {
+    "role": "Procurement Manager",
+    "company": "Manufacturing Solutions Ltd",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Lisa",
+    "role": "Sales Representative",
+    "training_scenario": "Price objection handling practice"
+  },
+  "call_duration_seconds": 420,
+  "roleplay_analytics": {
+    "objection_type": "Price/Budget",
+    "handling_technique": "Cost justification",
+    "effectiveness_score": 0.7,
+    "improvement_areas": ["Value quantification", "ROI demonstration"],
+    "scenario_complexity": "Medium"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Customer",
+      "text": "Your solution sounds good, but frankly, it's 30% more expensive than what we're paying now. That's a tough sell to our CFO.",
+      "roleplay_markers": "Classic price objection, budget constraint"
+    },
+    {
+      "timestamp": "00:00 – 01:30",
+      "speaker": "Agent",
+      "text": "I understand price is a concern. However, consider the additional value - our uptime is 99.9% versus your current provider's 99.5%. That extra reliability prevents costly downtime.",
+      "roleplay_markers": "Good value positioning, specific differentiation"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Customer",
+      "text": "How do I quantify that for the CFO? They want to see hard numbers, not just percentages.",
+      "roleplay_markers": "Deeper objection, requesting quantification"
+    },
+    {
+      "timestamp": "01:30 – 04:00",
+      "speaker": "Agent",
+      "text": "Let me calculate the cost of downtime for your operation. If you lose $5,000 per hour during outages, the 0.4% uptime difference saves you approximately $17,520 annually.",
+      "roleplay_markers": "Excellent quantification, ROI demonstration"
+    }
+  ],
+  "metadata": {
+    "objection_handling": "Effective",
+    "value_quantification": "Strong",
+    "cfo_positioning": "Appropriate",
+    "training_outcome": "Successful",
+    "scenario_difficulty": "Medium"
+  }
+} 

@@ -1,0 +1,39 @@
+{
+  "call_id": "SIL-2025-005",
+  "customer": {
+    "role": "Network Engineer", 
+    "company": "SecureData Systems",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "David",
+    "role": "Technical Sales Engineer"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "We need BGP routing with failover capabilities. What's your AS number and peering arrangements?"
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "We operate AS65001 with direct peering to Tier 1 providers including Level3, Cogent, and Hurricane Electric. BGP failover is automatic with sub-30 second convergence."
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Customer",
+      "text": "[7 second pause] That's good. What about DDoS mitigation? We've had issues with volumetric attacks exceeding 10Gbps."
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Agent", 
+      "text": "Our scrubbing centers handle up to 3Tbps aggregate. We use behavioral analysis and rate limiting with less than 5ms latency impact under normal conditions."
+    },
+    {
+      "timestamp": "02:30 – 04:00",
+      "speaker": "Customer",
+      "text": "[6 second pause] Impressive specs. Can you provide SLA documentation and reference architectures for similar implementations?"
+    }
+  ]
+} 

@@ -1,0 +1,34 @@
+{
+  "call_id": "VEA-2025-002", 
+  "customer": {
+    "role": "IT Manager",
+    "company": "Retail Plus Corp",
+    "account_id": "64729"
+  },
+  "agent": {
+    "name": "Michael",
+    "role": "Technical Account Manager"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 00:45",
+      "speaker": "Customer",
+      "text": "This is the third outage this month! Our POS systems are down and customers can't checkout. This is unacceptable!"
+    },
+    {
+      "timestamp": "00:00 – 00:45",
+      "speaker": "Agent", 
+      "text": "I completely understand your frustration, and I sincerely apologize. Let me immediately escalate this to our NOC and get you a status update. Can you confirm your store locations affected?"
+    },
+    {
+      "timestamp": "00:45 – 02:00",
+      "speaker": "Customer",
+      "text": "All five locations. We're losing sales every minute this is down. What's your plan to fix this recurring problem?"
+    },
+    {
+      "timestamp": "00:45 – 02:00",
+      "speaker": "Agent",
+      "text": "I'm escalating this to Priority 1 status. I'm also going to assign a dedicated engineer to audit your network and implement redundancy. This pattern is unacceptable to us too."
+    }
+  ]
+} 

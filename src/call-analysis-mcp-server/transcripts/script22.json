@@ -1,0 +1,54 @@
+{
+  "call_id": "COM-2025-019",
+  "topic": "Compliance Analytics - TCPA Adherence",
+  "customer": {
+    "role": "Legal Counsel",
+    "company": "Healthcare Partners Network",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Patricia",
+    "role": "Healthcare Compliance Specialist"
+  },
+  "call_duration_seconds": 420,
+  "compliance_monitoring": {
+    "tcpa_compliance_score": 1.0,
+    "required_disclosures": ["Recording consent", "HIPAA notice"],
+    "disclosure_completion": "100%",
+    "call_time_compliance": "Within business hours",
+    "consent_verification": "Documented"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 00:30",
+      "speaker": "Agent",
+      "text": "Good morning! This is Patricia from StarTel Healthcare Solutions. I'm calling regarding your inquiry about HIPAA-compliant connectivity. Is this a good time to talk, and do you consent to this call being recorded for quality purposes?",
+      "compliance_markers": "Business hours, recording consent, purpose disclosure"
+    },
+    {
+      "timestamp": "00:00 – 00:30",
+      "speaker": "Customer",
+      "text": "Yes, that's fine. We did submit an inquiry through your website.",
+      "compliance_markers": "Consent provided, prior relationship established"
+    },
+    {
+      "timestamp": "00:30 – 02:00",
+      "speaker": "Agent",
+      "text": "Thank you. As a healthcare organization, all our solutions include HIPAA compliance features. This call and all our communications follow strict healthcare privacy regulations.",
+      "compliance_markers": "HIPAA disclosure, privacy assurance"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "That's important to us. We need to ensure all vendor communications meet our compliance standards.",
+      "compliance_markers": "Compliance priority confirmed"
+    }
+  ],
+  "metadata": {
+    "tcpa_compliance": "Full",
+    "hipaa_compliance": "Addressed",
+    "consent_management": "Proper",
+    "disclosure_completeness": "100%",
+    "legal_risk": "Minimal"
+  }
+} 

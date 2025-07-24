@@ -1,0 +1,44 @@
+{
+  "call_id": "CFO-2025-008",
+  "customer": {
+    "role": "Office Manager",
+    "company": "Regional Medical Practice",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Lisa",
+    "role": "Healthcare Solutions Specialist"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Agent",
+      "text": "Thanks for your interest in our healthcare connectivity solutions. To help me understand your needs, can you tell me about your current internet setup?"
+    },
+    {
+      "timestamp": "00:00 – 01:00",
+      "speaker": "Customer",
+      "text": "We have basic business internet with MegaCom. 100 Mbps, but it's been unreliable lately."
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Agent",
+      "text": "I see. What specific challenges are you experiencing? And how do these issues impact patient care or operations?"
+    },
+    {
+      "timestamp": "01:00 – 02:30",
+      "speaker": "Customer",
+      "text": "Patient records system crashes during outages. We also do telemedicine calls that get choppy. Very frustrating for patients."
+    },
+    {
+      "timestamp": "02:30 – 04:00", 
+      "speaker": "Agent",
+      "text": "That's concerning, especially for patient care. As a medical practice, you have HIPAA requirements. Are you looking for connectivity that includes compliance features?"
+    },
+    {
+      "timestamp": "04:00 – 06:00",
+      "speaker": "Agent",
+      "text": "What's your budget range for a reliable, HIPAA-compliant solution? And who's involved in the decision process?"
+    }
+  ]
+} 

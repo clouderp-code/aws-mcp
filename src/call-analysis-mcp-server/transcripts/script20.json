@@ -1,0 +1,53 @@
+{
+  "call_id": "VOC-2025-017",
+  "topic": "Vocabulary Effectiveness - Authority Language",
+  "customer": {
+    "role": "CTO",
+    "company": "Enterprise Security Corp",
+    "account_id": "72841"
+  },
+  "agent": {
+    "name": "Rachel",
+    "role": "Enterprise Solutions Engineer"
+  },
+  "call_duration_seconds": 600,
+  "vocabulary_analytics": {
+    "authority_words_used": ["guarantee", "ensure", "proven", "industry-leading"],
+    "confidence_building_phrases": 12,
+    "technical_credibility_vocabulary": "Advanced",
+    "executive_level_communication": 0.95
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "Rachel, we need guaranteed service levels for our security operations center. Any disruption could compromise client data protection.",
+      "authority_markers": "Seeking guarantees, high-stakes environment"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Absolutely critical requirement. Our enterprise-grade infrastructure provides guaranteed 99.99% uptime with proven redundancy across multiple data centers. I'll ensure your SOC has bulletproof connectivity.",
+      "authority_markers": "Strong commitment language, technical confidence"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "What about DDoS protection? We're constantly targeted given our client base.",
+      "authority_markers": "Technical depth, security focus"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Our industry-leading DDoS mitigation handles attacks up to 3Tbps with sub-second detection. We guarantee clean traffic delivery even during sophisticated multi-vector attacks.",
+      "authority_markers": "Industry positioning, technical specificity, guarantee language"
+    }
+  ],
+  "metadata": {
+    "executive_confidence": "High",
+    "technical_authority": "Established",
+    "vocabulary_sophistication": "Advanced",
+    "credibility_building": "Successful",
+    "decision_maker_engagement": "Strong"
+  }
+} 

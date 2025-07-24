@@ -1,0 +1,55 @@
+{
+  "call_id": "TRN-2025-031",
+  "topic": "Training Analytics - Skill Gap Identification",
+  "customer": {
+    "role": "VP Engineering",
+    "company": "CloudNative Solutions",
+    "account_id": "NEW_PROSPECT"
+  },
+  "agent": {
+    "name": "Jennifer",
+    "role": "Junior Technical Sales Rep",
+    "experience_level": "6 months"
+  },
+  "call_duration_seconds": 480,
+  "training_analytics": {
+    "skill_gaps_identified": ["Cloud architecture knowledge", "Technical depth", "Solution positioning"],
+    "training_priority": "High",
+    "customer_technical_level": "Expert",
+    "agent_technical_level": "Beginner",
+    "mismatch_severity": "Significant"
+  },
+  "transcript": [
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Customer",
+      "text": "We need dedicated connectivity for our Kubernetes clusters across three AWS regions with sub-5ms latency requirements for our microservices architecture.",
+      "training_markers": "Advanced technical requirements, cloud expertise needed"
+    },
+    {
+      "timestamp": "00:00 – 02:00",
+      "speaker": "Agent",
+      "text": "Okay, so you need fast internet for your computer systems across different locations. We have high-speed plans that should work for that.",
+      "training_markers": "Oversimplified response, missed technical depth"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Customer",
+      "text": "I need someone who understands cloud architecture. Do you have AWS Direct Connect capabilities? What about BGP routing optimization?",
+      "training_markers": "Seeking technical expertise, specific cloud requirements"
+    },
+    {
+      "timestamp": "02:00 – 04:00",
+      "speaker": "Agent",
+      "text": "Um, I'm not sure about those specific features. Let me check with my technical team and get back to you.",
+      "training_markers": "Knowledge gap exposed, deflection to others"
+    }
+  ],
+  "metadata": {
+    "training_need": "Critical",
+    "technical_knowledge_gap": "Wide",
+    "customer_frustration": "Evident",
+    "call_effectiveness": "Poor",
+    "recommended_training": ["Cloud computing fundamentals", "AWS services", "Enterprise networking"]
+  }
+} 

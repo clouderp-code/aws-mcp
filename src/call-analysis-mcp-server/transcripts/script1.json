@@ -1,0 +1,45 @@
+{
+  "call_id": "CHR-2025-001",
+  "customer": {
+    "role": "Ops Manager",
+    "company": "Zenith Corp"
+  },
+  "agent": {
+    "name": "Jason",
+    "role": "Inside Sales Representative"
+  },
+  "transcript": [
+    {
+      "speaker": "Agent",
+      "text": "Thank you for calling StarTel, Jason speaking. How can I help you today?"
+    },
+    {
+      "speaker": "Customer",
+      "text": "We've had three outages this month. We're seriously considering switching providers."
+    },
+    {
+      "speaker": "Agent", 
+      "text": "I'm sorry to hear that. I can pull up your incident log and escalate this. May I confirm your business name?"
+    },
+    {
+      "speaker": "Customer",
+      "text": "Zenith Corp. ID 24159."
+    },
+    {
+      "speaker": "Agent",
+      "text": "Thank you. Yes, I see the incidents. Have you already discussed this with tech support?"
+    },
+    {
+      "speaker": "Customer",
+      "text": "Yes. They said they'd investigate, but nothing changed."
+    },
+    {
+      "speaker": "Agent",
+      "text": "Understood. I'll escalate this directly to our network engineering team and propose a service credit for the last month. Also, we can enable proactive monitoring alerts for your circuit."
+    },
+    {
+      "speaker": "Customer",
+      "text": "Okay, send me the SLA documentation and credit note."
+    }
+  ]
+}
