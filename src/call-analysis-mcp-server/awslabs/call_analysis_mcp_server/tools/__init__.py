@@ -12,15 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""MCP Tools for Call Analysis - Transcript Analysis and KPI Generation."""
+"""MCP tools for call analysis."""
 
-from .analysis_tools import transcript_analyzer_tool, batch_analysis_tool
+from .analysis_tools import transcript_analyzer_tool, batch_analysis_tool, business_intelligence_tool, local_scripts_analysis_tool
 from .s3_tools import s3_reader_tool, s3_uploader_tool
 from .reporting_tools import generate_report_tool, create_dashboard_tool
 
 __all__ = [
     'transcript_analyzer_tool',
     'batch_analysis_tool',
+    'business_intelligence_tool',
+    'local_scripts_analysis_tool',
     's3_reader_tool',
     's3_uploader_tool',
     'generate_report_tool',

@@ -17,9 +17,13 @@
 from .s3_service import S3Service
 from .transcript_analyzer import TranscriptAnalyzer
 from .report_generator import ReportGenerator
+from .business_intelligence import BusinessIntelligenceAnalyzer
+from .ai_analyzer import AIAnalyzer
 
 __all__ = [
     'S3Service',
     'TranscriptAnalyzer',
     'ReportGenerator',
+    'BusinessIntelligenceAnalyzer',
+    'AIAnalyzer',
 ] 

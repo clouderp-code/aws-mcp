@@ -1,0 +1,363 @@
+{
+  "analysis_period": "Local Scripts Demonstration",
+  "total_calls_analyzed": 10,
+  "analysis_timestamp": "2025-07-24T13:39:13.727553",
+  "overall_quality_summary": {
+    "overall_quality_score": 6.7,
+    "quality_trend": "stable",
+    "calls_with_issues": 0,
+    "calls_with_issues_percentage": 0.0,
+    "average_sentiment_score": 0.7,
+    "average_customer_satisfaction": 6.7,
+    "first_call_resolution_rate": 75.0,
+    "average_call_duration": 0.8
+  },
+  "deals_at_risk": [
+    {
+      "account_name": "Account_RTA-2025-001",
+      "agent_name": "Agent_RTA-2025-001",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis",
+        "Schedule follow-up call"
+      ],
+      "win_probability_change": -0.15,
+      "account_value": 25000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "RTA-2025-001",
+            "transcript_source": "script_RTA-2025-001.json",
+            "speaker": "customer",
+            "timestamp": 90,
+            "evidence_text": "Uptime is critical - we process financial transactions 24/7. Even short outages cost us thousands.",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Analyzed customer language for price objections and concerns"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6
+      }
+    },
+    {
+      "account_name": "Account_CFO-2025-008",
+      "agent_name": "Agent_CFO-2025-008",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis",
+        "Schedule follow-up call"
+      ],
+      "win_probability_change": -0.15,
+      "account_value": 25000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CFO-2025-008",
+            "transcript_source": "script_CFO-2025-008.json",
+            "speaker": "agent",
+            "timestamp": 240,
+            "evidence_text": "What's your budget range for a reliable, HIPAA-compliant solution? And who's involved in the decision process?",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Analyzed customer language for price objections and concerns"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6
+      }
+    },
+    {
+      "account_name": "Account_CHF-2025-010",
+      "agent_name": "Agent_CHF-2025-010",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis",
+        "Schedule follow-up call"
+      ],
+      "win_probability_change": -0.15,
+      "account_value": 25000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CHF-2025-010",
+            "transcript_source": "script_CHF-2025-010.json",
+            "speaker": "customer",
+            "timestamp": 0,
+            "evidence_text": "Patricia, our board is pushing cost reduction across all vendors. I need to justify every expense, including our telecom costs.",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Analyzed customer language for price objections and concerns"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6
+      }
+    },
+    {
+      "account_name": "Account_QAF-2025-011",
+      "agent_name": "Agent_QAF-2025-011",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis",
+        "Schedule follow-up call"
+      ],
+      "win_probability_change": -0.15,
+      "account_value": 25000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "QAF-2025-011",
+            "transcript_source": "script_QAF-2025-011.json",
+            "speaker": "customer",
+            "timestamp": 240,
+            "evidence_text": "Need to be live by month-end for our grand opening. Budget approved at $50K annually for the right solution.",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Analyzed customer language for price objections and concerns"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6
+      }
+    },
+    {
+      "account_name": "Account_SDF-2025-012",
+      "agent_name": "Agent_SDF-2025-012",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis",
+        "Schedule follow-up call"
+      ],
+      "win_probability_change": -0.15,
+      "account_value": 25000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "SDF-2025-012",
+            "transcript_source": "script_SDF-2025-012.json",
+            "speaker": "customer",
+            "timestamp": 210,
+            "evidence_text": "That flexibility is perfect. What's the cost difference, and can we automate the scaling?",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Analyzed customer language for price objections and concerns"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6
+      }
+    }
+  ],
+  "churn_risks": [
+    {
+      "account_name": "Account_CHR-2025-001",
+      "churn_probability": 0.7,
+      "risk_signals": [
+        "Mentioned switching providers"
+      ],
+      "intervention_urgency": "high",
+      "recommended_actions": [
+        "Immediate retention call",
+        "Prepare incentive package"
+      ],
+      "account_value_at_risk": 30000.0,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CHR-2025-001",
+            "transcript_source": "script_CHR-2025-001.json",
+            "speaker": "customer",
+            "timestamp": 6.5,
+            "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
+            "context": "Customer expressed switching intention",
+            "confidence_score": 0.95
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.9,
+        "analysis_methodology": "Analyzed customer language for churn signals and switching intent"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 6.5,
+          "signal": "switch_intention",
+          "evidence": "We've had three outages this month. We're seriously considering switching providers...."
+        }
+      ]
+    }
+  ],
+  "new_opportunities": [
+    {
+      "account_name": "Account_SDF-2025-012",
+      "opportunity_type": "expansion",
+      "estimated_value": 40000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Send expansion proposal",
+        "Schedule technical consultation"
+      ],
+      "timeline": "30-45 days",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "SDF-2025-012",
+            "transcript_source": "script_SDF-2025-012.json",
+            "speaker": "customer",
+            "timestamp": 0,
+            "evidence_text": "Good timing! We're expecting 30% more clients this year and hired additional preparers. Definitely concerned about network performance.",
+            "context": "Customer expressed expansion interest",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.75,
+        "analysis_methodology": "Analyzed customer language for expansion signals and growth indicators"
+      },
+      "opportunity_signals_strength": {
+        "expansion": 0.8
+      }
+    },
+    {
+      "account_name": "Account_LNG-2025-013",
+      "opportunity_type": "expansion",
+      "estimated_value": 40000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Send expansion proposal",
+        "Schedule technical consultation"
+      ],
+      "timeline": "30-45 days",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "LNG-2025-013",
+            "transcript_source": "script_LNG-2025-013.json",
+            "speaker": "agent",
+            "timestamp": 90,
+            "evidence_text": "That would be frustrating for everyone. It sounds like you need more bandwidth - that's basically more capacity for internet traffic. Think of it like having wider pipes for water flow.",
+            "context": "Customer expressed expansion interest",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.75,
+        "analysis_methodology": "Analyzed customer language for expansion signals and growth indicators"
+      },
+      "opportunity_signals_strength": {
+        "expansion": 0.8
+      }
+    },
+    {
+      "account_name": "Account_NTQ-2025-015",
+      "opportunity_type": "expansion",
+      "estimated_value": 40000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Send expansion proposal",
+        "Schedule technical consultation"
+      ],
+      "timeline": "30-45 days",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "NTQ-2025-015",
+            "transcript_source": "script_NTQ-2025-015.json",
+            "speaker": "customer",
+            "timestamp": 0,
+            "evidence_text": "Derek, before we talk about any upgrades, I need to address the performance issues we've been having. Our warehouse management system has been sluggish for weeks.",
+            "context": "Customer expressed expansion interest",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.75,
+        "analysis_methodology": "Analyzed customer language for expansion signals and growth indicators"
+      },
+      "opportunity_signals_strength": {
+        "expansion": 0.8
+      }
+    }
+  ],
+  "agent_training_needs": [],
+  "recurring_objections": [
+    {
+      "objection_text": "Too expensive",
+      "frequency": 5,
+      "frequency_percentage": 50.0,
+      "impact_on_conversion": -0.2,
+      "suggested_responses": [
+        "Focus on ROI",
+        "Compare cost of inaction"
+      ],
+      "training_materials_needed": [
+        "ROI calculation tools"
+      ]
+    }
+  ],
+  "call_quality_issues": [],
+  "top_priorities": [
+    "Address 5 deals at risk - implement recovery actions",
+    "Prevent churn for 1 at-risk accounts",
+    "Pursue 3 new opportunities"
+  ],
+  "success_indicators": [
+    "10.0% of calls achieved good satisfaction",
+    "Strong engagement in expansion discussions"
+  ],
+  "areas_for_improvement": [
+    "Address pricing objections with value proposition",
+    "Improve call efficiency and duration management"
+  ],
+  "evidence_summary": {
+    "total_evidence_items": 9,
+    "calls_with_evidence": 8,
+    "deal_risk_evidence": 5,
+    "churn_risk_evidence": 1,
+    "opportunity_evidence": 3
+  },
+  "analysis_confidence": 0.8,
+  "review_recommendations": [
+    "High confidence analysis - insights are well-supported by evidence",
+    "Evidence trails provide full transparency for validation"
+  ]
+}

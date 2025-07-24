@@ -1,0 +1,27 @@
+# Minimal Core Dependencies for Call Analysis MCP Server
+
+# Core MCP and Data Models
+mcp[cli]>=1.0.0
+pydantic>=2.5.0
+loguru>=0.7.0
+
+# AWS Services (required for S3 operations)
+boto3>=1.34.0
+botocore>=1.34.0
+
+# Essential NLP and Analysis
+nltk>=3.8.1
+textstat>=0.7.3
+vaderSentiment>=3.3.2
+numpy>=1.24.0
+pandas>=2.1.0
+
+# Date and Text Processing
+python-dateutil>=2.8.2
+regex>=2023.10.0
+
+# JSON Processing
+jsonschema>=4.19.0
+
+# AI-Powered Analysis (Essential)
+openai>=1.10.0 

@@ -26,6 +26,7 @@ The server provides comprehensive tools for:
 - Uploading analysis results back to S3 for UI display
 - Batch processing of multiple transcripts
 - Interactive dashboard generation
+- Business intelligence insights for management queries
 
 All functionality is organized into modular services for maintainability and extensibility.
 """
@@ -39,12 +40,9 @@ from mcp.server.fastmcp import FastMCP
 
 from .consts import CALL_ANALYSIS_MCP_SERVER_APPLICATION_NAME
 from .tools import (
-    transcript_analyzer_tool,
-    batch_analysis_tool,
-    s3_reader_tool,
-    s3_uploader_tool,
-    generate_report_tool,
-    create_dashboard_tool,
+    transcript_analyzer_tool, batch_analysis_tool, s3_reader_tool,
+    s3_uploader_tool, generate_report_tool, create_dashboard_tool,
+    business_intelligence_tool, local_scripts_analysis_tool,
 )
 
 
@@ -57,15 +55,13 @@ def create_server() -> FastMCP:
     # Register all analysis tools
     logger.info("Registering Call Analysis MCP tools...")
     
-    # Core analysis tools
+    # Register all tools
     transcript_analyzer_tool(mcp)
     batch_analysis_tool(mcp)
-    
-    # S3 operations tools
+    business_intelligence_tool(mcp)
+    local_scripts_analysis_tool(mcp)
     s3_reader_tool(mcp)
     s3_uploader_tool(mcp)
-    
-    # Reporting and dashboard tools
     generate_report_tool(mcp)
     create_dashboard_tool(mcp)
     
@@ -124,6 +120,18 @@ async def main():
                     "name": "Analysis Reports",
                     "description": "Generated analysis reports and dashboards",
                     "mimeType": "text/markdown"
+                },
+                {
+                    "uri": "call-analysis://business-intelligence",
+                    "name": "Business Intelligence",
+                    "description": "Business intelligence insights and management queries",
+                    "mimeType": "application/json"
+                },
+                {
+                    "uri": "call-analysis://local-scripts",
+                    "name": "Local Scripts Analysis",
+                    "description": "Analyze local script files and generate enhanced BI reports with evidence trails",
+                    "mimeType": "application/json"
                 }
             ]
         
@@ -144,7 +152,8 @@ async def main():
                                     "Performance KPIs and metrics",
                                     "Conversation flow analysis",
                                     "Batch processing capabilities",
-                                    "Interactive dashboard generation"
+                                    "Interactive dashboard generation",
+                                    "Business intelligence insights"
                                 ],
                                 "supported_formats": [".txt", ".json", ".csv", ".tsv"]
                             }"""
@@ -180,6 +189,49 @@ The Call Analysis MCP Server generates comprehensive reports including:
 - Create executive summaries
 - Track trends across calls
 """
+                        }
+                    ]
+                }
+            elif uri == "call-analysis://business-intelligence":
+                return {
+                    "contents": [
+                        {
+                            "uri": uri,
+                            "mimeType": "application/json",
+                            "text": """{
+                                "description": "Business Intelligence capabilities for management insights",
+                                "query_types": [
+                                    "Overall call quality assessment",
+                                    "Deal risk identification",
+                                    "Pipeline health analysis",
+                                    "Agent training needs",
+                                    "Churn risk detection",
+                                    "New opportunity identification",
+                                    "Recurring objection patterns"
+                                ],
+                                "output_format": "Structured insights with actionable recommendations"
+                            }"""
+                        }
+                    ]
+                }
+            elif uri == "call-analysis://local-scripts":
+                return {
+                    "contents": [
+                        {
+                            "uri": uri,
+                            "mimeType": "application/json",
+                            "text": """{
+                                "description": "Local script file analysis capabilities",
+                                "features": [
+                                    "Read script files from local transcripts folder",
+                                    "Process multiple script*.json files",
+                                    "Generate enhanced business intelligence with evidence trails",
+                                    "Output comprehensive analysis reports",
+                                    "Support various transcript formats (JSON with speaker/text pairs)"
+                                ],
+                                "input_format": "Local JSON script files with transcript data",
+                                "output_format": "Enhanced BI analysis with evidence references"
+                            }"""
                         }
                     ]
                 }

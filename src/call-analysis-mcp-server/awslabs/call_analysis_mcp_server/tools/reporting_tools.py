@@ -30,9 +30,9 @@ def generate_report_tool(mcp: FastMCP) -> None:
     @mcp.tool(description="Generate comprehensive analysis reports from S3 analysis results")
     def generate_analysis_report(
         analysis_s3_urls: List[str],
-        report_type: str = "executive_summary",
         output_bucket: str,
         output_key: str,
+        report_type: str = "executive_summary",
         aws_region: str = "us-east-1"
     ) -> Dict:
         """
@@ -137,8 +137,8 @@ def create_dashboard_tool(mcp: FastMCP) -> None:
     @mcp.tool(description="Create interactive dashboard from analysis results")
     def create_analysis_dashboard(
         analysis_s3_urls: List[str],
-        dashboard_title: str = "Call Analysis Dashboard",
         output_bucket: str,
+        dashboard_title: str = "Call Analysis Dashboard",
         output_key: str = "dashboard.html",
         aws_region: str = "us-east-1"
     ) -> Dict:

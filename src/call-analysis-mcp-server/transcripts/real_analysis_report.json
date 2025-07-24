@@ -1,0 +1,208 @@
+{
+  "analysis_period": "Real Analysis Test",
+  "total_calls_analyzed": 5,
+  "analysis_timestamp": "2025-07-24T14:19:31.548441",
+  "overall_quality_score": 3.5,
+  "quality_trend": "declining",
+  "calls_with_issues": 5,
+  "calls_with_issues_percentage": 100.0,
+  "deals_at_risk": [],
+  "churn_risks": [],
+  "new_opportunities": [],
+  "agent_training_needs": [
+    {
+      "agent_name": "Agent_CHR-2025-001",
+      "skill_gaps": [
+        "Empathy and rapport building"
+      ],
+      "performance_metrics": {
+        "satisfaction": 6.5,
+        "empathy": 5.0
+      },
+      "training_priority": "medium",
+      "recommended_training": [
+        "Active listening workshop",
+        "Customer empathy training",
+        "Consultative selling techniques"
+      ],
+      "improvement_potential": 0.7,
+      "evidence": {
+        "decision_type": "training_need_assessment",
+        "primary_evidence": [],
+        "supporting_evidence": [],
+        "confidence_level": 0.1,
+        "analysis_methodology": "Analyzed performance scores, talk ratios, and conversation patterns"
+      },
+      "performance_examples": [],
+      "improvement_opportunities": [
+        {
+          "call_id": "CHR-2025-001",
+          "transcript_source": "/opt/mycode/aws-mcp/src/call-analysis-mcp-server/transcripts/script1.json",
+          "speaker": "agent",
+          "timestamp": 12.0,
+          "evidence_text": "I'm sorry to hear that. I can pull up your incident log and escalate this. May I confirm your business name?",
+          "context": "Opportunity for improved empathy response",
+          "confidence_score": 0.8
+        }
+      ]
+    },
+    {
+      "agent_name": "Agent_RTA-2025-001",
+      "skill_gaps": [
+        "Empathy and rapport building"
+      ],
+      "performance_metrics": {
+        "satisfaction": 6.5,
+        "empathy": 5.0
+      },
+      "training_priority": "medium",
+      "recommended_training": [
+        "Active listening workshop",
+        "Customer empathy training",
+        "Consultative selling techniques"
+      ],
+      "improvement_potential": 0.7,
+      "evidence": {
+        "decision_type": "training_need_assessment",
+        "primary_evidence": [],
+        "supporting_evidence": [],
+        "confidence_level": 0.1,
+        "analysis_methodology": "Analyzed performance scores, talk ratios, and conversation patterns"
+      },
+      "performance_examples": [],
+      "improvement_opportunities": []
+    },
+    {
+      "agent_name": "Agent_CFO-2025-008",
+      "skill_gaps": [
+        "Empathy and rapport building"
+      ],
+      "performance_metrics": {
+        "satisfaction": 6.5,
+        "empathy": 5.0
+      },
+      "training_priority": "medium",
+      "recommended_training": [
+        "Active listening workshop",
+        "Customer empathy training",
+        "Consultative selling techniques"
+      ],
+      "improvement_potential": 0.7,
+      "evidence": {
+        "decision_type": "training_need_assessment",
+        "primary_evidence": [],
+        "supporting_evidence": [],
+        "confidence_level": 0.1,
+        "analysis_methodology": "Analyzed performance scores, talk ratios, and conversation patterns"
+      },
+      "performance_examples": [],
+      "improvement_opportunities": [
+        {
+          "call_id": "CFO-2025-008",
+          "transcript_source": "/opt/mycode/aws-mcp/src/call-analysis-mcp-server/transcripts/script11.json",
+          "speaker": "agent",
+          "timestamp": 0.0,
+          "evidence_text": "Thanks for your interest in our healthcare connectivity solutions. To help me understand your needs, can you tell me about your current internet setup?",
+          "context": "Opportunity for improved empathy response",
+          "confidence_score": 0.8
+        }
+      ]
+    }
+  ],
+  "pipeline_health": [
+    {
+      "stage_name": "Discovery",
+      "total_deals": 5,
+      "health_status": "healthy",
+      "average_stage_duration": 15.0,
+      "conversion_rate": 0.7,
+      "key_issues": [],
+      "recommended_actions": [],
+      "representative_calls": [
+        "CHR-2025-001",
+        "RTA-2025-001",
+        "CFO-2025-008",
+        "LTV-2025-009",
+        "CHF-2025-010"
+      ],
+      "issue_evidence": []
+    },
+    {
+      "stage_name": "Demo Scheduled",
+      "total_deals": 0,
+      "health_status": "stalled",
+      "average_stage_duration": 10.0,
+      "conversion_rate": 0.6,
+      "key_issues": [
+        "No active deals in stage"
+      ],
+      "recommended_actions": [
+        "Increase lead generation"
+      ],
+      "representative_calls": [],
+      "issue_evidence": []
+    },
+    {
+      "stage_name": "Pricing Discussion",
+      "total_deals": 0,
+      "health_status": "stalled",
+      "average_stage_duration": 8.0,
+      "conversion_rate": 0.5,
+      "key_issues": [
+        "No active deals in stage"
+      ],
+      "recommended_actions": [
+        "Increase lead generation"
+      ],
+      "representative_calls": [],
+      "issue_evidence": []
+    },
+    {
+      "stage_name": "Decision Pending",
+      "total_deals": 0,
+      "health_status": "stalled",
+      "average_stage_duration": 12.0,
+      "conversion_rate": 0.8,
+      "key_issues": [
+        "No active deals in stage"
+      ],
+      "recommended_actions": [
+        "Increase lead generation"
+      ],
+      "representative_calls": [],
+      "issue_evidence": []
+    }
+  ],
+  "recurring_objections": [],
+  "call_quality_issues": [],
+  "average_sentiment_score": 0.8,
+  "average_customer_satisfaction": 6.5,
+  "first_call_resolution_rate": 0.0,
+  "average_call_duration": 0.8383333333333335,
+  "top_priorities": [
+    "Implement agent training program"
+  ],
+  "success_indicators": [
+    "Positive sentiment achieved in 100% of calls"
+  ],
+  "areas_for_improvement": [
+    "Overall call quality needs improvement",
+    "Agent skills development required"
+  ],
+  "evidence_summary": {
+    "total_evidence_items": 2,
+    "calls_with_evidence": 0,
+    "deal_risk_evidence": 0,
+    "churn_risk_evidence": 0,
+    "opportunity_evidence": 0,
+    "training_evidence": 0,
+    "objection_examples": 0,
+    "quality_issue_examples": 0
+  },
+  "analysis_confidence": 0.02,
+  "review_recommendations": [
+    "Low confidence analysis - recommend human review of all insights",
+    "Limited evidence for deal risk assessments - validate with additional data",
+    "Sparse evidence overall - consider expanding analysis criteria"
+  ]
+}

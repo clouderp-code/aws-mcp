@@ -30,6 +30,7 @@ from ..consts import (
     COMPLIANCE_KEYWORDS, PERFORMANCE_INDICATORS, COMMON_CALL_TOPICS,
     SCORING_WEIGHTS, DEFAULT_SILENCE_THRESHOLD_SECONDS
 )
+from .ai_analyzer import AIAnalyzer
 
 
 class TranscriptAnalyzer:
@@ -39,7 +40,8 @@ class TranscriptAnalyzer:
         """Initialize the transcript analyzer."""
         self.sentiment_analyzer = None
         self.topic_analyzer = None
-        logger.info("Transcript analyzer initialized")
+        self.ai_analyzer = AIAnalyzer()  # Initialize AI-powered analyzer
+        logger.info("Transcript analyzer initialized with AI capabilities")
     
     def parse_transcript(self, transcript_content: str) -> List[TranscriptSegment]:
         """Parse transcript content into structured segments.
@@ -145,7 +147,7 @@ class TranscriptAnalyzer:
         
         return segments
     
-    def analyze_transcript(
+    async def analyze_transcript(
         self,
         transcript_segments: List[TranscriptSegment],
         call_id: str,
@@ -167,7 +169,7 @@ class TranscriptAnalyzer:
         characteristics = self._analyze_characteristics(transcript_segments)
         
         # Perform sentiment analysis
-        sentiment_analysis = self._analyze_sentiment(transcript_segments) if analysis_options.get('sentiment_analysis', True) else None
+        sentiment_analysis = await self._analyze_sentiment(transcript_segments) if analysis_options.get('sentiment_analysis', True) else None
         
         # Analyze conversation flow
         conversation_flow = self._analyze_conversation_flow(transcript_segments) if analysis_options.get('detailed_flow_analysis', True) else None
@@ -245,50 +247,82 @@ class TranscriptAnalyzer:
             speaking_rate_customer_wpm=(customer_words / (customer_duration / 60)) if customer_duration > 0 else 0
         )
     
-    def _analyze_sentiment(self, segments: List[TranscriptSegment]) -> SentimentAnalysis:
-        """Analyze sentiment using basic keyword-based approach."""
+    async def _analyze_sentiment(self, segments: List[TranscriptSegment]) -> SentimentAnalysis:
+        """Analyze sentiment using AI-powered analysis with fallback."""
         
-        # Combine all text for overall analysis
-        all_text = ' '.join(s.text for s in segments).lower()
-        agent_text = ' '.join(s.text for s in segments if s.speaker == CallParticipant.AGENT).lower()
-        customer_text = ' '.join(s.text for s in segments if s.speaker == CallParticipant.CUSTOMER).lower()
+        # Try AI-enhanced sentiment analysis first
+        ai_sentiment = await self.ai_analyzer.enhanced_sentiment_analysis(segments)
         
-        def simple_sentiment_score(text: str) -> Dict[str, float]:
-            positive_words = len([word for word in PERFORMANCE_INDICATORS['positive_phrases'] if word in text])
-            negative_words = len([word for word in PERFORMANCE_INDICATORS['negative_phrases'] if word in text])
+        if ai_sentiment:
+            # Use AI results
+            overall_sentiment = SentimentType(ai_sentiment["overall_sentiment"])
             
-            total_sentiment_words = positive_words + negative_words
-            if total_sentiment_words == 0:
-                return {'positive': 0.5, 'negative': 0.3, 'neutral': 0.7}
+            # Convert AI scores to our format
+            sentiment_scores = {
+                'positive': (ai_sentiment["sentiment_score"] + 1) / 2 if ai_sentiment["sentiment_score"] > 0 else 0.3,
+                'negative': abs(ai_sentiment["sentiment_score"]) if ai_sentiment["sentiment_score"] < 0 else 0.2,
+                'neutral': 0.5 if ai_sentiment["sentiment_score"] == 0 else 0.5
+            }
             
-            pos_score = positive_words / total_sentiment_words
-            neg_score = negative_words / total_sentiment_words
-            neu_score = 1.0 - pos_score - neg_score
+            # Determine agent/customer sentiment based on AI analysis
+            agent_sentiment = SentimentType.POSITIVE if ai_sentiment["agent_performance"] > 7 else SentimentType.NEUTRAL
+            customer_sentiment = SentimentType.POSITIVE if ai_sentiment["customer_satisfaction"] > 7 else (
+                SentimentType.NEGATIVE if ai_sentiment["customer_satisfaction"] < 4 else SentimentType.NEUTRAL
+            )
             
-            return {'positive': pos_score, 'negative': neg_score, 'neutral': neu_score}
-        
-        overall_scores = simple_sentiment_score(all_text)
-        
-        # Determine overall sentiment
-        if overall_scores['positive'] > overall_scores['negative']:
-            overall_sentiment = SentimentType.POSITIVE
-        elif overall_scores['negative'] > overall_scores['positive']:
-            overall_sentiment = SentimentType.NEGATIVE
+            # Create emotional peaks from AI emotional moments
+            emotional_peaks = []
+            for moment in ai_sentiment.get("emotional_moments", []):
+                emotional_peaks.append({
+                    'timestamp': moment.get('timestamp', 0),
+                    'emotion': moment.get('emotion', 'neutral'),
+                    'intensity': 0.8 if moment.get('impact') == 'positive' else 0.3,
+                    'description': moment.get('context', 'Emotional moment detected')
+                })
+            
         else:
-            overall_sentiment = SentimentType.NEUTRAL
-        
-        # Simple agent/customer sentiment
-        agent_sentiment = SentimentType.POSITIVE if 'thank' in agent_text or 'help' in agent_text else SentimentType.NEUTRAL
-        customer_sentiment = SentimentType.NEGATIVE if any(word in customer_text for word in ['frustrated', 'angry', 'upset']) else SentimentType.NEUTRAL
+            # Fallback to basic analysis
+            all_text = ' '.join(s.text for s in segments).lower()
+            agent_text = ' '.join(s.text for s in segments if s.speaker == CallParticipant.AGENT).lower()
+            customer_text = ' '.join(s.text for s in segments if s.speaker == CallParticipant.CUSTOMER).lower()
+            
+            def simple_sentiment_score(text: str) -> Dict[str, float]:
+                positive_words = len([word for word in PERFORMANCE_INDICATORS['positive_phrases'] if word in text])
+                negative_words = len([word for word in PERFORMANCE_INDICATORS['negative_phrases'] if word in text])
+                
+                total_sentiment_words = positive_words + negative_words
+                if total_sentiment_words == 0:
+                    return {'positive': 0.5, 'negative': 0.3, 'neutral': 0.7}
+                
+                pos_score = positive_words / total_sentiment_words
+                neg_score = negative_words / total_sentiment_words
+                neu_score = 1.0 - pos_score - neg_score
+                
+                return {'positive': pos_score, 'negative': neg_score, 'neutral': neu_score}
+            
+            sentiment_scores = simple_sentiment_score(all_text)
+            
+            # Determine overall sentiment
+            if sentiment_scores['positive'] > sentiment_scores['negative']:
+                overall_sentiment = SentimentType.POSITIVE
+            elif sentiment_scores['negative'] > sentiment_scores['positive']:
+                overall_sentiment = SentimentType.NEGATIVE
+            else:
+                overall_sentiment = SentimentType.NEUTRAL
+            
+            # Simple agent/customer sentiment
+            agent_sentiment = SentimentType.POSITIVE if 'thank' in agent_text or 'help' in agent_text else SentimentType.NEUTRAL
+            customer_sentiment = SentimentType.NEGATIVE if any(word in customer_text for word in ['frustrated', 'angry', 'upset']) else SentimentType.NEUTRAL
+            emotional_peaks = []
         
         return SentimentAnalysis(
             overall_sentiment=overall_sentiment,
             agent_sentiment=agent_sentiment,
             customer_sentiment=customer_sentiment,
-            sentiment_scores=overall_scores,
+            sentiment_scores=sentiment_scores,
             sentiment_over_time=[],  # Simplified for now
-            emotional_peaks=[],     # Simplified for now
-            sentiment_transitions=0  # Simplified for now
+            emotional_peaks=emotional_peaks,
+            sentiment_transitions=len([m for m in ai_sentiment.get("emotional_moments", []) if "transition" in m.get("context", "").lower()]) if ai_sentiment else 0
         )
     
     def _analyze_conversation_flow(self, segments: List[TranscriptSegment]) -> ConversationFlow:

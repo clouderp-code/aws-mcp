@@ -35,6 +35,38 @@ class CallParticipant(str, Enum):
     SYSTEM = "system"
 
 
+class RiskLevel(str, Enum):
+    """Risk level indicators."""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+# NEW: Evidence and Reference Models
+
+class TranscriptEvidence(BaseModel):
+    """Evidence from transcript supporting a specific insight."""
+    
+    call_id: str = Field(description="Call identifier")
+    transcript_source: str = Field(description="S3 location or source of transcript")
+    speaker: CallParticipant = Field(description="Who said this")
+    timestamp: Optional[float] = Field(description="Timestamp in call (seconds)")
+    evidence_text: str = Field(description="Actual text from transcript")
+    context: str = Field(description="Why this text supports the insight")
+    confidence_score: float = Field(0.0, ge=0.0, le=1.0, description="Confidence in this evidence (0-1)")
+
+
+class DecisionEvidence(BaseModel):
+    """Collection of evidence supporting a business decision."""
+    
+    decision_type: str = Field(description="Type of decision (risk, opportunity, training_need, etc.)")
+    primary_evidence: List[TranscriptEvidence] = Field(description="Main evidence supporting this decision")
+    supporting_evidence: List[TranscriptEvidence] = Field(default=[], description="Additional supporting evidence")
+    confidence_level: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in decision")
+    analysis_methodology: str = Field(description="How this decision was reached")
+
+
 class CallCharacteristics(BaseModel):
     """Characteristics of a call transcript."""
     
@@ -143,6 +175,165 @@ class TranscriptSegment(BaseModel):
     confidence: Optional[float] = Field(description="Transcription confidence score")
 
 
+# ENHANCED BUSINESS INTELLIGENCE MODELS WITH EVIDENCE
+
+class DealRiskIndicator(BaseModel):
+    """Deal at risk identification with supporting evidence."""
+    
+    account_name: str = Field(description="Account/company name")
+    agent_name: str = Field(description="Agent handling the account")
+    risk_level: RiskLevel = Field(description="Risk level assessment")
+    risk_factors: List[str] = Field(description="Specific risk factors identified")
+    recommended_actions: List[str] = Field(description="Suggested remediation actions")
+    win_probability_change: float = Field(description="Change in win probability (-1.0 to 1.0)")
+    account_value: Optional[float] = Field(description="Value of account at risk")
+    
+    # Evidence trail
+    evidence: DecisionEvidence = Field(description="Supporting evidence from transcripts")
+    risk_score_breakdown: Dict[str, float] = Field(description="Detailed scoring for each risk factor")
+
+
+class ChurnRiskIndicator(BaseModel):
+    """Customer churn risk assessment with evidence."""
+    
+    account_name: str = Field(description="Account/company name")
+    churn_probability: float = Field(0.0, ge=0.0, le=1.0, description="Probability of churn (0-1)")
+    risk_signals: List[str] = Field(description="Phrases/behaviors indicating churn risk")
+    intervention_urgency: RiskLevel = Field(description="Urgency level for intervention")
+    recommended_actions: List[str] = Field(description="Recommended retention actions")
+    account_value_at_risk: Optional[float] = Field(description="Annual value at risk")
+    
+    # Evidence trail
+    evidence: DecisionEvidence = Field(description="Supporting evidence from transcripts")
+    churn_indicators_timeline: List[Dict[str, Union[str, float]]] = Field(description="Timeline of churn signals")
+
+
+class OpportunityIndicator(BaseModel):
+    """New business opportunity identification with evidence."""
+    
+    account_name: str = Field(description="Account/company name")
+    opportunity_type: str = Field(description="Type of opportunity (upsell, cross-sell, new)")
+    estimated_value: float = Field(description="Estimated opportunity value")
+    confidence_level: float = Field(0.0, ge=0.0, le=1.0, description="Confidence in opportunity (0-1)")
+    next_steps: List[str] = Field(description="Recommended next steps")
+    timeline: Optional[str] = Field(description="Expected timeline for opportunity")
+    
+    # Evidence trail
+    evidence: DecisionEvidence = Field(description="Supporting evidence from transcripts")
+    opportunity_signals_strength: Dict[str, float] = Field(description="Strength of each opportunity signal")
+
+
+class ObjectionPattern(BaseModel):
+    """Recurring objection analysis with evidence."""
+    
+    objection_text: str = Field(description="The objection phrase or theme")
+    frequency: int = Field(description="Number of times this objection appeared")
+    frequency_percentage: float = Field(description="Percentage of total calls with this objection")
+    impact_on_conversion: float = Field(description="Impact on conversion rate (-1.0 to 1.0)")
+    suggested_responses: List[str] = Field(description="Recommended response strategies")
+    training_materials_needed: List[str] = Field(description="Training resources to address this objection")
+    
+    # Evidence trail
+    example_objections: List[TranscriptEvidence] = Field(description="Actual objection examples from transcripts")
+    successful_responses: List[TranscriptEvidence] = Field(default=[], description="Examples of successful objection handling")
+
+
+class AgentTrainingNeed(BaseModel):
+    """Agent training requirement identification with evidence."""
+    
+    agent_name: str = Field(description="Agent requiring training")
+    skill_gaps: List[str] = Field(description="Identified skill gaps")
+    performance_metrics: Dict[str, float] = Field(description="Current performance scores")
+    training_priority: RiskLevel = Field(description="Priority level for training")
+    recommended_training: List[str] = Field(description="Specific training recommendations")
+    improvement_potential: float = Field(0.0, ge=0.0, le=1.0, description="Potential for improvement (0-1)")
+    
+    # Evidence trail
+    evidence: DecisionEvidence = Field(description="Supporting evidence from transcripts")
+    performance_examples: List[TranscriptEvidence] = Field(description="Specific examples of performance issues")
+    improvement_opportunities: List[TranscriptEvidence] = Field(description="Moments where better skills would have helped")
+
+
+class PipelineHealthIndicator(BaseModel):
+    """Pipeline health assessment with supporting data."""
+    
+    stage_name: str = Field(description="Pipeline stage name")
+    total_deals: int = Field(description="Total deals in this stage")
+    health_status: str = Field(description="Health status (healthy, neutral, stalled, at-risk)")
+    average_stage_duration: float = Field(description="Average time in stage (days)")
+    conversion_rate: float = Field(description="Conversion rate to next stage")
+    key_issues: List[str] = Field(description="Key issues affecting this stage")
+    recommended_actions: List[str] = Field(description="Actions to improve stage health")
+    
+    # Evidence trail
+    representative_calls: List[str] = Field(description="Call IDs representing this stage")
+    issue_evidence: List[TranscriptEvidence] = Field(description="Evidence of stage-specific issues")
+
+
+class CallQualityIssue(BaseModel):
+    """Call quality problem identification with evidence."""
+    
+    issue_type: str = Field(description="Type of quality issue")
+    frequency: int = Field(description="Number of occurrences")
+    affected_calls_percentage: float = Field(description="Percentage of calls affected")
+    impact_severity: RiskLevel = Field(description="Impact severity level")
+    root_causes: List[str] = Field(description="Identified root causes")
+    recommended_solutions: List[str] = Field(description="Suggested solutions")
+    
+    # Evidence trail
+    example_occurrences: List[TranscriptEvidence] = Field(description="Specific examples of this quality issue")
+
+
+class BusinessIntelligenceInsights(BaseModel):
+    """Comprehensive business intelligence insights from call analysis with full evidence trails."""
+    
+    # Time period and scope
+    analysis_period: str = Field(description="Time period analyzed (e.g., 'Today', 'This week')")
+    total_calls_analyzed: int = Field(description="Total number of calls in analysis")
+    analysis_timestamp: datetime = Field(description="When this analysis was generated")
+    
+    # Overall quality summary
+    overall_quality_score: float = Field(0.0, ge=0.0, le=10.0, description="Overall call quality score")
+    quality_trend: str = Field(description="Quality trend (improving, declining, stable)")
+    calls_with_issues: int = Field(description="Number of calls with quality issues")
+    calls_with_issues_percentage: float = Field(description="Percentage of calls with issues")
+    
+    # Risk and opportunity identification (now with evidence)
+    deals_at_risk: List[DealRiskIndicator] = Field(description="Deals identified as at-risk with evidence")
+    churn_risks: List[ChurnRiskIndicator] = Field(description="Accounts at risk of churning with evidence")
+    new_opportunities: List[OpportunityIndicator] = Field(description="New business opportunities with evidence")
+    
+    # Performance insights (now with evidence)
+    agent_training_needs: List[AgentTrainingNeed] = Field(description="Agents requiring training with evidence")
+    pipeline_health: List[PipelineHealthIndicator] = Field(description="Pipeline stage health with supporting data")
+    recurring_objections: List[ObjectionPattern] = Field(description="Common objection patterns with examples")
+    
+    # Quality issues (now with evidence)
+    call_quality_issues: List[CallQualityIssue] = Field(description="Technical and process quality issues with examples")
+    
+    # Aggregate metrics
+    average_sentiment_score: float = Field(description="Average sentiment across all calls")
+    average_customer_satisfaction: float = Field(description="Average customer satisfaction score")
+    first_call_resolution_rate: float = Field(description="Percentage of calls resolved on first contact")
+    average_call_duration: float = Field(description="Average call duration in minutes")
+    
+    # Actionable insights
+    top_priorities: List[str] = Field(description="Top 3 priority actions based on analysis")
+    success_indicators: List[str] = Field(description="Positive trends and successes")
+    areas_for_improvement: List[str] = Field(description="Key areas needing attention")
+    
+    # Evidence metadata
+    evidence_summary: Dict[str, int] = Field(
+        description="Summary of evidence collected (e.g., total evidence items, calls referenced)"
+    )
+    
+    # Quality assurance
+    analysis_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in analysis")
+    review_recommendations: List[str] = Field(
+        description="Recommendations for human review based on evidence quality"
+    )
+
+
 class CallAnalysisResult(BaseModel):
     """Complete analysis result for a call transcript."""
     
@@ -161,6 +352,13 @@ class CallAnalysisResult(BaseModel):
     key_topics: KeyTopics = Field(description="Key topics and themes")
     compliance_metrics: ComplianceMetrics = Field(description="Compliance and quality metrics")
     performance_kpis: PerformanceKPIs = Field(description="Key performance indicators")
+    
+    # Business intelligence flags
+    deal_risk_indicators: List[str] = Field(default=[], description="Deal risk signals detected")
+    churn_risk_signals: List[str] = Field(default=[], description="Customer churn risk signals")
+    opportunity_signals: List[str] = Field(default=[], description="Business opportunity signals")
+    training_flags: List[str] = Field(default=[], description="Agent training needs identified")
+    quality_issues: List[str] = Field(default=[], description="Call quality issues detected")
     
     # Summary
     executive_summary: str = Field(description="Executive summary of the call")

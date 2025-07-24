@@ -1,0 +1,349 @@
+{
+  "analysis_period": "Today (July 21, 2025)",
+  "total_calls_analyzed": 112,
+  "analysis_timestamp": "2025-07-21T18:30:00Z",
+  
+  "overall_quality_summary": {
+    "overall_quality_score": 7.1,
+    "quality_trend": "stable",
+    "calls_with_issues": 25,
+    "calls_with_issues_percentage": 22.3,
+    "average_sentiment_score": 0.61,
+    "average_customer_satisfaction": 7.2,
+    "first_call_resolution_rate": 78.0,
+    "average_call_duration": 8.5
+  },
+
+  "deals_at_risk": [
+    {
+      "account_name": "StarNet Solutions",
+      "agent_name": "John Martinez",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised",
+        "No clear next steps identified"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis and value justification",
+        "Schedule follow-up call to address concerns"
+      ],
+      "win_probability_change": -0.16,
+      "account_value": 45000.0
+    },
+    {
+      "account_name": "EdgeTel Communications",
+      "agent_name": "Neha Patel",
+      "risk_level": "high",
+      "risk_factors": [
+        "Negative customer sentiment",
+        "Competitor mentioned"
+      ],
+      "recommended_actions": [
+        "Schedule immediate customer relationship review",
+        "Send competitive differentiation materials"
+      ],
+      "win_probability_change": -0.25,
+      "account_value": 32000.0
+    },
+    {
+      "account_name": "Infogate Systems",
+      "agent_name": "Sam Rodriguez",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Competitor mentioned",
+        "Missed objection opportunities"
+      ],
+      "recommended_actions": [
+        "Send competitive differentiation materials",
+        "Schedule coaching session for objection handling"
+      ],
+      "win_probability_change": -0.12,
+      "account_value": 28000.0
+    }
+  ],
+
+  "churn_risks": [
+    {
+      "account_name": "AcmeNet Industries",
+      "churn_probability": 0.75,
+      "risk_signals": [
+        "Mentioned switching providers",
+        "Pricing complaints",
+        "Contract renewal discussion"
+      ],
+      "intervention_urgency": "high",
+      "recommended_actions": [
+        "Immediate retention call with senior manager",
+        "Prepare renewal incentive package"
+      ],
+      "account_value_at_risk": 24000.0
+    },
+    {
+      "account_name": "BrightCom Corp",
+      "churn_probability": 0.65,
+      "risk_signals": [
+        "Repeated support delays mentioned",
+        "Negative customer sentiment"
+      ],
+      "intervention_urgency": "high",
+      "recommended_actions": [
+        "Assign dedicated customer success manager",
+        "Schedule retention consultation"
+      ],
+      "account_value_at_risk": 18000.0
+    }
+  ],
+
+  "new_opportunities": [
+    {
+      "account_name": "GridTel Networks",
+      "opportunity_type": "upsell",
+      "estimated_value": 35000.0,
+      "confidence_level": 0.8,
+      "next_steps": [
+        "Send Premium Plan pricing details",
+        "Schedule product demo"
+      ],
+      "timeline": "30-45 days"
+    },
+    {
+      "account_name": "FlowWave Technologies",
+      "opportunity_type": "expansion",
+      "estimated_value": 42000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Create expansion proposal for new region",
+        "Schedule follow-up call"
+      ],
+      "timeline": "45-60 days"
+    },
+    {
+      "account_name": "NovaFiber Solutions",
+      "opportunity_type": "upsell",
+      "estimated_value": 28000.0,
+      "confidence_level": 0.7,
+      "next_steps": [
+        "Send SLA-backed service information",
+        "Arrange product demo"
+      ],
+      "timeline": "30-45 days"
+    }
+  ],
+
+  "agent_training_needs": [
+    {
+      "agent_name": "Sarah Thompson",
+      "skill_gaps": [
+        "Active listening",
+        "Customer satisfaction"
+      ],
+      "performance_metrics": {
+        "satisfaction": 4.2,
+        "talk_time_ratio": 0.82,
+        "empathy": 4.8
+      },
+      "training_priority": "high",
+      "recommended_training": [
+        "Active listening workshop",
+        "Question techniques training",
+        "Pause and reflection techniques"
+      ],
+      "improvement_potential": 0.8
+    },
+    {
+      "agent_name": "Imran Khan",
+      "skill_gaps": [
+        "Objection handling",
+        "Pricing discussions"
+      ],
+      "performance_metrics": {
+        "satisfaction": 5.8,
+        "objection_handling": 3.2,
+        "conversion_rate": 0.45
+      },
+      "training_priority": "medium",
+      "recommended_training": [
+        "Objection handling techniques",
+        "Value-based selling",
+        "Pricing objection responses"
+      ],
+      "improvement_potential": 0.7
+    },
+    {
+      "agent_name": "Rachel Miller",
+      "skill_gaps": [
+        "Empathy and rapport building",
+        "Tone management"
+      ],
+      "performance_metrics": {
+        "satisfaction": 5.1,
+        "empathy": 4.3,
+        "sentiment_impact": -0.15
+      },
+      "training_priority": "medium",
+      "recommended_training": [
+        "Customer empathy training",
+        "Tone and voice management",
+        "Rapport building techniques"
+      ],
+      "improvement_potential": 0.6
+    }
+  ],
+
+  "pipeline_health": [
+    {
+      "stage_name": "Discovery",
+      "total_deals": 42,
+      "health_status": "healthy",
+      "average_stage_duration": 15.0,
+      "conversion_rate": 0.72,
+      "key_issues": [],
+      "recommended_actions": ["Maintain current qualification process"]
+    },
+    {
+      "stage_name": "Demo Scheduled",
+      "total_deals": 28,
+      "health_status": "neutral",
+      "average_stage_duration": 12.0,
+      "conversion_rate": 0.61,
+      "key_issues": ["Some delays in demo scheduling"],
+      "recommended_actions": ["Streamline demo booking process"]
+    },
+    {
+      "stage_name": "Pricing Discussion",
+      "total_deals": 23,
+      "health_status": "stalled",
+      "average_stage_duration": 18.0,
+      "conversion_rate": 0.43,
+      "key_issues": ["High price objection rate", "Extended negotiation cycles"],
+      "recommended_actions": ["Review pricing strategy", "Improve value proposition"]
+    },
+    {
+      "stage_name": "Decision Pending",
+      "total_deals": 19,
+      "health_status": "at-risk",
+      "average_stage_duration": 25.0,
+      "conversion_rate": 0.35,
+      "key_issues": ["Long decision cycles", "Unclear decision criteria"],
+      "recommended_actions": ["Implement decision timeline discussions", "Qualify decision process earlier"]
+    }
+  ],
+
+  "recurring_objections": [
+    {
+      "objection_text": "Too expensive",
+      "frequency": 36,
+      "frequency_percentage": 32.1,
+      "impact_on_conversion": -0.25,
+      "suggested_responses": [
+        "Focus on ROI and total cost of ownership",
+        "Compare cost of inaction",
+        "Offer flexible payment terms"
+      ],
+      "training_materials_needed": [
+        "ROI calculation tools",
+        "Cost justification templates"
+      ]
+    },
+    {
+      "objection_text": "Don't see difference vs competitors",
+      "frequency": 27,
+      "frequency_percentage": 24.1,
+      "impact_on_conversion": -0.18,
+      "suggested_responses": [
+        "Highlight unique differentiators",
+        "Provide customer success stories",
+        "Offer side-by-side feature comparison"
+      ],
+      "training_materials_needed": [
+        "Competitive battlecard update",
+        "Differentiation talking points"
+      ]
+    },
+    {
+      "objection_text": "Need more flexibility in plans",
+      "frequency": 19,
+      "frequency_percentage": 17.0,
+      "impact_on_conversion": -0.12,
+      "suggested_responses": [
+        "Explore custom configuration options",
+        "Highlight existing flexibility features",
+        "Discuss phased implementation"
+      ],
+      "training_materials_needed": [
+        "Flexibility options guide",
+        "Custom configuration training"
+      ]
+    }
+  ],
+
+  "call_quality_issues": [
+    {
+      "issue_type": "Background noise",
+      "frequency": 12,
+      "affected_calls_percentage": 10.7,
+      "impact_severity": "medium",
+      "root_causes": ["Equipment issues", "Environment setup"],
+      "recommended_solutions": ["Agent headset training", "Home office setup guidelines"]
+    },
+    {
+      "issue_type": "Long silences >10s",
+      "frequency": 8,
+      "affected_calls_percentage": 7.1,
+      "impact_severity": "medium",
+      "root_causes": ["Technical difficulties", "Agent hesitation"],
+      "recommended_solutions": ["Technical training", "Confidence building"]
+    },
+    {
+      "issue_type": "Interruptions / cross-talk",
+      "frequency": 5,
+      "affected_calls_percentage": 4.5,
+      "impact_severity": "low",
+      "root_causes": ["Poor active listening", "Time pressure"],
+      "recommended_solutions": ["Active listening training", "Patience techniques"]
+    }
+  ],
+
+  "top_priorities": [
+    "Address 3 deals at risk - implement immediate recovery actions",
+    "Prevent churn for 2 at-risk accounts - schedule retention calls",
+    "Urgent training needed for 1 agent (Sarah Thompson)"
+  ],
+
+  "success_indicators": [
+    "78% of calls achieved good customer satisfaction (>7.0)",
+    "Strong compliance performance in 89% of calls",
+    "Positive sentiment achieved in 61% of calls"
+  ],
+
+  "areas_for_improvement": [
+    "Address recurring 'Too expensive' objections (32% of calls)",
+    "Improve pipeline health in Pricing Discussion stage",
+    "Reduce agent excessive talking in 15% of calls"
+  ],
+
+  "actionable_insights": {
+    "immediate_actions": [
+      "Call StarNet, EdgeTel, and Infogate to address deal risks",
+      "Schedule retention meetings for AcmeNet and BrightCom",
+      "Begin training program for Sarah Thompson on active listening"
+    ],
+    "this_week": [
+      "Create pricing objection response guide",
+      "Update competitive battlecards",
+      "Review pricing strategy for stalled deals"
+    ],
+    "this_month": [
+      "Implement agent headset upgrade program",
+      "Launch pipeline process improvements",
+      "Deploy customer success manager for at-risk accounts"
+    ]
+  },
+
+  "trending_metrics": {
+    "sentiment_trend": "stable (+0.02 vs yesterday)",
+    "satisfaction_trend": "improving (+0.3 vs last week)",
+    "quality_trend": "stable (±0.1 vs last week)",
+    "opportunity_pipeline": "$105,000 potential value identified"
+  }
+} 

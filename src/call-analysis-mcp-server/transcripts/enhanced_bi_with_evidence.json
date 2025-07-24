@@ -1,0 +1,441 @@
+{
+  "analysis_period": "Today (July 21, 2025)",
+  "total_calls_analyzed": 112,
+  "analysis_timestamp": "2025-07-21T18:30:00Z",
+  
+  "overall_quality_summary": {
+    "overall_quality_score": 7.1,
+    "quality_trend": "stable",
+    "calls_with_issues": 25,
+    "calls_with_issues_percentage": 22.3,
+    "average_sentiment_score": 0.61,
+    "average_customer_satisfaction": 7.2,
+    "first_call_resolution_rate": 78.0,
+    "average_call_duration": 8.5
+  },
+
+  "deals_at_risk": [
+    {
+      "account_name": "StarNet Solutions",
+      "agent_name": "John Martinez",
+      "risk_level": "medium",
+      "risk_factors": [
+        "Price concerns raised",
+        "No clear next steps identified"
+      ],
+      "recommended_actions": [
+        "Provide detailed ROI analysis and value justification",
+        "Schedule follow-up call to address concerns"
+      ],
+      "win_probability_change": -0.16,
+      "account_value": 45000.0,
+      "evidence": {
+        "decision_type": "deal_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CALL_20250721_001",
+            "transcript_source": "s3://transcripts/starnet_call.txt",
+            "speaker": "customer",
+            "timestamp": 284.5,
+            "evidence_text": "I'm concerned about the cost. This seems quite expensive for what we're getting.",
+            "context": "Customer expressed price concerns",
+            "confidence_score": 0.9
+          },
+          {
+            "call_id": "CALL_20250721_001",
+            "transcript_source": "s3://transcripts/starnet_call.txt",
+            "speaker": "customer",
+            "timestamp": 410.2,
+            "evidence_text": "I need to think about this more. What are the next steps if we decide to move forward?",
+            "context": "Customer hesitant, no clear next steps provided",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [
+          {
+            "call_id": "CALL_20250721_001",
+            "transcript_source": "s3://transcripts/starnet_call.txt",
+            "speaker": "customer",
+            "timestamp": 195.7,
+            "evidence_text": "We're comparing this with a few other providers right now.",
+            "context": "Customer mentioned competitors",
+            "confidence_score": 0.7
+          }
+        ],
+        "confidence_level": 0.83,
+        "analysis_methodology": "Analyzed customer sentiment, satisfaction scores, price objections, and competitor mentions"
+      },
+      "risk_score_breakdown": {
+        "pricing": 0.6,
+        "competition": 0.5,
+        "satisfaction": 0.3
+      }
+    }
+  ],
+
+  "churn_risks": [
+    {
+      "account_name": "AcmeNet Industries",
+      "churn_probability": 0.75,
+      "risk_signals": [
+        "Mentioned switching providers",
+        "Pricing complaints",
+        "Contract renewal discussion"
+      ],
+      "intervention_urgency": "high",
+      "recommended_actions": [
+        "Immediate retention call with senior manager",
+        "Prepare renewal incentive package"
+      ],
+      "account_value_at_risk": 24000.0,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CALL_20250721_045",
+            "transcript_source": "s3://transcripts/acmenet_call.txt",
+            "speaker": "customer",
+            "timestamp": 156.3,
+            "evidence_text": "We're seriously considering switching to another provider. The pricing has become a real issue for us.",
+            "context": "Customer expressed intention to switch due to pricing",
+            "confidence_score": 0.95
+          },
+          {
+            "call_id": "CALL_20250721_045",
+            "transcript_source": "s3://transcripts/acmenet_call.txt",
+            "speaker": "customer",
+            "timestamp": 298.1,
+            "evidence_text": "Our contract is up for renewal next month, and frankly, we're not happy with the current arrangement.",
+            "context": "Customer discussed contract renewal with negative sentiment",
+            "confidence_score": 0.9
+          }
+        ],
+        "supporting_evidence": [
+          {
+            "call_id": "CALL_20250721_045",
+            "transcript_source": "s3://transcripts/acmenet_call.txt",
+            "speaker": "customer",
+            "timestamp": 89.7,
+            "evidence_text": "This has been frustrating. We expected better service for what we're paying.",
+            "context": "Customer expressed overall frustration",
+            "confidence_score": 0.8
+          }
+        ],
+        "confidence_level": 0.88,
+        "analysis_methodology": "Analyzed customer language for churn signals, renewal discussions, and sentiment"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 89.7,
+          "signal": "frustration",
+          "evidence": "This has been frustrating. We expected better service for what we're paying..."
+        },
+        {
+          "timestamp": 156.3,
+          "signal": "switch_intention",
+          "evidence": "We're seriously considering switching to another provider. The pricing has become..."
+        },
+        {
+          "timestamp": 298.1,
+          "signal": "renewal_concern",
+          "evidence": "Our contract is up for renewal next month, and frankly, we're not happy..."
+        }
+      ]
+    }
+  ],
+
+  "new_opportunities": [
+    {
+      "account_name": "GridTel Networks",
+      "opportunity_type": "upsell",
+      "estimated_value": 35000.0,
+      "confidence_level": 0.82,
+      "next_steps": [
+        "Send Premium Plan pricing details",
+        "Schedule product demo",
+        "Arrange technical consultation"
+      ],
+      "timeline": "30-45 days",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "CALL_20250721_067",
+            "transcript_source": "s3://transcripts/gridtel_call.txt",
+            "speaker": "customer",
+            "timestamp": 145.2,
+            "evidence_text": "We're growing rapidly and will need to upgrade our plan soon. What premium options do you have?",
+            "context": "Customer expressed interest in premium services",
+            "confidence_score": 0.9
+          },
+          {
+            "call_id": "CALL_20250721_067",
+            "transcript_source": "s3://transcripts/gridtel_call.txt",
+            "speaker": "customer",
+            "timestamp": 267.8,
+            "evidence_text": "We're opening two new locations next quarter, so we'll definitely need more capacity.",
+            "context": "Customer mentioned expansion plans",
+            "confidence_score": 0.85
+          }
+        ],
+        "supporting_evidence": [
+          {
+            "call_id": "CALL_20250721_067",
+            "transcript_source": "s3://transcripts/gridtel_call.txt",
+            "speaker": "customer",
+            "timestamp": 98.4,
+            "evidence_text": "Our current plan is working well, but we're at about 80% capacity already.",
+            "context": "Customer indicated current service satisfaction and growth",
+            "confidence_score": 0.7
+          }
+        ],
+        "confidence_level": 0.82,
+        "analysis_methodology": "Analyzed customer language for expansion signals, premium interest, and growth indicators"
+      },
+      "opportunity_signals_strength": {
+        "expansion": 0.9,
+        "premium": 0.8,
+        "growth": 0.75
+      }
+    }
+  ],
+
+  "agent_training_needs": [
+    {
+      "agent_name": "Sarah Thompson",
+      "skill_gaps": [
+        "Active listening",
+        "Customer satisfaction"
+      ],
+      "performance_metrics": {
+        "satisfaction": 4.2,
+        "talk_time_ratio": 0.82,
+        "empathy": 4.8
+      },
+      "training_priority": "high",
+      "recommended_training": [
+        "Active listening workshop",
+        "Question techniques training",
+        "Pause and reflection techniques"
+      ],
+      "improvement_potential": 0.8,
+      "evidence": {
+        "decision_type": "training_need_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CALL_20250721_023",
+            "transcript_source": "s3://transcripts/sarah_call1.txt",
+            "speaker": "agent",
+            "timestamp": 89.3,
+            "evidence_text": "Let me explain our process. So basically what happens is we start with... and then we move to... and after that...",
+            "context": "Agent talk ratio was 82%, indicating excessive talking",
+            "confidence_score": 0.9
+          },
+          {
+            "call_id": "CALL_20250721_034",
+            "transcript_source": "s3://transcripts/sarah_call2.txt",
+            "speaker": "agent",
+            "timestamp": 156.7,
+            "evidence_text": "Sorry, what were you saying? I was focusing on pulling up your account information.",
+            "context": "Agent demonstrated poor active listening skills",
+            "confidence_score": 0.85
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.88,
+        "analysis_methodology": "Analyzed performance scores, talk ratios, and conversation patterns"
+      },
+      "performance_examples": [
+        {
+          "call_id": "CALL_20250721_023",
+          "transcript_source": "s3://transcripts/sarah_call1.txt",
+          "speaker": "customer",
+          "timestamp": 298.5,
+          "evidence_text": "I don't feel like you're really listening to what I'm saying. This isn't helping.",
+          "context": "Customer expressed dissatisfaction with agent performance",
+          "confidence_score": 0.9
+        }
+      ],
+      "improvement_opportunities": [
+        {
+          "call_id": "CALL_20250721_034",
+          "transcript_source": "s3://transcripts/sarah_call2.txt",
+          "speaker": "customer",
+          "timestamp": 67.2,
+          "evidence_text": "I'm really frustrated with this situation. It's been going on for weeks.",
+          "context": "Opportunity for improved empathy response - agent could have acknowledged frustration",
+          "confidence_score": 0.8
+        }
+      ]
+    }
+  ],
+
+  "recurring_objections": [
+    {
+      "objection_text": "Too expensive",
+      "frequency": 36,
+      "frequency_percentage": 32.1,
+      "impact_on_conversion": -0.25,
+      "suggested_responses": [
+        "Focus on ROI and total cost of ownership",
+        "Compare cost of inaction",
+        "Offer flexible payment terms"
+      ],
+      "training_materials_needed": [
+        "ROI calculation tools",
+        "Cost justification templates"
+      ],
+      "example_objections": [
+        {
+          "call_id": "CALL_20250721_001",
+          "transcript_source": "s3://transcripts/starnet_call.txt",
+          "speaker": "customer",
+          "timestamp": 284.5,
+          "evidence_text": "I'm concerned about the cost. This seems quite expensive for what we're getting.",
+          "context": "Customer raised 'Too expensive' objection",
+          "confidence_score": 0.9
+        },
+        {
+          "call_id": "CALL_20250721_078",
+          "transcript_source": "s3://transcripts/techcorp_call.txt",
+          "speaker": "customer",
+          "timestamp": 167.3,
+          "evidence_text": "Your pricing is significantly higher than your competitors. We can't justify this cost.",
+          "context": "Customer raised 'Too expensive' objection",
+          "confidence_score": 0.95
+        }
+      ],
+      "successful_responses": [
+        {
+          "call_id": "CALL_20250721_089",
+          "transcript_source": "s3://transcripts/successful_call.txt",
+          "speaker": "agent",
+          "timestamp": 234.1,
+          "evidence_text": "I understand the cost concern. Let me show you the ROI calculation. Over 12 months, you'll actually save $15,000 compared to your current solution when you factor in efficiency gains.",
+          "context": "Agent successfully addressed pricing objection with ROI focus",
+          "confidence_score": 0.9
+        }
+      ]
+    }
+  ],
+
+  "call_quality_issues": [
+    {
+      "issue_type": "Agent excessive talking",
+      "frequency": 17,
+      "affected_calls_percentage": 15.2,
+      "impact_severity": "medium",
+      "root_causes": ["Poor listening skills", "Over-explaining", "Nervousness"],
+      "recommended_solutions": ["Active listening training", "Question techniques", "Pause training"],
+      "example_occurrences": [
+        {
+          "call_id": "CALL_20250721_023",
+          "transcript_source": "s3://transcripts/sarah_call1.txt",
+          "speaker": "agent",
+          "timestamp": null,
+          "evidence_text": "Agent talk ratio: 82% (threshold: 80%)",
+          "context": "Agent dominated conversation, poor listening",
+          "confidence_score": 0.9
+        },
+        {
+          "call_id": "CALL_20250721_056",
+          "transcript_source": "s3://transcripts/mike_call.txt",
+          "speaker": "agent",
+          "timestamp": null,
+          "evidence_text": "Agent talk ratio: 85% (threshold: 80%)",
+          "context": "Agent dominated conversation, poor listening",
+          "confidence_score": 0.9
+        }
+      ]
+    }
+  ],
+
+  "pipeline_health": [
+    {
+      "stage_name": "Pricing Discussion",
+      "total_deals": 23,
+      "health_status": "stalled",
+      "average_stage_duration": 18.0,
+      "conversion_rate": 0.43,
+      "key_issues": ["High price objection rate", "Extended negotiation cycles"],
+      "recommended_actions": ["Review pricing strategy", "Improve value proposition"],
+      "representative_calls": ["CALL_20250721_001", "CALL_20250721_012", "CALL_20250721_034"],
+      "issue_evidence": [
+        {
+          "call_id": "CALL_20250721_001",
+          "transcript_source": "s3://transcripts/starnet_call.txt",
+          "speaker": "customer",
+          "timestamp": 284.5,
+          "evidence_text": "I'm concerned about the cost. This seems quite expensive for what we're getting.",
+          "context": "Evidence of conversion challenges in Pricing Discussion stage",
+          "confidence_score": 0.9
+        }
+      ]
+    }
+  ],
+
+  "top_priorities": [
+    "Address 1 deal at risk with high-value account ($45K) - implement immediate recovery actions",
+    "Prevent churn for 1 high-risk account (75% churn probability) - schedule retention calls",
+    "Urgent training needed for 1 agent (Sarah Thompson) - 82% talk time ratio"
+  ],
+
+  "success_indicators": [
+    "78% of calls achieved good customer satisfaction (>7.0)",
+    "Strong compliance performance in 89% of calls",
+    "Positive sentiment achieved in 61% of calls"
+  ],
+
+  "areas_for_improvement": [
+    "Address recurring 'Too expensive' objections (32% of calls)",
+    "Improve pipeline health in Pricing Discussion stage",
+    "Reduce agent excessive talking in 15% of calls"
+  ],
+
+  "evidence_summary": {
+    "total_evidence_items": 45,
+    "calls_with_evidence": 28,
+    "deal_risk_evidence": 3,
+    "churn_risk_evidence": 3,
+    "opportunity_evidence": 3,
+    "training_evidence": 2,
+    "objection_examples": 3,
+    "quality_issue_examples": 2
+  },
+
+  "analysis_confidence": 0.79,
+  
+  "review_recommendations": [
+    "High confidence analysis - insights are well-supported by evidence",
+    "Spot check key insights for accuracy",
+    "Evidence trails provide full transparency for validation"
+  ],
+
+  "actionable_insights": {
+    "immediate_actions": [
+      "Call StarNet (evidence: 'concerned about cost' at 4:44) to address pricing objections",
+      "Schedule retention meeting for AcmeNet (evidence: 'considering switching' at 2:36)",
+      "Begin active listening training for Sarah Thompson (evidence: 82% talk ratio in recent calls)"
+    ],
+    "this_week": [
+      "Create pricing objection response guide based on successful ROI approach",
+      "Review 32% price objection rate in pipeline stage analysis",
+      "Implement coaching for agents with >80% talk ratios"
+    ],
+    "this_month": [
+      "Launch comprehensive active listening training program",
+      "Deploy retention specialist for high-risk accounts",
+      "Revise pricing strategy based on objection pattern analysis"
+    ]
+  },
+
+  "evidence_validation": {
+    "transcript_coverage": "Evidence collected from 28 out of 112 calls (25%)",
+    "confidence_distribution": {
+      "high_confidence_insights": 8,
+      "medium_confidence_insights": 12,
+      "low_confidence_insights": 2
+    },
+    "review_priority": "Medium - spot check key insights with supporting evidence"
+  }
+} 
