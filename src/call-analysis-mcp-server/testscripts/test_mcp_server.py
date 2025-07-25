@@ -9,8 +9,8 @@ import os
 import asyncio
 import json
 
-# Add the current directory to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the parent directory to Python path to find awslabs module
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 from mcp.server.fastmcp import FastMCP
 from awslabs.call_analysis_mcp_server.tools.analysis_tools import (

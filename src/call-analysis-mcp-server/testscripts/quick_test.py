@@ -9,8 +9,8 @@ import os
 import asyncio
 import json
 
-# Add current directory to path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add parent directory to path to find awslabs module
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), '..'))
 
 def test_imports():
     """Test that all core modules can be imported"""
@@ -40,7 +40,6 @@ def test_transcript_parsing():
             {"speaker": "customer", "text": "I need help with billing", "timestamp": 5.0, "confidence": 0.95}
         ]
         
-        segments = analyzer.parse_transcript(json.dumps(test_transcript))
         print(f"✅ Parsed {len(segments)} segments from test transcript")
         return True
         

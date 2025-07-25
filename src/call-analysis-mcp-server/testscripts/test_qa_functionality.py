@@ -12,8 +12,8 @@ import os
 import sys
 from typing import Dict, Any
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "."))
+# Add the project root to Python path (parent directory)
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from awslabs.call_analysis_mcp_server.tools.analysis_tools import qa_analysis_tool
 from mcp.server.fastmcp import FastMCP

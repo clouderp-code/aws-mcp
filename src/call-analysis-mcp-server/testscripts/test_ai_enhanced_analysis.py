@@ -18,8 +18,8 @@ import asyncio
 from datetime import datetime
 from typing import Dict, List
 
-# Add the current directory to the Python path
-sys.path.insert(0, '.')
+# Add the parent directory to the Python path to find awslabs module
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 def test_ai_enhanced_analysis():
     """Test the AI-enhanced analysis capabilities."""

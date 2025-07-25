@@ -813,7 +813,24 @@ def _generate_intelligent_response(question: str, question_analysis: Dict, repor
     elif context_type == "pipeline":
         response.update(_handle_pipeline_questions(question, question_analysis, report_data))
     else:
-        # General overview response
+        # General overview response with evidence summary
+        total_evidence_items = 0
+        evidence_confidence_sum = 0
+        evidence_count = 0
+        
+        # Collect evidence statistics from all sections
+        for section in ['deals_at_risk', 'churn_risks', 'new_opportunities', 'agent_training_needs']:
+            section_data = report_data.get(section, [])
+            for item in section_data:
+                evidence = item.get('evidence', {})
+                primary_evidence = evidence.get('primary_evidence', [])
+                total_evidence_items += len(primary_evidence)
+                for ev in primary_evidence:
+                    evidence_confidence_sum += ev.get('confidence_score', 0)
+                    evidence_count += 1
+        
+        avg_evidence_confidence = evidence_confidence_sum / evidence_count if evidence_count > 0 else 0
+        
         response["answer"] = f"""Based on the analysis of {total_calls} calls:
 
 **Overall Quality**: {quality_score:.1f}/10 (trend: {quality_trend})
@@ -822,6 +839,8 @@ def _generate_intelligent_response(question: str, question_analysis: Dict, repor
 **New Opportunities**: {len(report_data.get('new_opportunities', []))} potential opportunities
 **Training Needs**: {len(report_data.get('agent_training_needs', []))} areas identified
 
+**📋 Evidence Summary**: {total_evidence_items} supporting quotes analyzed (avg confidence: {avg_evidence_confidence:.0%})
+
 The analysis shows {"concerning patterns" if quality_score < 5 else "stable performance" if quality_score < 7 else "strong performance"} with specific areas requiring attention."""
 
         response["metrics"] = {
@@ -829,8 +848,12 @@ The analysis shows {"concerning patterns" if quality_score < 5 else "stable perf
             "quality_score": quality_score,
             "deals_at_risk_count": len(report_data.get('deals_at_risk', [])),
             "churn_risks_count": len(report_data.get('churn_risks', [])),
-            "opportunities_count": len(report_data.get('new_opportunities', []))
+            "opportunities_count": len(report_data.get('new_opportunities', [])),
+            "total_evidence_items": total_evidence_items,
+            "evidence_confidence": avg_evidence_confidence
         }
+        
+        response["evidence"] = []  # Overview doesn't include specific evidence
     
     return response
 
@@ -883,13 +906,15 @@ def _handle_deals_questions(question: str, question_analysis: Dict, report_data:
         return {
             "answer": "✅ **Good News**: No deals were identified as at-risk in the analyzed calls.",
             "metrics": {"deals_at_risk_count": 0},
-            "insights": ["All deals appear to be progressing normally"]
+            "insights": ["All deals appear to be progressing normally"],
+            "evidence": []
         }
     
-    # Analyze risk levels
+    # Analyze risk levels and collect evidence
     risk_levels = {}
     total_value = 0
     high_risk_deals = []
+    evidence_data = []
     
     for deal in deals_at_risk:
         risk_level = deal.get("risk_level", "unknown")
@@ -898,12 +923,32 @@ def _handle_deals_questions(question: str, question_analysis: Dict, report_data:
         account_value = deal.get("account_value", 0) or 0
         total_value += account_value
         
+        # Extract evidence
+        evidence = deal.get("evidence", {})
+        primary_evidence = evidence.get("primary_evidence", [])
+        
+        deal_info = {
+            "account": deal.get("account_name", "Unknown"),
+            "agent": deal.get("agent_name", "Unknown"),
+            "value": account_value,
+            "factors": deal.get("risk_factors", []),
+            "evidence": primary_evidence
+        }
+        
         if risk_level == "high":
-            high_risk_deals.append({
+            high_risk_deals.append(deal_info)
+        
+        # Collect all evidence for response
+        for ev in primary_evidence:
+            evidence_data.append({
                 "account": deal.get("account_name", "Unknown"),
-                "agent": deal.get("agent_name", "Unknown"),
-                "value": account_value,
-                "factors": deal.get("risk_factors", [])
+                "call_id": ev.get("call_id", "Unknown"),
+                "speaker": ev.get("speaker", "unknown"),
+                "timestamp": ev.get("timestamp", 0),
+                "quote": ev.get("evidence_text", ""),
+                "context": ev.get("context", ""),
+                "confidence": ev.get("confidence_score", 0),
+                "risk_level": risk_level
             })
     
     answer = f"""**Deal Risk Analysis:**
@@ -917,24 +962,53 @@ def _handle_deals_questions(question: str, question_analysis: Dict, report_data:
     if high_risk_deals:
         answer += "\n\n**High Priority Deals:**\n"
         for deal in high_risk_deals[:3]:  # Show top 3
-            answer += f"• {deal['account']} (Agent: {deal['agent']}) - ${deal['value']:,.0f}\n"
+            answer += f"• **{deal['account']}** (Agent: {deal['agent']}) - ${deal['value']:,.0f}\n"
             answer += f"  Risk factors: {', '.join(deal['factors'][:2])}\n"
+            
+            # Add evidence for this deal
+            if deal['evidence']:
+                answer += f"  📝 Evidence:\n"
+                for ev in deal['evidence'][:2]:  # Show top 2 pieces of evidence
+                    quote = ev.get('evidence_text', '')[:80] + "..." if len(ev.get('evidence_text', '')) > 80 else ev.get('evidence_text', '')
+                    timestamp = ev.get('timestamp', 0)
+                    speaker = ev.get('speaker', 'unknown').title()
+                    confidence = ev.get('confidence_score', 0)
+                    answer += f"    • {speaker} @ {timestamp}s: \"{quote}\" (confidence: {confidence:.0%})\n"
+    
+    # Add comprehensive evidence section
+    if evidence_data:
+        answer += f"\n\n**📋 Supporting Evidence ({len(evidence_data)} quotes):**\n"
+        # Show top evidence by confidence and risk level
+        sorted_evidence = sorted(evidence_data, key=lambda x: (x['risk_level'] == 'high', x['confidence']), reverse=True)
+        for i, ev in enumerate(sorted_evidence[:5], 1):  # Show top 5
+            quote = ev['quote'][:100] + "..." if len(ev['quote']) > 100 else ev['quote']
+            risk_emoji = "🔴" if ev['risk_level'] == "high" else "🟡" if ev['risk_level'] == "medium" else "🟢"
+            answer += f"{i}. {risk_emoji} **{ev['account']}** ({ev['call_id']}) - {ev['speaker'].title()} @ {ev['timestamp']}s\n"
+            answer += f"   \"{quote}\" (confidence: {ev['confidence']:.0%})\n"
+            if ev['context']:
+                answer += f"   💡 {ev['context']}\n"
+            answer += "\n"
     
     insights = []
     if risk_levels.get('high', 0) > 0:
         insights.append(f"{risk_levels['high']} deals need immediate intervention")
     if total_value > 50000:
         insights.append(f"High financial impact - ${total_value:,.0f} total value at risk")
+    if evidence_data:
+        avg_confidence = sum(ev['confidence'] for ev in evidence_data) / len(evidence_data)
+        insights.append(f"Evidence confidence: {avg_confidence:.0%} (based on {len(evidence_data)} quotes)")
     
     return {
         "answer": answer,
         "metrics": {
             "deals_at_risk_count": total_deals,
             "high_risk_count": risk_levels.get('high', 0),
-            "total_value_at_risk": total_value
+            "total_value_at_risk": total_value,
+            "evidence_items": len(evidence_data)
         },
         "supporting_data": high_risk_deals[:5],
-        "insights": insights
+        "insights": insights,
+        "evidence": evidence_data[:10]  # Return top 10 evidence items
     }
 
 
@@ -947,13 +1021,15 @@ def _handle_churn_questions(question: str, question_analysis: Dict, report_data:
         return {
             "answer": "✅ **Good News**: No significant churn risks were identified in the analyzed calls.",
             "metrics": {"churn_risks_count": 0},
-            "insights": ["Customer retention appears stable"]
+            "insights": ["Customer retention appears stable"],
+            "evidence": []
         }
     
-    # Analyze churn probabilities and urgency
+    # Analyze churn probabilities and urgency, collect evidence
     high_prob_churn = []
     urgent_interventions = []
     total_value_at_risk = 0
+    evidence_data = []
     
     for churn in churn_risks:
         churn_prob = churn.get("churn_probability", 0)
@@ -961,19 +1037,41 @@ def _handle_churn_questions(question: str, question_analysis: Dict, report_data:
         account_value = churn.get("account_value_at_risk", 0) or 0
         total_value_at_risk += account_value
         
+        # Extract evidence
+        evidence = churn.get("evidence", {})
+        primary_evidence = evidence.get("primary_evidence", [])
+        
+        churn_info = {
+            "account": churn.get("account_name", "Unknown"),
+            "probability": churn_prob,
+            "signals": churn.get("risk_signals", []),
+            "value": account_value,
+            "evidence": primary_evidence
+        }
+        
         if churn_prob > 0.7:  # High probability
-            high_prob_churn.append({
-                "account": churn.get("account_name", "Unknown"),
-                "probability": churn_prob,
-                "signals": churn.get("risk_signals", []),
-                "value": account_value
-            })
+            high_prob_churn.append(churn_info)
         
         if urgency in ["high", "critical"]:
             urgent_interventions.append({
                 "account": churn.get("account_name", "Unknown"),
                 "urgency": urgency,
-                "actions": churn.get("recommended_actions", [])
+                "actions": churn.get("recommended_actions", []),
+                "evidence": primary_evidence
+            })
+        
+        # Collect all evidence for response
+        for ev in primary_evidence:
+            evidence_data.append({
+                "account": churn.get("account_name", "Unknown"),
+                "call_id": ev.get("call_id", "Unknown"),
+                "speaker": ev.get("speaker", "unknown"),
+                "timestamp": ev.get("timestamp", 0),
+                "quote": ev.get("evidence_text", ""),
+                "context": ev.get("context", ""),
+                "confidence": ev.get("confidence_score", 0),
+                "churn_probability": churn_prob,
+                "urgency": urgency
             })
     
     answer = f"""**Churn Risk Analysis:**
@@ -988,13 +1086,40 @@ def _handle_churn_questions(question: str, question_analysis: Dict, report_data:
     if urgent_interventions:
         answer += "\n\n**Immediate Action Required:**\n"
         for intervention in urgent_interventions[:3]:
-            answer += f"• {intervention['account']} - {intervention['actions'][0] if intervention['actions'] else 'Contact immediately'}\n"
+            answer += f"• **{intervention['account']}** - {intervention['actions'][0] if intervention['actions'] else 'Contact immediately'}\n"
+            
+            # Add evidence for urgent interventions
+            if intervention['evidence']:
+                answer += f"  📝 Evidence:\n"
+                for ev in intervention['evidence'][:2]:  # Show top 2 pieces of evidence
+                    quote = ev.get('evidence_text', '')[:80] + "..." if len(ev.get('evidence_text', '')) > 80 else ev.get('evidence_text', '')
+                    timestamp = ev.get('timestamp', 0)
+                    speaker = ev.get('speaker', 'unknown').title()
+                    confidence = ev.get('confidence_score', 0)
+                    answer += f"    • {speaker} @ {timestamp}s: \"{quote}\" (confidence: {confidence:.0%})\n"
+    
+    # Add comprehensive evidence section
+    if evidence_data:
+        answer += f"\n\n**📋 Supporting Evidence ({len(evidence_data)} quotes):**\n"
+        # Show top evidence by urgency and churn probability
+        sorted_evidence = sorted(evidence_data, key=lambda x: (x['urgency'] == 'critical', x['urgency'] == 'high', x['churn_probability'], x['confidence']), reverse=True)
+        for i, ev in enumerate(sorted_evidence[:5], 1):  # Show top 5
+            quote = ev['quote'][:100] + "..." if len(ev['quote']) > 100 else ev['quote']
+            urgency_emoji = "🔴" if ev['urgency'] in ['critical', 'high'] else "🟡"
+            answer += f"{i}. {urgency_emoji} **{ev['account']}** ({ev['call_id']}) - {ev['speaker'].title()} @ {ev['timestamp']}s\n"
+            answer += f"   \"{quote}\" (confidence: {ev['confidence']:.0%}, churn risk: {ev['churn_probability']:.0%})\n"
+            if ev['context']:
+                answer += f"   💡 {ev['context']}\n"
+            answer += "\n"
     
     insights = []
     if len(high_prob_churn) > 0:
         insights.append(f"{len(high_prob_churn)} accounts have >70% churn probability")
     if total_value_at_risk > 100000:
         insights.append(f"Significant revenue at risk - ${total_value_at_risk:,.0f} annually")
+    if evidence_data:
+        avg_confidence = sum(ev['confidence'] for ev in evidence_data) / len(evidence_data)
+        insights.append(f"Evidence confidence: {avg_confidence:.0%} (based on {len(evidence_data)} customer quotes)")
     
     return {
         "answer": answer,
@@ -1002,10 +1127,12 @@ def _handle_churn_questions(question: str, question_analysis: Dict, report_data:
             "churn_risks_count": total_churn_risks,
             "high_probability_count": len(high_prob_churn),
             "urgent_interventions": len(urgent_interventions),
-            "value_at_risk": total_value_at_risk
+            "value_at_risk": total_value_at_risk,
+            "evidence_items": len(evidence_data)
         },
         "supporting_data": high_prob_churn[:5],
-        "insights": insights
+        "insights": insights,
+        "evidence": evidence_data[:10]  # Return top 10 evidence items
     }
 
 
@@ -1018,13 +1145,15 @@ def _handle_opportunities_questions(question: str, question_analysis: Dict, repo
         return {
             "answer": "📊 **No new opportunities were identified** in the analyzed calls. Consider reviewing call quality and agent training on opportunity identification.",
             "metrics": {"opportunities_count": 0},
-            "insights": ["May indicate missed opportunities or need for better discovery techniques"]
+            "insights": ["May indicate missed opportunities or need for better discovery techniques"],
+            "evidence": []
         }
     
-    # Analyze opportunities
+    # Analyze opportunities and collect evidence
     total_value = 0
     high_confidence = []
     by_type = {}
+    evidence_data = []
     
     for opp in opportunities:
         value = opp.get("estimated_value", 0) or 0
@@ -1034,13 +1163,35 @@ def _handle_opportunities_questions(question: str, question_analysis: Dict, repo
         
         by_type[opp_type] = by_type.get(opp_type, 0) + 1
         
+        # Extract evidence
+        evidence = opp.get("evidence", {})
+        primary_evidence = evidence.get("primary_evidence", [])
+        
+        opp_info = {
+            "account": opp.get("account_name", "Unknown"),
+            "type": opp_type,
+            "value": value,
+            "confidence": confidence,
+            "timeline": opp.get("timeline", "unknown"),
+            "evidence": primary_evidence
+        }
+        
         if confidence > 0.7:
-            high_confidence.append({
+            high_confidence.append(opp_info)
+        
+        # Collect all evidence for response
+        for ev in primary_evidence:
+            evidence_data.append({
                 "account": opp.get("account_name", "Unknown"),
-                "type": opp_type,
-                "value": value,
-                "confidence": confidence,
-                "timeline": opp.get("timeline", "unknown")
+                "call_id": ev.get("call_id", "Unknown"),
+                "speaker": ev.get("speaker", "unknown"),
+                "timestamp": ev.get("timestamp", 0),
+                "quote": ev.get("evidence_text", ""),
+                "context": ev.get("context", ""),
+                "confidence": ev.get("confidence_score", 0),
+                "opportunity_type": opp_type,
+                "estimated_value": value,
+                "opportunity_confidence": confidence
             })
     
     answer = f"""**Opportunity Analysis:**
@@ -1057,13 +1208,41 @@ def _handle_opportunities_questions(question: str, question_analysis: Dict, repo
     if high_confidence:
         answer += "\n\n**High Priority Opportunities:**\n"
         for opp in sorted(high_confidence, key=lambda x: x['value'], reverse=True)[:3]:
-            answer += f"• {opp['account']} - {opp['type']} (${opp['value']:,.0f}, {opp['confidence']:.0%} confidence)\n"
+            answer += f"• **{opp['account']}** - {opp['type'].replace('_', ' ').title()} (${opp['value']:,.0f}, {opp['confidence']:.0%} confidence)\n"
+            
+            # Add evidence for this opportunity
+            if opp['evidence']:
+                answer += f"  📝 Evidence:\n"
+                for ev in opp['evidence'][:2]:  # Show top 2 pieces of evidence
+                    quote = ev.get('evidence_text', '')[:80] + "..." if len(ev.get('evidence_text', '')) > 80 else ev.get('evidence_text', '')
+                    timestamp = ev.get('timestamp', 0)
+                    speaker = ev.get('speaker', 'unknown').title()
+                    confidence = ev.get('confidence_score', 0)
+                    answer += f"    • {speaker} @ {timestamp}s: \"{quote}\" (confidence: {confidence:.0%})\n"
+    
+    # Add comprehensive evidence section
+    if evidence_data:
+        answer += f"\n\n**📋 Supporting Evidence ({len(evidence_data)} quotes):**\n"
+        # Show top evidence by opportunity value and confidence
+        sorted_evidence = sorted(evidence_data, key=lambda x: (x['estimated_value'], x['opportunity_confidence'], x['confidence']), reverse=True)
+        for i, ev in enumerate(sorted_evidence[:5], 1):  # Show top 5
+            quote = ev['quote'][:100] + "..." if len(ev['quote']) > 100 else ev['quote']
+            value_emoji = "💰" if ev['estimated_value'] > 5000 else "💵"
+            answer += f"{i}. {value_emoji} **{ev['account']}** ({ev['call_id']}) - {ev['speaker'].title()} @ {ev['timestamp']}s\n"
+            answer += f"   \"{quote}\" (confidence: {ev['confidence']:.0%})\n"
+            answer += f"   💡 {ev['opportunity_type'].replace('_', ' ').title()} opportunity: ${ev['estimated_value']:,.0f} (success: {ev['opportunity_confidence']:.0%})\n"
+            if ev['context']:
+                answer += f"   📝 {ev['context']}\n"
+            answer += "\n"
     
     insights = []
     if len(high_confidence) > 0:
         insights.append(f"{len(high_confidence)} opportunities have high success probability")
     if total_value > 50000:
         insights.append(f"Significant revenue potential - ${total_value:,.0f} total opportunity value")
+    if evidence_data:
+        avg_confidence = sum(ev['confidence'] for ev in evidence_data) / len(evidence_data)
+        insights.append(f"Evidence confidence: {avg_confidence:.0%} (based on {len(evidence_data)} opportunity signals)")
     
     return {
         "answer": answer,
@@ -1071,10 +1250,12 @@ def _handle_opportunities_questions(question: str, question_analysis: Dict, repo
             "opportunities_count": total_opportunities,
             "high_confidence_count": len(high_confidence),
             "total_value": total_value,
-            "opportunity_types": by_type
+            "opportunity_types": by_type,
+            "evidence_items": len(evidence_data)
         },
         "supporting_data": high_confidence[:5],
-        "insights": insights
+        "insights": insights,
+        "evidence": evidence_data[:10]  # Return top 10 evidence items
     }
 
 
@@ -1087,13 +1268,15 @@ def _handle_training_questions(question: str, question_analysis: Dict, report_da
         return {
             "answer": "✅ **Good Performance**: No specific training needs were identified in the analyzed calls.",
             "metrics": {"training_needs_count": 0},
-            "insights": ["Agent performance appears to be meeting standards"]
+            "insights": ["Agent performance appears to be meeting standards"],
+            "evidence": []
         }
     
-    # Analyze training needs
+    # Analyze training needs and collect evidence
     by_skill = {}
     high_priority = []
     agents_needing_training = set()
+    evidence_data = []
     
     for need in training_needs:
         skill = need.get("skill_area", "unknown")
@@ -1103,12 +1286,33 @@ def _handle_training_questions(question: str, question_analysis: Dict, report_da
         by_skill[skill] = by_skill.get(skill, 0) + 1
         agents_needing_training.add(agent)
         
+        # Extract evidence
+        evidence = need.get("evidence", {})
+        primary_evidence = evidence.get("primary_evidence", [])
+        
+        training_info = {
+            "agent": agent,
+            "skill": skill,
+            "urgency": need.get("urgency", "medium"),
+            "specific_gaps": need.get("specific_gaps", []),
+            "evidence": primary_evidence
+        }
+        
         if priority == "high":
-            high_priority.append({
+            high_priority.append(training_info)
+        
+        # Collect all evidence for response
+        for ev in primary_evidence:
+            evidence_data.append({
                 "agent": agent,
-                "skill": skill,
-                "urgency": need.get("urgency", "medium"),
-                "specific_gaps": need.get("specific_gaps", [])
+                "call_id": ev.get("call_id", "Unknown"),
+                "speaker": ev.get("speaker", "unknown"),
+                "timestamp": ev.get("timestamp", 0),
+                "quote": ev.get("evidence_text", ""),
+                "context": ev.get("context", ""),
+                "confidence": ev.get("confidence_score", 0),
+                "skill_area": skill,
+                "priority": priority
             })
     
     answer = f"""**Training Needs Analysis:**
@@ -1125,13 +1329,41 @@ def _handle_training_questions(question: str, question_analysis: Dict, report_da
     if high_priority:
         answer += "\n\n**High Priority Training:**\n"
         for item in high_priority[:3]:
-            answer += f"• {item['agent']} - {item['skill']} (urgent: {item['urgency']})\n"
+            answer += f"• **{item['agent']}** - {item['skill'].replace('_', ' ').title()} (urgent: {item['urgency']})\n"
+            
+            # Add evidence for this training need
+            if item['evidence']:
+                answer += f"  📝 Evidence:\n"
+                for ev in item['evidence'][:2]:  # Show top 2 pieces of evidence
+                    quote = ev.get('evidence_text', '')[:80] + "..." if len(ev.get('evidence_text', '')) > 80 else ev.get('evidence_text', '')
+                    timestamp = ev.get('timestamp', 0)
+                    speaker = ev.get('speaker', 'unknown').title()
+                    confidence = ev.get('confidence_score', 0)
+                    answer += f"    • {speaker} @ {timestamp}s: \"{quote}\" (confidence: {confidence:.0%})\n"
+    
+    # Add comprehensive evidence section
+    if evidence_data:
+        answer += f"\n\n**📋 Supporting Evidence ({len(evidence_data)} examples):**\n"
+        # Show top evidence by priority and confidence
+        sorted_evidence = sorted(evidence_data, key=lambda x: (x['priority'] == 'high', x['confidence']), reverse=True)
+        for i, ev in enumerate(sorted_evidence[:5], 1):  # Show top 5
+            quote = ev['quote'][:100] + "..." if len(ev['quote']) > 100 else ev['quote']
+            priority_emoji = "🔴" if ev['priority'] == 'high' else "🟡"
+            answer += f"{i}. {priority_emoji} **{ev['agent']}** ({ev['call_id']}) - {ev['speaker'].title()} @ {ev['timestamp']}s\n"
+            answer += f"   \"{quote}\" (confidence: {ev['confidence']:.0%})\n"
+            answer += f"   📚 Training area: {ev['skill_area'].replace('_', ' ').title()}\n"
+            if ev['context']:
+                answer += f"   💡 {ev['context']}\n"
+            answer += "\n"
     
     insights = []
     if len(high_priority) > 0:
         insights.append(f"{len(high_priority)} high-priority training needs require immediate attention")
     if len(agents_needing_training) > len(training_needs) * 0.5:
         insights.append("Multiple agents need training - consider team-wide sessions")
+    if evidence_data:
+        avg_confidence = sum(ev['confidence'] for ev in evidence_data) / len(evidence_data)
+        insights.append(f"Evidence confidence: {avg_confidence:.0%} (based on {len(evidence_data)} performance examples)")
     
     # Generate recommendations
     recommendations = []
@@ -1148,11 +1380,13 @@ def _handle_training_questions(question: str, question_analysis: Dict, report_da
             "training_needs_count": total_needs,
             "agents_count": len(agents_needing_training),
             "high_priority_count": len(high_priority),
-            "skill_gaps": by_skill
+            "skill_gaps": by_skill,
+            "evidence_items": len(evidence_data)
         },
         "supporting_data": high_priority[:5],
         "insights": insights,
-        "recommendations": recommendations
+        "recommendations": recommendations,
+        "evidence": evidence_data[:10]  # Return top 10 evidence items
     }
 
 

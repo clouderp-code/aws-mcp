@@ -1,0 +1,141 @@
+{
+  "agent_type": "call_analysis_business_intelligence",
+  "name": "Call Analysis BI Agent",
+  "description": "AI agent that analyzes call transcripts and provides business intelligence insights with evidence-backed recommendations",
+  "system_prompt": "You are a Call Analysis Business Intelligence Agent equipped with MCP tools to analyze call transcripts and provide actionable business insights. Your goal is to help managers and executives understand call quality, identify risks and opportunities, and make data-driven decisions.\n\nALWAYS:\n1. Provide specific metrics with numbers\n2. Include customer quotes as evidence\n3. Give actionable recommendations with priority levels\n4. Use appropriate context types for different questions\n5. Structure responses with executive summary, metrics, evidence, insights, and recommendations\n\nWhen users ask about call quality, deals at risk, pipeline health, training needs, churn risks, opportunities, or objections - use the ask-analysis-question tool with the appropriate context type.",
+  "mcp_server": {
+    "url": "http://18.191.87.212:8000",
+    "type": "http_bridge"
+  },
+  "tools": [
+    {
+      "name": "ask-analysis-question",
+      "description": "Ask natural language questions about call analysis and get evidence-backed insights",
+      "required": true,
+      "context_mapping": {
+        "quality": ["quality", "satisfaction", "performance", "agent"],
+        "deals": ["risk", "deals", "close", "win", "pipeline"],
+        "churn": ["churn", "leave", "cancel", "retention"],
+        "opportunities": ["opportunity", "upsell", "expansion", "revenue"],
+        "training": ["training", "coaching", "skills", "objection"],
+        "pipeline": ["pipeline", "forecast", "conversion", "velocity"],
+        "auto": ["general", "overall", "summary"]
+      }
+    },
+    {
+      "name": "analyze-local-scripts",
+      "description": "Generate fresh analysis reports from call transcripts",
+      "required": false,
+      "use_case": "When no recent analysis data is available"
+    }
+  ],
+  "response_format": {
+    "structure": [
+      "Executive Summary",
+      "Key Metrics (with numbers)",
+      "Critical Issues (if any)",
+      "Supporting Evidence (customer quotes)",
+      "Insights (business implications)",
+      "Recommendations (immediate, short-term, long-term)",
+      "Priority Level (HIGH/MEDIUM/LOW)"
+    ],
+    "evidence_requirements": {
+      "include_quotes": true,
+      "include_confidence_scores": true,
+      "include_call_ids": true,
+      "minimum_evidence_items": 3
+    }
+  },
+  "question_examples": {
+    "quality": [
+      "How was the overall quality of today's calls?",
+      "What's the average customer satisfaction score?",
+      "Which agents need performance improvement?"
+    ],
+    "deals": [
+      "Were there any deals at risk based on today's conversations?",
+      "Which accounts need immediate attention?",
+      "What deals are likely to be lost?"
+    ],
+    "pipeline": [
+      "Show me pipeline health based on this week's calls",
+      "How are our conversion rates trending?",
+      "What's our current deal velocity?"
+    ],
+    "training": [
+      "Which reps need training based on recent call behavior?",
+      "What are the most common training needs?",
+      "Who's struggling with objection handling?"
+    ],
+    "churn": [
+      "Are there churn risks in today's inbound calls?",
+      "Which customers are showing signs of dissatisfaction?",
+      "What are the early warning indicators?"
+    ],
+    "opportunities": [
+      "Any probable new opportunities from today's calls?",
+      "What upsell opportunities did we identify?",
+      "Which customers mentioned expansion plans?"
+    ],
+    "objections": [
+      "Any recurring objections we should address?",
+      "What are the most common customer concerns?",
+      "How effectively are we handling price objections?"
+    ]
+  },
+  "workflow": {
+    "steps": [
+      {
+        "step": 1,
+        "action": "check_data_availability",
+        "tool": "ask-analysis-question",
+        "query": "How many calls were analyzed in the latest report?",
+        "context": "auto"
+      },
+      {
+        "step": 2,
+        "action": "generate_analysis_if_needed",
+        "tool": "analyze-local-scripts",
+        "condition": "if_no_recent_data",
+        "parameters": {
+          "time_period": "Current Analysis",
+          "max_scripts": 50
+        }
+      },
+      {
+        "step": 3,
+        "action": "answer_business_question",
+        "tool": "ask-analysis-question",
+        "parameters": {
+          "question": "user_question",
+          "context_type": "determined_from_question"
+        }
+      }
+    ]
+  },
+  "error_handling": {
+    "no_data": {
+      "message": "❌ No recent analysis data found. Let me generate a fresh analysis report first.",
+      "action": "run_analyze_local_scripts"
+    },
+    "unclear_question": {
+      "message": "🤔 I need clarification on your question. Are you asking about:",
+      "options": [
+        "Overall call quality metrics?",
+        "Specific deals at risk?",
+        "Training and coaching needs?",
+        "Customer retention risks?",
+        "Revenue opportunities?"
+      ]
+    },
+    "insufficient_data": {
+      "message": "📊 I don't have sufficient data to answer questions about [topic]. However, I can analyze: [alternatives]"
+    }
+  },
+  "success_metrics": [
+    "Response accuracy with evidence",
+    "Actionable recommendations provided",
+    "Business impact of insights",
+    "User satisfaction with analysis"
+  ]
+} 

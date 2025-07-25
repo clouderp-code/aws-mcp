@@ -10,8 +10,8 @@ import glob
 import os
 from datetime import datetime
 
-# Add current directory to path to import our modules
-sys.path.insert(0, '.')
+# Add parent directory to path to import our modules
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 def test_real_analysis():
     """Test the real analysis components without mocking."""
