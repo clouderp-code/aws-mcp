@@ -1,46 +1,46 @@
 {
   "analysis_period": "AI Enhancement Test",
   "total_calls_analyzed": 3,
-  "analysis_timestamp": "2025-07-24T15:51:00.758685",
+  "analysis_timestamp": "2025-07-24T16:23:46.280326",
   "overall_quality_score": 4.0,
   "quality_trend": "declining",
   "calls_with_issues": 3,
   "calls_with_issues_percentage": 100.0,
   "deals_at_risk": [
     {
-      "account_name": "Account_CHR-2025-001",
-      "agent_name": "Agent_CHR-2025-001",
+      "account_name": "Zenith Corp",
+      "agent_name": "Jason",
       "risk_level": "high",
       "risk_factors": [
         "Competitor mentions",
-        "Lack of urgency"
+        "Hesitation or uncertainty"
       ],
       "recommended_actions": [
-        "Escalate the issue to the network engineering team",
-        "Provide a service credit for the last month",
-        "Enable proactive monitoring alerts for the customer's circuit"
+        "Escalate the issue to network engineering team",
+        "Propose a service credit for the last month",
+        "Enable proactive monitoring alerts for the circuit"
       ],
       "win_probability_change": -0.75,
-      "account_value": 50000.0,
+      "account_value": null,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
           {
             "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
+            "transcript_source": "script1.json",
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
-            "context": "The customer is dissatisfied with the service and is considering switching to a competitor.",
+            "context": "The customer is considering switching providers due to frequent service outages, indicating a high risk of losing the deal.",
             "confidence_score": 0.8
           },
           {
             "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
+            "transcript_source": "script1.json",
             "speaker": "customer",
             "timestamp": 32.0,
             "evidence_text": "Yes. They said they'd investigate, but nothing changed.",
-            "context": "The customer has contacted tech support before but the issue was not resolved, indicating a lack of urgency on the company's part.",
+            "context": "The customer's issue hasn't been resolved despite contacting tech support, indicating dissatisfaction with the service and a high risk of losing the deal.",
             "confidence_score": 0.8
           }
         ],
@@ -56,8 +56,8 @@
       }
     },
     {
-      "account_name": "Account_RTA-2025-001",
-      "agent_name": "Agent_RTA-2025-001",
+      "account_name": "MegaCorp Industries",
+      "agent_name": "Jennifer",
       "risk_level": "medium",
       "risk_factors": [
         "Competitor mentions",
@@ -66,7 +66,7 @@
       "recommended_actions": [
         "Offer a competitive price",
         "Highlight the value of higher uptime",
-        "Reassure the customer about the reliability of our service"
+        "Reassure the customer about the reliability of the service"
       ],
       "win_probability_change": -0.3,
       "account_value": 9600.0,
@@ -75,7 +75,7 @@
         "primary_evidence": [
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're evaluating business internet providers. FiberLink gave us a quote for 1GB at $800/month.",
@@ -84,20 +84,11 @@
           },
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
-            "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "Uptime is critical - we process financial transactions 24/7. Even short outages cost us thousands.",
-            "context": "The customer values uptime over price, indicating potential for a higher-priced, higher-reliability plan.",
-            "confidence_score": 0.8
-          },
-          {
-            "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "agent",
             "timestamp": 90.0,
             "evidence_text": "That's exactly why I'd recommend our Enterprise plan over FiberLink. While they offer 99.5% uptime, our 99.99% SLA means 4x less downtime - about 4 minutes monthly vs their 22 minutes. For financial processing, that reliability difference is significant.",
-            "context": "The agent has identified a key selling point, but needs to convince the customer of its value.",
+            "context": "The agent acknowledges the competitor and tries to differentiate our service, but does not address the price difference.",
             "confidence_score": 0.8
           }
         ],
@@ -113,8 +104,8 @@
       }
     },
     {
-      "account_name": "Account_CFO-2025-008",
-      "agent_name": "Agent_CFO-2025-008",
+      "account_name": "Regional Medical Practice",
+      "agent_name": "Lisa",
       "risk_level": "medium",
       "risk_factors": [
         "Competitor mentions",
@@ -122,8 +113,8 @@
       ],
       "recommended_actions": [
         "Offer a competitive price",
-        "Highlight the reliability and HIPAA-compliance of your solution",
-        "Provide a clear comparison between your solution and MegaCom"
+        "Highlight the reliability and HIPAA compliance of our service",
+        "Address the budget issue directly"
       ],
       "win_probability_change": -0.3,
       "account_value": 5000.0,
@@ -132,20 +123,20 @@
         "primary_evidence": [
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We have basic business internet with MegaCom. 100 Mbps, but it's been unreliable lately.",
-            "context": "The customer is currently using a competitor's service, which could make them more resistant to change.",
+            "context": "The customer is currently using a competitor's service, which could make them more resistant to switching.",
             "confidence_score": 0.8
           },
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "agent",
             "timestamp": 240.0,
             "evidence_text": "What's your budget range for a reliable, HIPAA-compliant solution? And who's involved in the decision process?",
-            "context": "The agent has not yet received information about the customer's budget, which could indicate potential budget constraints.",
+            "context": "The customer has not yet disclosed their budget, which could indicate that they have budget constraints.",
             "confidence_score": 0.8
           }
         ],
@@ -163,7 +154,7 @@
   ],
   "churn_risks": [
     {
-      "account_name": "Account_CHR-2025-001",
+      "account_name": "Zenith Corp",
       "churn_probability": 0.75,
       "risk_signals": [
         "Mentions of switching providers",
@@ -173,9 +164,9 @@
       "intervention_urgency": "high",
       "recommended_actions": [
         "Escalate to network engineering team",
-        "Propose a service credit for the last month",
+        "Provide service credit",
         "Enable proactive monitoring alerts",
-        "Send SLA documentation and credit note"
+        "Send SLA documentation"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -183,7 +174,7 @@
         "primary_evidence": [
           {
             "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
+            "transcript_source": "script1.json",
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
@@ -192,7 +183,7 @@
           },
           {
             "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
+            "transcript_source": "script1.json",
             "speaker": "customer",
             "timestamp": 32.0,
             "evidence_text": "Yes. They said they'd investigate, but nothing changed.",
@@ -218,8 +209,8 @@
       ]
     },
     {
-      "account_name": "Account_RTA-2025-001",
-      "churn_probability": 0.7,
+      "account_name": "MegaCorp Industries",
+      "churn_probability": 0.75,
       "risk_signals": [
         "Mentions of switching providers",
         "Competitor comparisons"
@@ -227,8 +218,8 @@
       "intervention_urgency": "high",
       "recommended_actions": [
         "Offer competitive pricing",
-        "Highlight superior service quality",
-        "Reassure uptime guarantee"
+        "Highlight the value of higher uptime",
+        "Reassure the customer about service reliability"
       ],
       "account_value_at_risk": 9600.0,
       "evidence": {
@@ -236,20 +227,29 @@
         "primary_evidence": [
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're evaluating business internet providers. FiberLink gave us a quote for 1GB at $800/month.",
-            "context": "The customer is actively considering switching providers and has received a quote from a competitor.",
+            "context": "The customer is actively considering other providers, indicating a high churn risk.",
             "confidence_score": 0.8
           },
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "Uptime is critical - we process financial transactions 24/7. Even short outages cost us thousands.",
-            "context": "The customer has high service quality expectations. Any perceived lack of reliability could increase churn risk.",
+            "context": "The customer has high service expectations and is concerned about potential service interruptions, which could lead to dissatisfaction and churn.",
+            "confidence_score": 0.8
+          },
+          {
+            "call_id": "RTA-2025-001",
+            "transcript_source": "script10.json",
+            "speaker": "agent",
+            "timestamp": 90.0,
+            "evidence_text": "That's exactly why I'd recommend our Enterprise plan over FiberLink. While they offer 99.5% uptime, our 99.99% SLA means 4x less downtime - about 4 minutes monthly vs their 22 minutes. For financial processing, that reliability difference is significant.",
+            "context": "The agent is trying to differentiate our service from the competitor, but the customer may still be considering the competitor's offer.",
             "confidence_score": 0.8
           }
         ],
@@ -261,17 +261,17 @@
         {
           "timestamp": 0.0,
           "signal": "Initial assessment",
-          "severity": 0.7
+          "severity": 0.75
         },
         {
           "timestamp": 120.0,
           "signal": "Call completion",
-          "severity": 0.7
+          "severity": 0.75
         }
       ]
     },
     {
-      "account_name": "Account_CFO-2025-008",
+      "account_name": "Regional Medical Practice",
       "churn_probability": 0.75,
       "risk_signals": [
         "Dissatisfaction with service",
@@ -279,9 +279,9 @@
       ],
       "intervention_urgency": "high",
       "recommended_actions": [
-        "Offer a more reliable service",
-        "Assure HIPAA compliance",
-        "Provide a competitive pricing"
+        "Offer a reliable, HIPAA-compliant solution",
+        "Provide a competitive pricing structure",
+        "Ensure high-quality customer service"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -289,7 +289,7 @@
         "primary_evidence": [
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We have basic business internet with MegaCom. 100 Mbps, but it's been unreliable lately.",
@@ -298,7 +298,7 @@
           },
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "Patient records system crashes during outages. We also do telemedicine calls that get choppy. Very frustrating for patients.",
@@ -326,88 +326,78 @@
   ],
   "new_opportunities": [
     {
-      "account_name": "Account_CHR-2025-001",
+      "account_name": "Zenith Corp",
       "opportunity_type": "upsell",
       "estimated_value": 0.0,
-      "confidence_level": 0.65,
+      "confidence_level": 0.7,
       "next_steps": [
-        "Send SLA documentation and credit note",
-        "Enable proactive monitoring alerts",
-        "Follow up with network engineering team"
-      ],
-      "timeline": "1-2 weeks",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
-            "speaker": "agent",
-            "timestamp": 36.0,
-            "evidence_text": "I'll escalate this directly to our network engineering team and propose a service credit for the last month. Also, we can enable proactive monitoring alerts for your circuit.",
-            "context": "The agent is proposing additional services (proactive monitoring alerts) to the customer as a solution to their problem. This indicates an upsell opportunity.",
-            "confidence_score": 0.7
-          },
-          {
-            "call_id": "CHR-2025-001",
-            "transcript_source": "call_CHR-2025-001.json",
-            "speaker": "customer",
-            "timestamp": 50.5,
-            "evidence_text": "Okay, send me the SLA documentation and credit note.",
-            "context": "The customer is open to receiving more information about the proposed services, indicating potential interest.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.65,
-        "analysis_methodology": "AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.52,
-        "budget_availability": 0.39,
-        "timeline_urgency": 0.325,
-        "expansion_potential": 0.45499999999999996
-      }
-    },
-    {
-      "account_name": "Account_RTA-2025-001",
-      "opportunity_type": "upsell",
-      "estimated_value": 0.0,
-      "confidence_level": 0.85,
-      "next_steps": [
-        "Offer Enterprise plan to the customer",
-        "Highlight the benefits of 99.99% SLA",
-        "Discuss the financial implications of downtime"
+        "Send SLA documentation and credit note to the customer",
+        "Propose proactive monitoring service to prevent future outages"
       ],
       "timeline": "Immediate",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
+            "call_id": "CHR-2025-001",
+            "transcript_source": "script1.json",
+            "speaker": "agent",
+            "timestamp": 36.0,
+            "evidence_text": "I'll escalate this directly to our network engineering team and propose a service credit for the last month. Also, we can enable proactive monitoring alerts for your circuit.",
+            "context": "The customer is facing issues with the service and the agent has proposed an upsell opportunity to enable proactive monitoring alerts for the customer's circuit.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.5599999999999999,
+        "budget_availability": 0.42,
+        "timeline_urgency": 0.35,
+        "expansion_potential": 0.48999999999999994
+      }
+    },
+    {
+      "account_name": "MegaCorp Industries",
+      "opportunity_type": "upsell",
+      "estimated_value": 0.0,
+      "confidence_level": 0.85,
+      "next_steps": [
+        "Provide detailed comparison of our Enterprise plan and FiberLink's offer",
+        "Highlight the financial benefits of higher uptime",
+        "Offer a trial period or guarantee to mitigate risk"
+      ],
+      "timeline": "within 1 month",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're evaluating business internet providers. FiberLink gave us a quote for 1GB at $800/month.",
-            "context": "Customer is actively looking for internet providers and has a budget in mind",
+            "context": "Customer is actively seeking a new internet service provider and has budget for it.",
             "confidence_score": 0.7
           },
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "Uptime is critical - we process financial transactions 24/7. Even short outages cost us thousands.",
-            "context": "Customer values uptime and is willing to invest to avoid service interruptions",
+            "context": "Customer values uptime and is willing to pay for a reliable service.",
             "confidence_score": 0.7
           },
           {
             "call_id": "RTA-2025-001",
-            "transcript_source": "call_RTA-2025-001.json",
+            "transcript_source": "script10.json",
             "speaker": "agent",
             "timestamp": 90.0,
             "evidence_text": "That's exactly why I'd recommend our Enterprise plan over FiberLink. While they offer 99.5% uptime, our 99.99% SLA means 4x less downtime - about 4 minutes monthly vs their 22 minutes. For financial processing, that reliability difference is significant.",
-            "context": "Agent has identified a unique selling point that aligns with the customer's needs",
+            "context": "Agent has identified a key selling point for our service over the competition.",
             "confidence_score": 0.7
           }
         ],
@@ -423,44 +413,44 @@
       }
     },
     {
-      "account_name": "Account_CFO-2025-008",
+      "account_name": "Regional Medical Practice",
       "opportunity_type": "upsell",
       "estimated_value": 0.0,
       "confidence_level": 0.75,
       "next_steps": [
-        "Discuss budget with customer",
-        "Present HIPAA-compliant connectivity solutions",
-        "Involve decision makers in further discussions"
+        "Discuss budget",
+        "Propose HIPAA-compliant solution",
+        "Involve decision makers"
       ],
-      "timeline": "1-2 months",
+      "timeline": "Short term",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We have basic business internet with MegaCom. 100 Mbps, but it's been unreliable lately.",
-            "context": "Customer dissatisfaction with current provider indicates opportunity for upsell",
+            "context": "Customer dissatisfaction with current service indicates opportunity for upsell",
             "confidence_score": 0.7
           },
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "Patient records system crashes during outages. We also do telemedicine calls that get choppy. Very frustrating for patients.",
-            "context": "Operational challenges due to unreliable internet indicate opportunity for upsell",
+            "context": "Operational challenges due to unreliable service further strengthens the opportunity for upsell",
             "confidence_score": 0.7
           },
           {
             "call_id": "CFO-2025-008",
-            "transcript_source": "call_CFO-2025-008.json",
+            "transcript_source": "script11.json",
             "speaker": "agent",
             "timestamp": 150.0,
             "evidence_text": "That's concerning, especially for patient care. As a medical practice, you have HIPAA requirements. Are you looking for connectivity that includes compliance features?",
-            "context": "Potential need for HIPAA-compliant connectivity solution indicates opportunity for upsell",
+            "context": "Agent identifies a potential upsell opportunity by highlighting the need for HIPAA-compliant connectivity",
             "confidence_score": 0.7
           }
         ],
@@ -655,11 +645,11 @@
     "Agent skills development required"
   ],
   "evidence_summary": {
-    "total_evidence_items": 23,
+    "total_evidence_items": 22,
     "calls_with_evidence": 3,
-    "deal_risk_evidence": 7,
-    "churn_risk_evidence": 6,
-    "opportunity_evidence": 8,
+    "deal_risk_evidence": 6,
+    "churn_risk_evidence": 7,
+    "opportunity_evidence": 7,
     "training_evidence": 0,
     "objection_examples": 0,
     "quality_issue_examples": 0

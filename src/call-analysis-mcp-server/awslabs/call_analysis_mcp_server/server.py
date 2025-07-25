@@ -42,7 +42,7 @@ from .consts import CALL_ANALYSIS_MCP_SERVER_APPLICATION_NAME
 from .tools import (
     transcript_analyzer_tool, batch_analysis_tool, s3_reader_tool,
     s3_uploader_tool, generate_report_tool, create_dashboard_tool,
-    business_intelligence_tool, local_scripts_analysis_tool,
+    business_intelligence_tool, local_scripts_analysis_tool, qa_analysis_tool,
 )
 
 
@@ -60,6 +60,7 @@ def create_server() -> FastMCP:
     batch_analysis_tool(mcp)
     business_intelligence_tool(mcp)
     local_scripts_analysis_tool(mcp)
+    qa_analysis_tool(mcp)  # Q&A tool for business intelligence insights
     s3_reader_tool(mcp)
     s3_uploader_tool(mcp)
     generate_report_tool(mcp)

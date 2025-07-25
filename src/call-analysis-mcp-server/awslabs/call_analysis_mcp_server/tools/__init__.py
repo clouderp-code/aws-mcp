@@ -14,7 +14,7 @@
 
 """MCP tools for call analysis."""
 
-from .analysis_tools import transcript_analyzer_tool, batch_analysis_tool, business_intelligence_tool, local_scripts_analysis_tool
+from .analysis_tools import transcript_analyzer_tool, batch_analysis_tool, business_intelligence_tool, local_scripts_analysis_tool, qa_analysis_tool
 from .s3_tools import s3_reader_tool, s3_uploader_tool
 from .reporting_tools import generate_report_tool, create_dashboard_tool
 
@@ -23,6 +23,7 @@ __all__ = [
     'batch_analysis_tool',
     'business_intelligence_tool',
     'local_scripts_analysis_tool',
+    'qa_analysis_tool',
     's3_reader_tool',
     's3_uploader_tool',
     'generate_report_tool',

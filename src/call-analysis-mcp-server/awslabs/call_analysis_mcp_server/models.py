@@ -254,21 +254,6 @@ class AgentTrainingNeed(BaseModel):
     improvement_opportunities: List[TranscriptEvidence] = Field(description="Moments where better skills would have helped")
 
 
-class PipelineHealthIndicator(BaseModel):
-    """Pipeline health assessment with supporting data."""
-    
-    stage_name: str = Field(description="Pipeline stage name")
-    total_deals: int = Field(description="Total deals in this stage")
-    health_status: str = Field(description="Health status (healthy, neutral, stalled, at-risk)")
-    average_stage_duration: float = Field(description="Average time in stage (days)")
-    conversion_rate: float = Field(description="Conversion rate to next stage")
-    key_issues: List[str] = Field(description="Key issues affecting this stage")
-    recommended_actions: List[str] = Field(description="Actions to improve stage health")
-    
-    # Evidence trail
-    representative_calls: List[str] = Field(description="Call IDs representing this stage")
-    issue_evidence: List[TranscriptEvidence] = Field(description="Evidence of stage-specific issues")
-
 
 class CallQualityIssue(BaseModel):
     """Call quality problem identification with evidence."""
@@ -282,6 +267,99 @@ class CallQualityIssue(BaseModel):
     
     # Evidence trail
     example_occurrences: List[TranscriptEvidence] = Field(description="Specific examples of this quality issue")
+
+
+# Advanced Analytics Models
+class CallCategory(str, Enum):
+    """Call categorization types."""
+    TECHNICAL_COMPLAINT = "technical_complaint"
+    PRICE_OBJECTION = "price_objection"
+    NEW_BUSINESS_INQUIRY = "new_business_inquiry"
+    SETUP_INQUIRY = "setup_inquiry"
+    BILLING_INQUIRY = "billing_inquiry"
+    FEATURE_REQUEST = "feature_request"
+    CANCELLATION_REQUEST = "cancellation_request"
+    SUPPORT_REQUEST = "support_request"
+    UPSELL_OPPORTUNITY = "upsell_opportunity"
+    RETENTION_CALL = "retention_call"
+
+
+class ObjectionType(str, Enum):
+    """Types of customer objections."""
+    PRICE = "price"
+    COMPETITOR = "competitor"
+    FEATURE_MISSING = "feature_missing"
+    TIMING = "timing"
+    BUDGET = "budget"
+    DECISION_MAKER = "decision_maker"
+    TRUST = "trust"
+    COMPLEXITY = "complexity"
+
+
+class ObjectionAnalysis(BaseModel):
+    """Analysis of customer objections."""
+    objection_type: ObjectionType
+    objection_text: str
+    agent_response: str
+    response_effectiveness: float = Field(ge=0, le=1, description="0-1 scale")
+    resolution_status: str  # handled, unresolved, escalated
+    evidence: DecisionEvidence
+
+
+class ResolutionMetrics(BaseModel):
+    """Call resolution and efficiency metrics."""
+    call_duration_minutes: float
+    resolution_time_minutes: Optional[float]
+    first_call_resolution: bool
+    escalation_required: bool
+    follow_up_scheduled: bool
+    customer_effort_score: float = Field(ge=1, le=5, description="1-5 scale")
+
+
+class CompetitiveAnalysis(BaseModel):
+    """Competitive positioning analysis."""
+    competitors_mentioned: List[str]
+    competitive_advantages_highlighted: List[str]
+    competitive_weaknesses_exposed: List[str]
+    positioning_effectiveness: float = Field(ge=0, le=1, description="0-1 scale")
+    win_probability_vs_competitor: float = Field(ge=0, le=1, description="0-1 scale")
+
+
+class ProductKnowledgeGap(BaseModel):
+    """Product knowledge gaps identified."""
+    topic: str
+    severity: RiskLevel
+    agent_response_quality: float = Field(ge=0, le=1, description="0-1 scale")
+    customer_question: str
+    recommended_training: str
+    evidence: DecisionEvidence
+
+
+class FollowUpAnalysis(BaseModel):
+    """Follow-up adherence and effectiveness."""
+    follow_up_promised: bool
+    follow_up_timeline: Optional[str]
+    follow_up_type: str  # call, email, demo, proposal
+    commitment_specificity: float = Field(ge=0, le=1, description="0-1 scale")
+    adherence_likelihood: float = Field(ge=0, le=1, description="0-1 scale")
+
+
+class PipelineHealthIndicator(BaseModel):
+    """Pipeline health metrics."""
+    stage: str  # prospect, qualified, demo, proposal, negotiation, closed
+    stage_progression_probability: float = Field(ge=0, le=1, description="0-1 scale")
+    deal_velocity_score: float = Field(ge=0, le=1, description="0-1 scale")
+    engagement_level: float = Field(ge=0, le=1, description="0-1 scale")
+    next_steps_clarity: float = Field(ge=0, le=1, description="0-1 scale")
+
+
+class ConversionMetrics(BaseModel):
+    """Conversion rate analysis."""
+    call_to_demo_probability: float = Field(ge=0, le=1, description="0-1 scale")
+    demo_to_proposal_probability: float = Field(ge=0, le=1, description="0-1 scale")
+    proposal_to_close_probability: float = Field(ge=0, le=1, description="0-1 scale")
+    upsell_cross_sell_probability: float = Field(ge=0, le=1, description="0-1 scale")
+    retention_probability: float = Field(ge=0, le=1, description="0-1 scale")
 
 
 class BusinessIntelligenceInsights(BaseModel):
@@ -326,6 +404,45 @@ class BusinessIntelligenceInsights(BaseModel):
     evidence_summary: Dict[str, int] = Field(
         description="Summary of evidence collected (e.g., total evidence items, calls referenced)"
     )
+    
+    # Advanced Analytics
+    call_categorization: Dict[CallCategory, int] = Field(
+        default_factory=dict, description="Distribution of call categories"
+    )
+    objection_analysis: List[ObjectionAnalysis] = Field(
+        default=[], description="Detailed objection analysis"
+    )
+    resolution_metrics: Dict[str, float] = Field(
+        default_factory=dict, description="Resolution efficiency metrics"
+    )
+    competitive_analysis: List[CompetitiveAnalysis] = Field(
+        default=[], description="Competitive positioning analysis"
+    )
+    product_knowledge_gaps: List[ProductKnowledgeGap] = Field(
+        default=[], description="Product knowledge gaps identified"
+    )
+    follow_up_analysis: List[FollowUpAnalysis] = Field(
+        default=[], description="Follow-up commitment analysis"
+    )
+    pipeline_health: List[PipelineHealthIndicator] = Field(
+        default=[], description="Pipeline health indicators"
+    )
+    conversion_metrics: ConversionMetrics = Field(
+        default_factory=lambda: ConversionMetrics(
+            call_to_demo_probability=0.0,
+            demo_to_proposal_probability=0.0,
+            proposal_to_close_probability=0.0,
+            upsell_cross_sell_probability=0.0,
+            retention_probability=0.0
+        ),
+        description="Conversion rate analysis"
+    )
+    
+    # Performance Metrics
+    average_resolution_time_minutes: float = Field(0.0, description="Average resolution time across calls")
+    first_call_resolution_rate: float = Field(0.0, ge=0.0, le=1.0, description="First call resolution rate")
+    escalation_rate: float = Field(0.0, ge=0.0, le=1.0, description="Rate of calls requiring escalation")
+    follow_up_adherence_rate: float = Field(0.0, ge=0.0, le=1.0, description="Follow-up commitment adherence rate")
     
     # Quality assurance
     analysis_confidence: float = Field(0.0, ge=0.0, le=1.0, description="Overall confidence in analysis")

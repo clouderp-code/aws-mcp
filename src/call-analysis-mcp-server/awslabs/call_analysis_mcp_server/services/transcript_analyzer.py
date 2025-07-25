@@ -597,3 +597,150 @@ class TranscriptAnalyzer:
 """
         
         return md_content 
+    
+    async def batch_analyze_transcripts(self, call_batches: List[Dict], analysis_options: Dict[str, bool] = None, batch_size: int = 10) -> List[CallAnalysisResult]:
+        """
+        Analyze multiple call transcripts in batches for improved performance.
+        
+        Args:
+            call_batches: List of call data with call_id and transcript_segments
+            analysis_options: Analysis options to enable/disable features
+            batch_size: Number of calls to process in each batch
+            
+        Returns:
+            List of complete analysis results
+        """
+        if analysis_options is None:
+            analysis_options = {}
+            
+        logger.info(f"Starting batch transcript analysis for {len(call_batches)} calls")
+        
+        all_results = []
+        
+        # First, run batch sentiment analysis if enabled
+        sentiment_results = {}
+        if analysis_options.get('sentiment_analysis', True):
+            logger.info("Running batch AI sentiment analysis...")
+            batch_sentiment_analyses = await self.ai_analyzer.batch_sentiment_analysis(call_batches, batch_size)
+            
+            # Create lookup map for sentiment results
+            for sentiment_analysis in batch_sentiment_analyses:
+                sentiment_results[sentiment_analysis["call_id"]] = sentiment_analysis
+        
+        # Now process each call with pre-computed sentiment analysis
+        for i, call_data in enumerate(call_batches, 1):
+            call_id = call_data["call_id"]
+            transcript_segments = call_data["segments"]
+            
+            if i % 10 == 0 or i == len(call_batches):
+                logger.info(f"Processing transcript analysis: {i}/{len(call_batches)} calls")
+            
+            # Calculate basic characteristics
+            characteristics = self._analyze_characteristics(transcript_segments)
+            
+            # Use pre-computed sentiment analysis or create default
+            sentiment_analysis = None
+            if analysis_options.get('sentiment_analysis', True) and call_id in sentiment_results:
+                ai_sentiment = sentiment_results[call_id]
+                
+                # Convert AI results to our SentimentAnalysis format
+                overall_sentiment = SentimentType(ai_sentiment["overall_sentiment"])
+                
+                # Convert AI scores to our format
+                sentiment_scores = {
+                    'positive': (ai_sentiment["sentiment_score"] + 1) / 2 if ai_sentiment["sentiment_score"] > 0 else 0.3,
+                    'negative': abs(ai_sentiment["sentiment_score"]) if ai_sentiment["sentiment_score"] < 0 else 0.2,
+                    'neutral': 0.5 if ai_sentiment["sentiment_score"] == 0 else 0.5
+                }
+                
+                # Determine agent/customer sentiment based on AI analysis
+                agent_sentiment = SentimentType.POSITIVE if ai_sentiment["agent_performance"] > 7 else SentimentType.NEUTRAL
+                customer_sentiment = SentimentType.POSITIVE if ai_sentiment["customer_satisfaction"] > 7 else (
+                    SentimentType.NEGATIVE if ai_sentiment["customer_satisfaction"] < 4 else SentimentType.NEUTRAL
+                )
+                
+                # Create emotional peaks from AI emotional moments
+                emotional_peaks = []
+                for moment in ai_sentiment.get("emotional_moments", []):
+                    emotional_peaks.append({
+                        'timestamp': moment.get('timestamp', 0),
+                        'emotion': moment.get('emotion', 'neutral'),
+                        'intensity': 0.8 if moment.get('intensity') == 'high' else 0.6 if moment.get('intensity') == 'medium' else 0.3,
+                        'description': moment.get('context', 'Emotional moment detected')
+                    })
+                
+                # Create sentiment over time progression 
+                sentiment_over_time = []
+                if len(transcript_segments) > 1:
+                    # Simple progression based on segment count
+                    segment_duration = sum(seg.duration for seg in transcript_segments) / len(transcript_segments)
+                    for i, seg in enumerate(transcript_segments[:5]):  # First 5 segments
+                        sentiment_over_time.append({
+                            'timestamp': i * segment_duration,
+                            'sentiment': overall_sentiment.value,
+                            'score': ai_sentiment["sentiment_score"]
+                        })
+                
+                # Count sentiment transitions (simplified - based on emotional moments)
+                sentiment_transitions = len(emotional_peaks)
+                
+                sentiment_analysis = SentimentAnalysis(
+                    overall_sentiment=overall_sentiment,
+                    sentiment_scores=sentiment_scores,
+                    agent_sentiment=agent_sentiment,
+                    customer_sentiment=customer_sentiment,
+                    sentiment_over_time=sentiment_over_time,
+                    emotional_peaks=emotional_peaks,
+                    sentiment_transitions=sentiment_transitions
+                )
+            
+            # Analyze conversation flow
+            conversation_flow = self._analyze_conversation_flow(transcript_segments) if analysis_options.get('detailed_flow_analysis', True) else None
+            
+            # Extract key topics
+            key_topics = self._extract_topics(transcript_segments) if analysis_options.get('topic_extraction', True) else None
+            
+            # Check compliance
+            compliance_metrics = self._check_compliance(transcript_segments) if analysis_options.get('compliance_check', True) else None
+            
+            # Calculate performance KPIs
+            performance_kpis = self._calculate_performance_kpis(transcript_segments, sentiment_analysis) if analysis_options.get('performance_metrics', True) else None
+            
+            # Ensure sentiment_analysis is never None - create default if needed
+            if sentiment_analysis is None:
+                sentiment_analysis = SentimentAnalysis(
+                    overall_sentiment=SentimentType.NEUTRAL,
+                    agent_sentiment=SentimentType.NEUTRAL,
+                    customer_sentiment=SentimentType.NEUTRAL,
+                    sentiment_scores={'positive': 0.4, 'negative': 0.3, 'neutral': 0.3},
+                    sentiment_over_time=[],
+                    emotional_peaks=[],
+                    sentiment_transitions=0
+                )
+            
+            # Generate summary and recommendations
+            executive_summary = self._generate_executive_summary(characteristics, sentiment_analysis, performance_kpis, compliance_metrics)
+            recommendations = self._generate_recommendations(sentiment_analysis, performance_kpis, compliance_metrics)
+            action_items = self._generate_action_items(performance_kpis, compliance_metrics)
+            
+            result = CallAnalysisResult(
+                call_id=call_id,
+                analysis_timestamp=datetime.now(),
+                transcript_source=call_data.get("transcript_source", ""),
+                transcript_segments=transcript_segments,
+                characteristics=characteristics,
+                sentiment_analysis=sentiment_analysis,
+                conversation_flow=conversation_flow,
+                key_topics=key_topics,
+                compliance_metrics=compliance_metrics,
+                performance_kpis=performance_kpis,
+                executive_summary=executive_summary,
+                recommendations=recommendations,
+                action_items=action_items,
+                processing_time_seconds=0.0  # Will be set by calling code
+            )
+            
+            all_results.append(result)
+        
+        logger.info(f"Batch transcript analysis completed for {len(all_results)} calls")
+        return all_results 
