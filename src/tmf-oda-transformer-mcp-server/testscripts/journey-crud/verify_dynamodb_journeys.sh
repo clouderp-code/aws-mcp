@@ -3,7 +3,88 @@
 # Script to verify what journeys are in DynamoDB vs what the API returns
 set -e
 
-SERVER_URL="${1:-http://localhost:8000}"
+# Default configuration
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "Journey DynamoDB Verification Script"
+    echo ""
+    echo -e "Usage: $0 [URL]"
+    echo ""
+    echo -e "Arguments:"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
+    echo ""
+    echo -e "Examples:"
+    echo -e "  $0                                    # Verify on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000          # Verify on remote server"
+    echo -e "  $0 https://api.company.com            # Use HTTPS connection"
+    echo ""
+    echo -e "Description:"
+    echo -e "  Verifies what journeys are in DynamoDB vs what the API returns."
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
+            -*)
+                echo -e "❌ Unknown option: $1"
+                echo -e "💡 Use URL format instead: $0 http://host:port"
+                show_usage
+                exit 1
+                ;;
+            *)
+                echo -e "❌ Unknown argument: $1"
+                echo -e "💡 Use URL format: $0 http://host:port"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Parse command line arguments first
+parse_arguments "$@"
 
 # Colors
 RED='\033[0;31m'

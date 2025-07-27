@@ -4,9 +4,8 @@
 # TMF ODA Transformer MCP Server - Journey Data Cleanup Script
 # =============================================================================
 # This script safely removes ALL journey data from the system
-# Usage: ./clean_journeys_data.sh [--force] [SERVER_URL]
-#    or: ./clean_journeys_data.sh [SERVER_URL] [--force]
-# Default SERVER_URL: http://localhost:8000
+# Usage: ./clean_journeys_data.sh [URL] [--force]
+# Default URL: http://localhost:8000
 #
 # Examples:
 #   ./clean_journeys_data.sh --force                          # Use default URL with force mode
@@ -30,35 +29,98 @@
 
 set -e
 
-# Configuration - Parse arguments properly
-SERVER_URL="http://localhost:8000"  # Default value
+# Default configuration
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
 FORCE_MODE=false
 TIMEOUT=30
 
-# Parse command line arguments
-while [[ $# -gt 0 ]]; do
-    case $1 in
-        --force)
-            FORCE_MODE=true
-            shift
-            ;;
-        http://* | https://*)
-            SERVER_URL="$1"
-            shift
-            ;;
-        *)
-            # If it doesn't start with http/https and isn't --force, assume it's a server URL
-            if [[ "$1" != --* ]]; then
-                SERVER_URL="$1"
-            else
-                echo "Unknown option: $1" >&2
-                echo "Usage: $0 [SERVER_URL] [--force]" >&2
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "TMF ODA Transformer MCP Server - Journey Data Cleanup Script"
+    echo ""
+    echo -e "Usage: $0 [URL] [--force]"
+    echo ""
+    echo -e "Arguments:"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
+    echo -e "  --force                Skip confirmation prompts"
+    echo ""
+    echo -e "Examples:"
+    echo -e "  $0                                    # Clean on localhost:8000 with confirmation"
+    echo -e "  $0 --force                            # Clean on localhost:8000 without confirmation"
+    echo -e "  $0 http://192.168.1.100:9000          # Clean on remote server with confirmation"
+    echo -e "  $0 http://192.168.1.100:9000 --force  # Clean on remote server without confirmation"
+    echo -e "  $0 https://api.company.com --force    # Clean on HTTPS server without confirmation"
+    echo ""
+    echo -e "Description:"
+    echo -e "  Safely removes ALL journey data from the system."
+    echo -e "  WARNING: This operation is IRREVERSIBLE!"
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            --force)
+                FORCE_MODE=true
+                shift
+                ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
+            -*)
+                echo -e "❌ Unknown option: $1"
+                echo -e "💡 Use URL format instead: $0 http://host:port"
+                show_usage
                 exit 1
-            fi
-            shift
-            ;;
-    esac
-done
+                ;;
+            *)
+                echo -e "❌ Unknown argument: $1"
+                echo -e "💡 Use URL format: $0 http://host:port [--force]"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
+
+# Parse command line arguments first
+parse_arguments "$@"
 
 # Colors for output
 RED='\033[0;31m'

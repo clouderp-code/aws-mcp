@@ -6,11 +6,89 @@
 
 set -e
 
-# Configuration
-SERVER_URL="http://localhost:8000"
+# Default configuration
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
 TEST_JOURNEY_NAME="Test Journey CRUD $(date +%s)"
 TEST_DESCRIPTION="Comprehensive CRUD test journey with full lifecycle validation"
 ODA_COMPONENT_TYPE="ProductCatalogManagement"
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "Journey CRUD Lifecycle Test"
+    echo ""
+    echo -e "Usage: $0 [URL]"
+    echo ""
+    echo -e "Arguments:"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
+    echo ""
+    echo -e "Examples:"
+    echo -e "  $0                                    # Test on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000          # Test on remote server"
+    echo -e "  $0 https://api.company.com            # Use HTTPS connection"
+    echo ""
+    echo -e "Description:"
+    echo -e "  Tests complete journey lifecycle: Create → Update → Delete → Verify"
+    echo -e "  Verifies all related records are properly managed."
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
+            -*)
+                echo -e "❌ Unknown option: $1"
+                echo -e "💡 Use URL format instead: $0 http://host:port"
+                show_usage
+                exit 1
+                ;;
+            *)
+                echo -e "❌ Unknown argument: $1"
+                echo -e "💡 Use URL format: $0 http://host:port"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
 
 # Colors for output
 RED='\033[0;31m'
@@ -133,6 +211,12 @@ check_api_success() {
         return 1
     fi
 }
+
+# Parse command line arguments first
+parse_arguments "$@"
+
+# Initialize logging
+setup_logging
 
 # Test Header
 echo -e "${YELLOW}╔══════════════════════════════════════════════════════════════╗${NC}"
