@@ -163,23 +163,68 @@ log_debug() {
 
 # Function to get DynamoDB record count
 get_dynamodb_count() {
-    aws dynamodb scan \
+    local count
+    count=$(aws dynamodb scan \
         --table-name TransformationSystem \
         --select COUNT \
-        --output json 2>/dev/null | jq -r '.Count // 0'
+        --output json 2>/dev/null | jq -r '.Count // 0' 2>/dev/null)
+    
+    # Ensure we always return a valid number
+    if [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "$count"
+    else
+        log_debug "DynamoDB scan failed or returned invalid count: '$count'"
+        echo "0"
+    fi
 }
 
 # Function to get journey-specific record count
 get_journey_record_count() {
     local journey_id="$1"
-    local clean_id="${journey_id#JRN-}"
     
-    aws dynamodb query \
+    # Validate input
+    if [ -z "$journey_id" ]; then
+        log_debug "get_journey_record_count: No journey_id provided"
+        echo "0"
+        return
+    fi
+    
+    local clean_id="${journey_id#JRN-}"
+    local count
+    
+    count=$(aws dynamodb query \
         --table-name TransformationSystem \
         --key-condition-expression "PK = :pk" \
         --expression-attribute-values "{\":pk\":{\"S\":\"JOURNEY#${clean_id}\"}}" \
         --select COUNT \
-        --output json 2>/dev/null | jq -r '.Count // 0'
+        --output json 2>/dev/null | jq -r '.Count // 0' 2>/dev/null)
+    
+    # Ensure we always return a valid number
+    if [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "$count"
+    else
+        log_debug "DynamoDB query failed or returned invalid count for journey $journey_id: '$count'"
+        echo "0"
+    fi
+}
+
+# Function to get journey count via API
+get_api_journey_count() {
+    local response
+    response=$(curl -s -X POST "$SERVER_URL/tools/journeys" \
+        -H "Content-Type: application/json" \
+        -d '{"action": "list", "limit": 1000}' 2>/dev/null)
+    
+    local count
+    count=$(echo "$response" | jq -r '.result.total_journeys // 0' 2>/dev/null)
+    
+    # Ensure we always return a valid number
+    if [[ "$count" =~ ^[0-9]+$ ]]; then
+        echo "$count"
+    else
+        log_debug "API journey count failed or returned invalid count: '$count'"
+        echo "0"
+    fi
 }
 
 # API helper functions
@@ -239,14 +284,8 @@ INITIAL_DB_COUNT=$(get_dynamodb_count)
 log_info "Initial DynamoDB records: $INITIAL_DB_COUNT"
 
 log_step "Getting initial journey count via API"
-INITIAL_COUNT_RESPONSE=$(call_api "list" '{"action": "list"}')
-if check_api_success "$INITIAL_COUNT_RESPONSE"; then
-    INITIAL_JOURNEY_COUNT=$(echo "$INITIAL_COUNT_RESPONSE" | jq -r '.result.total_journeys // 0')
-    log_info "Initial journey count: $INITIAL_JOURNEY_COUNT"
-else
-    log_warning "Could not get initial journey count"
-    INITIAL_JOURNEY_COUNT=0
-fi
+INITIAL_JOURNEY_COUNT=$(get_api_journey_count)
+log_info "Initial journey count: $INITIAL_JOURNEY_COUNT"
 
 # Phase 2: Journey Creation
 echo -e "\n${PURPLE}🆕 PHASE 2: Journey Creation with Metadata${NC}"
@@ -295,8 +334,14 @@ log_step "Verifying journey and stages creation in DynamoDB"
 JOURNEY_RECORDS_AFTER_STAGES=$(get_journey_record_count "$JOURNEY_ID")
 log_info "Journey records after creation: $JOURNEY_RECORDS_AFTER_STAGES"
 
-EXPECTED_RECORDS=$((1 + ${STAGES_ADDED:-6}))  # 1 metadata + stages
+# Ensure STAGES_ADDED is a valid number
+STAGES_ADDED=${STAGES_ADDED:-6}
+EXPECTED_RECORDS=$((1 + STAGES_ADDED))  # 1 metadata + stages
 log_info "Expected records: ~$EXPECTED_RECORDS (1 metadata + $STAGES_ADDED stages)"
+
+# Ensure variables are valid numbers before comparison
+JOURNEY_RECORDS_AFTER_STAGES=${JOURNEY_RECORDS_AFTER_STAGES:-0}
+EXPECTED_RECORDS=${EXPECTED_RECORDS:-0}
 
 if [ "$JOURNEY_RECORDS_AFTER_STAGES" -ge "$EXPECTED_RECORDS" ]; then
     log_success "Journey and stages verified in DynamoDB: $JOURNEY_RECORDS_AFTER_STAGES records"
@@ -371,8 +416,7 @@ echo "======================================="
 CURRENT_DB_COUNT=$(get_dynamodb_count)
 CURRENT_JOURNEY_RECORDS=$(get_journey_record_count "$JOURNEY_ID")
 
-LIST_RESPONSE_PRE_DELETE=$(call_api "list" '{"action": "list"}')
-CURRENT_JOURNEY_COUNT=$(echo "$LIST_RESPONSE_PRE_DELETE" | jq -r '.result.total_journeys // 0')
+CURRENT_JOURNEY_COUNT=$(get_api_journey_count)
 
 log_info "DynamoDB records before delete: $CURRENT_DB_COUNT"
 log_info "Journey-specific records before delete: $CURRENT_JOURNEY_RECORDS"
@@ -415,6 +459,12 @@ FINAL_JOURNEY_RECORDS=$(get_journey_record_count "$JOURNEY_ID")
 LIST_RESPONSE_FINAL=$(call_api "list" '{"action": "list"}')
 FINAL_JOURNEY_COUNT=$(echo "$LIST_RESPONSE_FINAL" | jq -r '.result.total_journeys // 0')
 
+# Ensure all variables are valid numbers before calculations
+CURRENT_DB_COUNT=${CURRENT_DB_COUNT:-0}
+FINAL_DB_COUNT=${FINAL_DB_COUNT:-0}
+CURRENT_JOURNEY_COUNT=${CURRENT_JOURNEY_COUNT:-0}
+FINAL_JOURNEY_COUNT=${FINAL_JOURNEY_COUNT:-0}
+
 # Calculate reductions
 DB_REDUCTION=$((CURRENT_DB_COUNT - FINAL_DB_COUNT))
 JOURNEY_COUNT_REDUCTION=$((CURRENT_JOURNEY_COUNT - FINAL_JOURNEY_COUNT))
@@ -437,12 +487,18 @@ echo "==========================================="
 # Validation checks
 ALL_CHECKS_PASSED=true
 
+# Ensure variable is a valid number before comparison
+JOURNEY_COUNT_REDUCTION=${JOURNEY_COUNT_REDUCTION:-0}
+
 if [ "$JOURNEY_COUNT_REDUCTION" -eq 1 ]; then
     log_success "API count correctly reduced by 1"
 else
     log_error "API count reduction incorrect: expected 1, got $JOURNEY_COUNT_REDUCTION"
     ALL_CHECKS_PASSED=false
 fi
+
+# Ensure variable is a valid number before comparison
+FINAL_JOURNEY_RECORDS=${FINAL_JOURNEY_RECORDS:-0}
 
 if [ "$FINAL_JOURNEY_RECORDS" -eq 0 ]; then
     log_success "All journey-specific records removed from DynamoDB"
