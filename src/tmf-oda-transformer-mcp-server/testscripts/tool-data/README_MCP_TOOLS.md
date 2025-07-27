@@ -17,7 +17,9 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 **Usage**:
 ```bash
-./list_all_tools.sh
+./list_all_tools.sh                          # Local server (localhost:8000)
+./list_all_tools.sh -h 192.168.1.100 -p 9000  # Remote server
+./list_all_tools.sh --host example.com --port 8080  # Remote server with long options
 ```
 
 **Output**:
@@ -40,10 +42,11 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 **Usage**:
 ```bash
-./get_tool_details.sh [tool-name]
-./get_tool_details.sh raw-analysis
-./get_tool_details.sh journeys
-./get_tool_details.sh all
+./get_tool_details.sh [tool-name]               # Local server
+./get_tool_details.sh raw-analysis              # Specific tool on local server
+./get_tool_details.sh all                       # All tools on local server
+./get_tool_details.sh -h remote-host -p 8080 journeys  # Specific tool on remote server
+./get_tool_details.sh --host example.com --port 9000 all  # All tools on remote server
 ```
 
 **Available Tools**:
@@ -71,7 +74,9 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 **Usage**:
 ```bash
-./show_tool_parameters.sh
+./show_tool_parameters.sh                       # Local server (localhost:8000)
+./show_tool_parameters.sh -h 192.168.1.100     # Remote server (default port 8000)
+./show_tool_parameters.sh --host example.com --port 3000  # Remote server with custom port
 ```
 
 **Output**:
@@ -98,7 +103,9 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 **Usage**:
 ```bash
-./test_tool_availability.sh
+./test_tool_availability.sh                     # Local server (localhost:8000)
+./test_tool_availability.sh -h 10.0.0.50        # Remote server (default port 8000)
+./test_tool_availability.sh --host staging.company.com --port 8080  # Remote staging server
 ```
 
 **Test Categories**:
@@ -116,32 +123,47 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 ### 1. Check Server Status
 ```bash
-# First, make sure your MCP server is running
+# Local server
 ./list_all_tools.sh
+
+# Remote server
+./list_all_tools.sh -h your-server.com -p 8080
 ```
 
 ### 2. Get Tool Overview
 ```bash
-# See all available tools and their status
+# Local server - see all available tools and their status
 ./list_all_tools.sh
+
+# Remote server - check tools on production/staging
+./list_all_tools.sh --host prod-server.company.com --port 8000
 ```
 
 ### 3. Get Specific Tool Information
 ```bash
-# Get detailed info for a specific tool
+# Local server - get detailed info for a specific tool
 ./get_tool_details.sh raw-analysis
+
+# Remote server - get tool info from remote environment
+./get_tool_details.sh -h staging.company.com -p 8080 journeys
 ```
 
 ### 4. View Parameters Reference
 ```bash
-# See parameter documentation for all tools
+# Local server - see parameter documentation for all tools
 ./show_tool_parameters.sh
+
+# Remote server - check parameters on remote server
+./show_tool_parameters.sh --host example.com --port 3000
 ```
 
 ### 5. Run Comprehensive Tests
 ```bash
-# Test all tools comprehensively
+# Local server - test all tools comprehensively
 ./test_tool_availability.sh
+
+# Remote server - run full test suite on remote environment
+./test_tool_availability.sh -h prod-server.company.com -p 8000
 ```
 
 ---
@@ -173,6 +195,62 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ```bash
 python -m awslabs.tmf_oda_transformer_mcp_server.mcp_http_server
 ```
+
+---
+
+## 🌐 Remote Execution Support
+
+All scripts now support connecting to remote MCP servers using host and port parameters.
+
+### Command Line Options
+
+Each script accepts the following options:
+- `-h, --host HOST` - MCP server host (default: localhost)
+- `-p, --port PORT` - MCP server port (default: 8000)
+- `--help` - Show usage information
+
+### Remote Execution Examples
+
+#### Basic Remote Connection
+```bash
+# Connect to remote server on different host
+./list_all_tools.sh -h 192.168.1.100 -p 9000
+./get_tool_details.sh --host example.com --port 8080
+./show_tool_parameters.sh -h remote-server.local -p 3000
+./test_tool_availability.sh --host 10.0.0.50 --port 8000
+```
+
+#### Specific Tool Details on Remote Server
+```bash
+# Get details for specific tools on remote servers
+./get_tool_details.sh -h 192.168.1.100 -p 9000 journeys
+./get_tool_details.sh --host example.com --port 8080 raw-analysis
+```
+
+#### Production Environment Testing
+```bash
+# Test production server
+./test_tool_availability.sh --host prod-server.company.com --port 443
+
+# Test staging environment
+./list_all_tools.sh -h staging-env.company.com -p 8080
+```
+
+### Usage Help
+```bash
+# Get help for any script
+./list_all_tools.sh --help
+./get_tool_details.sh --help
+./show_tool_parameters.sh --help
+./test_tool_availability.sh --help
+```
+
+### Remote Connection Benefits
+- **Development**: Test against different environments
+- **CI/CD**: Integrate with automated testing pipelines
+- **Debugging**: Troubleshoot remote deployments
+- **Monitoring**: Health check remote MCP servers
+- **Multi-environment**: Test staging, production, and development servers
 
 ---
 

@@ -5,8 +5,12 @@
 
 set -e
 
-# Configuration
-SERVER_URL="http://localhost:8000"
+# Default configuration
+DEFAULT_HOST="localhost"
+DEFAULT_PORT="8000"
+HOST="$DEFAULT_HOST"
+PORT="$DEFAULT_PORT"
+SERVER_URL="http://$HOST:$PORT"
 TOOLS_ENDPOINT="$SERVER_URL/tools"
 
 # Colors for output
@@ -18,6 +22,62 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 NC='\033[0m' # No Color
+
+# Function to show usage
+show_usage() {
+    echo -e "${CYAN}${BOLD}TMF ODA Transformer MCP Server - Tool Details Script${NC}"
+    echo ""
+    echo -e "${YELLOW}Usage:${NC} $0 [OPTIONS] [TOOL_NAME]"
+    echo ""
+    echo -e "${YELLOW}Options:${NC}"
+    echo -e "  -h, --host HOST         MCP server host (default: $DEFAULT_HOST)"
+    echo -e "  -p, --port PORT         MCP server port (default: $DEFAULT_PORT)"
+    echo -e "  --help                  Show this help message"
+    echo ""
+    echo -e "${YELLOW}Arguments:${NC}"
+    echo -e "  TOOL_NAME              Name of specific tool to get details for (optional)"
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo -e "  $0                           # List all tools on localhost:8000"
+    echo -e "  $0 list_journeys             # Get details for specific tool on localhost:8000"
+    echo -e "  $0 -h 192.168.1.100 -p 9000 # List all tools on remote server"
+    echo -e "  $0 --host example.com --port 8080 create_journey # Get tool details on remote server"
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            -h|--host)
+                HOST="$2"
+                shift 2
+                ;;
+            -p|--port)
+                PORT="$2"
+                shift 2
+                ;;
+            --help)
+                show_usage
+                exit 0
+                ;;
+            -*)
+                echo -e "${RED}❌ Unknown option: $1${NC}"
+                show_usage
+                exit 1
+                ;;
+            *)
+                # This is the tool name
+                TOOL_NAME="$1"
+                shift
+                ;;
+        esac
+    done
+    
+    # Update SERVER_URL and TOOLS_ENDPOINT with parsed values
+    SERVER_URL="http://$HOST:$PORT"
+    TOOLS_ENDPOINT="$SERVER_URL/tools"
+}
 
 print_header() {
     echo -e "${PURPLE}${BOLD}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
@@ -390,12 +450,16 @@ cleanup() {
 }
 
 main() {
-    local tool_name="${1:-}"
+    # Parse command line arguments
+    parse_arguments "$@"
+    
+    local tool_name="${TOOL_NAME:-}"
     
     print_header "100% DYNAMIC TOOL DETAILS DISCOVERY"
     
     echo -e "${BLUE}🚀 Fully Dynamic TMF ODA Transformer Tool Details${NC}"
     echo -e "${BLUE}Server URL: $SERVER_URL${NC}"
+    echo -e "${BLUE}Host: $HOST, Port: $PORT${NC}"
     echo -e "${BLUE}Started: $(date)${NC}"
     echo -e "${BLUE}Mode: 100% Dynamic (no hardcoded tool data)${NC}"
     echo ""
