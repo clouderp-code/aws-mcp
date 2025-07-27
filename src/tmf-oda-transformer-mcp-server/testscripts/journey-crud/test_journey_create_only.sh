@@ -14,8 +14,86 @@ PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 NC='\033[0m' # No Color
 
-# Configuration
-SERVER_URL="http://localhost:8000"
+# Default configuration
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "${CYAN}Journey Creation Test (No Cleanup)${NC}"
+    echo ""
+    echo -e "${YELLOW}Usage:${NC} $0 [URL]"
+    echo ""
+    echo -e "${YELLOW}Arguments:${NC}"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
+    echo ""
+    echo -e "${YELLOW}Examples:${NC}"
+    echo -e "  $0                                    # Test on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000          # Test on remote server"
+    echo -e "  $0 https://api.company.com            # Use HTTPS connection"
+    echo ""
+    echo -e "${YELLOW}Description:${NC}"
+    echo -e "  Creates a journey with default stages but leaves data in DynamoDB for inspection."
+    echo -e "  This test does NOT clean up the created journey."
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
+            -*)
+                echo -e "${RED}❌ Unknown option: $1${NC}"
+                echo -e "${YELLOW}💡 Use URL format instead: $0 http://host:port${NC}"
+                show_usage
+                exit 1
+                ;;
+            *)
+                echo -e "${RED}❌ Unknown argument: $1${NC}"
+                echo -e "${YELLOW}💡 Use URL format: $0 http://host:port${NC}"
+                show_usage
+                exit 1
+                ;;
+        esac
+    done
+}
 
 # Logging configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -112,6 +190,9 @@ get_journey_record_count() {
         --query 'Count' \
         --output text 2>/dev/null || echo "0"
 }
+
+# Parse command line arguments first
+parse_arguments "$@"
 
 # Initialize logging
 setup_logging

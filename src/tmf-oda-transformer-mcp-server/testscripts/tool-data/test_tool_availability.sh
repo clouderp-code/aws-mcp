@@ -6,12 +6,40 @@
 set -e
 
 # Default configuration
-DEFAULT_HOST="localhost"
-DEFAULT_PORT="8000"
-HOST="$DEFAULT_HOST"
-PORT="$DEFAULT_PORT"
-SERVER_URL="http://$HOST:$PORT"
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
 TOOLS_ENDPOINT="$SERVER_URL/tools"
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+    
+    TOOLS_ENDPOINT="$SERVER_URL/tools"
+}
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -33,17 +61,16 @@ declare -A TEST_RESULTS
 show_usage() {
     echo -e "${CYAN}${BOLD}TMF ODA Transformer MCP Server - Tool Availability Testing Script${NC}"
     echo ""
-    echo -e "${YELLOW}Usage:${NC} $0 [OPTIONS]"
+    echo -e "${YELLOW}Usage:${NC} $0 [URL]"
     echo ""
-    echo -e "${YELLOW}Options:${NC}"
-    echo -e "  -h, --host HOST         MCP server host (default: $DEFAULT_HOST)"
-    echo -e "  -p, --port PORT         MCP server port (default: $DEFAULT_PORT)"
-    echo -e "  --help                  Show this help message"
+    echo -e "${YELLOW}Arguments:${NC}"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo -e "  $0                           # Test tools on localhost:8000"
-    echo -e "  $0 -h 192.168.1.100 -p 9000 # Test tools on remote server"
-    echo -e "  $0 --host example.com --port 8080 # Test tools on remote server"
+    echo -e "  $0                                    # Test tools on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000          # Test tools on remote server"
+    echo -e "  $0 http://example.com:8080            # Test tools on remote server"
+    echo -e "  $0 https://api.company.com            # Use HTTPS connection"
     echo ""
 }
 
@@ -51,34 +78,28 @@ show_usage() {
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -h|--host)
-                HOST="$2"
-                shift 2
-                ;;
-            -p|--port)
-                PORT="$2"
-                shift 2
-                ;;
             --help)
                 show_usage
                 exit 0
                 ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
             -*)
                 echo -e "${RED}❌ Unknown option: $1${NC}"
+                echo -e "${YELLOW}💡 Use URL format instead: $0 http://host:port${NC}"
                 show_usage
                 exit 1
                 ;;
             *)
                 echo -e "${RED}❌ Unknown argument: $1${NC}"
+                echo -e "${YELLOW}💡 Use URL format: $0 http://host:port${NC}"
                 show_usage
                 exit 1
                 ;;
         esac
     done
-    
-    # Update SERVER_URL and TOOLS_ENDPOINT with parsed values
-    SERVER_URL="http://$HOST:$PORT"
-    TOOLS_ENDPOINT="$SERVER_URL/tools"
 }
 
 print_header() {
@@ -119,13 +140,22 @@ run_test() {
     ((TOTAL_TESTS++))
     echo -ne "  [${TOTAL_TESTS}] Testing $test_name: $test_description... "
     
-    if "$@" > /dev/null 2>&1; then
+    # Capture both stdout and stderr for debugging
+    local result_output
+    result_output=$("$@" 2>&1)
+    local exit_code=$?
+    
+    if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}PASS${NC}"
         TEST_RESULTS["$test_name"]="PASS"
         ((PASSED_TESTS++))
         return 0
     else
-        echo -e "${RED}FAIL${NC}"
+        echo -e "${RED}FAIL${NC} (Exit code: $exit_code)"
+        # Show first line of error for debugging
+        if [ -n "$result_output" ]; then
+            echo -e "    ${YELLOW}Error: $(echo "$result_output" | head -1)${NC}"
+        fi
         TEST_RESULTS["$test_name"]="FAIL"
         ((FAILED_TESTS++))
         return 1
@@ -136,14 +166,21 @@ test_server_connectivity() {
     print_test_header "🌐 Server Connectivity Tests"
     echo ""
     
+    echo -e "  ${CYAN}Testing connection to: $SERVER_URL${NC}"
+    echo -e "  ${CYAN}Tools endpoint: $TOOLS_ENDPOINT${NC}"
+    echo ""
+    
+    # Test basic server connectivity with shorter timeout
     run_test "server_ping" "Basic server connectivity" \
-        curl -s --connect-timeout 10 --max-time 30 "$SERVER_URL"
+        curl -s --connect-timeout 5 --max-time 10 "$SERVER_URL"
     
+    # Test health endpoint (might not exist, that's okay)
     run_test "server_health" "Server health endpoint" \
-        curl -s --connect-timeout 10 --max-time 30 "$SERVER_URL/health"
+        curl -s --connect-timeout 5 --max-time 10 "$SERVER_URL/health"
     
+    # Test tools endpoint - this is critical
     run_test "tools_endpoint" "Tools endpoint availability" \
-        curl -s --connect-timeout 10 --max-time 30 "$TOOLS_ENDPOINT"
+        curl -s --connect-timeout 5 --max-time 10 "$TOOLS_ENDPOINT"
     
     echo ""
 }
@@ -416,8 +453,23 @@ main() {
     
     echo -e "${BLUE}🚀 Starting comprehensive tool availability testing...${NC}"
     echo -e "${BLUE}Server URL: $SERVER_URL${NC}"
-    echo -e "${BLUE}Host: $HOST, Port: $PORT${NC}"
     echo -e "${BLUE}Started: $(date)${NC}"
+    echo ""
+    
+    # Quick connectivity pre-check
+    echo -e "${CYAN}🔍 Pre-flight connectivity check...${NC}"
+    if ! curl -s --connect-timeout 3 --max-time 5 "$SERVER_URL" > /dev/null 2>&1; then
+        print_warning "Server at $SERVER_URL does not respond to basic connectivity test"
+        echo -e "${YELLOW}This may indicate:${NC}"
+        echo -e "  • Server is not running"
+        echo -e "  • Network connectivity issues"
+        echo -e "  • Firewall blocking access"
+        echo -e "  • Wrong host or port"
+        echo ""
+        echo -e "${CYAN}Continuing with tests anyway...${NC}"
+    else
+        print_success "Server responds to basic connectivity"
+    fi
     echo ""
     
     # Check dependencies
@@ -432,9 +484,22 @@ main() {
     fi
     
     # Run test suites
+    echo -e "${CYAN}Running test suites...${NC}"
+    
+    # Test server connectivity
     test_server_connectivity
-    test_all_tools
-    test_integration_scenarios
+    
+    # Only proceed with other tests if basic connectivity works
+    if [ "${TEST_RESULTS[tools_endpoint]}" = "PASS" ]; then
+        test_all_tools
+        test_integration_scenarios
+    else
+        echo -e "${YELLOW}⚠️ Skipping detailed tool tests due to connectivity issues${NC}"
+        echo -e "${CYAN}ℹ️ To troubleshoot connectivity:${NC}"
+        echo -e "  • Check if server is running: curl -I $SERVER_URL"
+        echo -e "  • Verify host/port are correct"
+        echo -e "  • Check firewall settings"
+    fi
     test_error_handling
     test_performance_metrics
     

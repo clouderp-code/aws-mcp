@@ -18,8 +18,8 @@ This directory contains comprehensive shell scripts for testing and documenting 
 **Usage**:
 ```bash
 ./list_all_tools.sh                          # Local server (localhost:8000)
-./list_all_tools.sh -h 192.168.1.100 -p 9000  # Remote server
-./list_all_tools.sh --host example.com --port 8080  # Remote server with long options
+./list_all_tools.sh http://192.168.1.100:9000  # Remote server
+./list_all_tools.sh https://example.com:8080   # Remote server with HTTPS
 ```
 
 **Output**:
@@ -45,8 +45,8 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./get_tool_details.sh [tool-name]               # Local server
 ./get_tool_details.sh raw-analysis              # Specific tool on local server
 ./get_tool_details.sh all                       # All tools on local server
-./get_tool_details.sh -h remote-host -p 8080 journeys  # Specific tool on remote server
-./get_tool_details.sh --host example.com --port 9000 all  # All tools on remote server
+./get_tool_details.sh http://remote-host:8080 journeys  # Specific tool on remote server
+./get_tool_details.sh https://example.com:9000 all      # All tools on remote server
 ```
 
 **Available Tools**:
@@ -75,8 +75,8 @@ This directory contains comprehensive shell scripts for testing and documenting 
 **Usage**:
 ```bash
 ./show_tool_parameters.sh                       # Local server (localhost:8000)
-./show_tool_parameters.sh -h 192.168.1.100     # Remote server (default port 8000)
-./show_tool_parameters.sh --host example.com --port 3000  # Remote server with custom port
+./show_tool_parameters.sh http://192.168.1.100:8000     # Remote server
+./show_tool_parameters.sh https://example.com:3000      # Remote server with custom port
 ```
 
 **Output**:
@@ -104,8 +104,8 @@ This directory contains comprehensive shell scripts for testing and documenting 
 **Usage**:
 ```bash
 ./test_tool_availability.sh                     # Local server (localhost:8000)
-./test_tool_availability.sh -h 10.0.0.50        # Remote server (default port 8000)
-./test_tool_availability.sh --host staging.company.com --port 8080  # Remote staging server
+./test_tool_availability.sh http://10.0.0.50:8000        # Remote server
+./test_tool_availability.sh https://staging.company.com:8080  # Remote staging server
 ```
 
 **Test Categories**:
@@ -127,7 +127,7 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./list_all_tools.sh
 
 # Remote server
-./list_all_tools.sh -h your-server.com -p 8080
+./list_all_tools.sh http://your-server.com:8080
 ```
 
 ### 2. Get Tool Overview
@@ -136,7 +136,7 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./list_all_tools.sh
 
 # Remote server - check tools on production/staging
-./list_all_tools.sh --host prod-server.company.com --port 8000
+./list_all_tools.sh http://prod-server.company.com:8000
 ```
 
 ### 3. Get Specific Tool Information
@@ -145,7 +145,7 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./get_tool_details.sh raw-analysis
 
 # Remote server - get tool info from remote environment
-./get_tool_details.sh -h staging.company.com -p 8080 journeys
+./get_tool_details.sh http://staging.company.com:8080 journeys
 ```
 
 ### 4. View Parameters Reference
@@ -154,7 +154,7 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./show_tool_parameters.sh
 
 # Remote server - check parameters on remote server
-./show_tool_parameters.sh --host example.com --port 3000
+./show_tool_parameters.sh https://example.com:3000
 ```
 
 ### 5. Run Comprehensive Tests
@@ -163,7 +163,7 @@ This directory contains comprehensive shell scripts for testing and documenting 
 ./test_tool_availability.sh
 
 # Remote server - run full test suite on remote environment
-./test_tool_availability.sh -h prod-server.company.com -p 8000
+./test_tool_availability.sh http://prod-server.company.com:8000
 ```
 
 ---
@@ -185,72 +185,131 @@ This directory contains comprehensive shell scripts for testing and documenting 
 
 ---
 
+## 🌐 Remote Execution Support
+
+All scripts now support connecting to remote MCP servers using a single **URL parameter format**.
+
+### Uniform Command Format
+
+**All scripts now use the same simple format:**
+```bash
+./script_name.sh [URL] [additional_args]
+```
+
+### Examples Across All Script Categories
+
+#### Tool Data Scripts
+```bash
+# Basic usage (local server)
+./list_all_tools.sh
+./get_tool_details.sh
+./show_tool_parameters.sh
+./test_tool_availability.sh
+
+# Remote server usage
+./list_all_tools.sh http://18.191.87.212:8000
+./get_tool_details.sh http://192.168.1.100:9000 journeys
+./show_tool_parameters.sh https://api.company.com:8080
+./test_tool_availability.sh http://staging-server.com:3000
+```
+
+#### Journey CRUD Scripts
+```bash
+# Basic usage (local server)
+./test_journey_create_only.sh
+./test_journey_crud_lifecycle.sh
+./test_second_brain.sh
+
+# Remote server usage
+./test_journey_create_only.sh http://18.191.87.212:8000
+./test_journey_crud_lifecycle.sh http://192.168.1.100:9000
+./test_second_brain.sh https://prod-server.company.com
+```
+
+#### Logs and Reports Scripts
+```bash
+# Basic usage (local server)
+./test_logs_and_reports.sh
+./test_logs_and_reports.sh JRN-DEMO-001
+
+# Remote server usage
+./test_logs_and_reports.sh http://18.191.87.212:8000
+./test_logs_and_reports.sh http://192.168.1.100:9000 JRN-DEMO-001
+./test_logs_and_reports.sh https://api.company.com JRN-PROD-123
+```
+
+#### Run Jobs Scripts
+```bash
+# Basic usage (local server)
+./test_enhanced_run_jobs.sh
+./test_enhanced_run_jobs.sh JRN-DEMO-001
+
+# Remote server usage
+./test_enhanced_run_jobs.sh http://18.191.87.212:8000
+./test_enhanced_run_jobs.sh http://192.168.1.100:9000 JRN-DEMO-001
+./test_enhanced_run_jobs.sh https://staging-env.company.com JRN-TEST-001
+```
+
+### URL Format Support
+
+**Supported URL formats:**
+- `http://host:port` - Standard HTTP connection
+- `https://host:port` - Secure HTTPS connection
+- `http://host` - Uses default port 8000
+- `https://host` - Uses default port 8000
+
+### Migration from Old Formats
+
+**Before (inconsistent formats):**
+```bash
+# Old host/port format (tool-data scripts)
+./list_all_tools.sh -h 192.168.1.100 -p 9000
+./get_tool_details.sh --host example.com --port 8080
+
+# Old hardcoded localhost (other scripts)
+# Required manual editing of SERVER_URL in scripts
+```
+
+**After (uniform URL format):**
+```bash
+# New unified URL format (all scripts)
+./list_all_tools.sh http://192.168.1.100:9000
+./get_tool_details.sh http://example.com:8080
+./test_journey_create_only.sh http://192.168.1.100:9000
+./test_logs_and_reports.sh http://example.com:8080
+```
+
+### Benefits of Uniform URL Format
+
+- **🎯 Consistency**: Same format across all 15+ test scripts
+- **🚀 Simplicity**: Single URL parameter instead of separate host/port
+- **🔒 Security**: Support for both HTTP and HTTPS
+- **⚡ Speed**: No need to edit scripts or remember different parameter formats
+- **🌐 Flexibility**: Easy switching between local, staging, and production environments
+- **📝 Documentation**: Clear, predictable usage patterns
+
+### Help and Usage
+
+Every script supports `--help` for usage information:
+```bash
+./list_all_tools.sh --help
+./test_journey_create_only.sh --help
+./test_logs_and_reports.sh --help
+./test_enhanced_run_jobs.sh --help
+```
+
+---
+
 ## 📊 Server Configuration
 
 **Default Settings**:
-- Server URL: `http://localhost:8000`
-- Tools Endpoint: `http://localhost:8000/tools`
+- Server URL: `http://localhost:8000` (when no URL provided)
+- All scripts fall back to localhost if no URL is specified
 
 **Starting the Server**:
 ```bash
 python -m awslabs.tmf_oda_transformer_mcp_server.mcp_http_server
 ```
-
----
-
-## 🌐 Remote Execution Support
-
-All scripts now support connecting to remote MCP servers using host and port parameters.
-
-### Command Line Options
-
-Each script accepts the following options:
-- `-h, --host HOST` - MCP server host (default: localhost)
-- `-p, --port PORT` - MCP server port (default: 8000)
-- `--help` - Show usage information
-
-### Remote Execution Examples
-
-#### Basic Remote Connection
-```bash
-# Connect to remote server on different host
-./list_all_tools.sh -h 192.168.1.100 -p 9000
-./get_tool_details.sh --host example.com --port 8080
-./show_tool_parameters.sh -h remote-server.local -p 3000
-./test_tool_availability.sh --host 10.0.0.50 --port 8000
-```
-
-#### Specific Tool Details on Remote Server
-```bash
-# Get details for specific tools on remote servers
-./get_tool_details.sh -h 192.168.1.100 -p 9000 journeys
-./get_tool_details.sh --host example.com --port 8080 raw-analysis
-```
-
-#### Production Environment Testing
-```bash
-# Test production server
-./test_tool_availability.sh --host prod-server.company.com --port 443
-
-# Test staging environment
-./list_all_tools.sh -h staging-env.company.com -p 8080
-```
-
-### Usage Help
-```bash
-# Get help for any script
-./list_all_tools.sh --help
-./get_tool_details.sh --help
-./show_tool_parameters.sh --help
-./test_tool_availability.sh --help
-```
-
-### Remote Connection Benefits
-- **Development**: Test against different environments
-- **CI/CD**: Integrate with automated testing pipelines
-- **Debugging**: Troubleshoot remote deployments
-- **Monitoring**: Health check remote MCP servers
-- **Multi-environment**: Test staging, production, and development servers
 
 ---
 

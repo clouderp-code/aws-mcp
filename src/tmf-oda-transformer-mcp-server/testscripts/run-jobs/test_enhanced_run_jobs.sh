@@ -3,8 +3,87 @@
 # Enhanced Run Jobs Tool Test Script
 # Tests comprehensive job management functionality with user-provided journey ID
 
-SERVER_URL="http://localhost:8000"
+# Default configuration
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
 ECHO_JSON=false
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+}
+
+# Function to show usage
+show_usage() {
+    echo -e "Enhanced Run Jobs Tool Test Script"
+    echo ""
+    echo -e "Usage: $0 [URL] [journey_id]"
+    echo ""
+    echo -e "Arguments:"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
+    echo -e "  journey_id             Journey ID to test with (optional)"
+    echo ""
+    echo -e "Examples:"
+    echo -e "  $0                                            # Test on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000                  # Test on remote server"
+    echo -e "  $0 http://18.191.87.212:8000 JRN-DEMO-001     # Test specific journey on remote server"
+    echo -e "  $0 https://api.company.com                    # Use HTTPS connection"
+    echo ""
+    echo -e "Description:"
+    echo -e "  Tests comprehensive job management functionality with enhanced run-jobs tool."
+    echo ""
+}
+
+# Function to parse command line arguments
+parse_arguments() {
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --help|-h)
+                show_usage
+                exit 0
+                ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
+            -*)
+                echo -e "❌ Unknown option: $1"
+                echo -e "💡 Use URL format instead: $0 http://host:port"
+                show_usage
+                exit 1
+                ;;
+            *)
+                # This is the journey_id
+                TEST_JOURNEY_ID="$1"
+                shift
+                ;;
+        esac
+    done
+}
 
 # Setup logging
 SCRIPT_NAME="test_enhanced_run_jobs"
@@ -59,6 +138,9 @@ log_message() {
     # Flush output
     sync
 }
+
+# Parse command line arguments first
+parse_arguments "$@"
 
 # Initialize logging
 log_message "INFO" "🚀 Starting Enhanced Run Jobs Tool Test"

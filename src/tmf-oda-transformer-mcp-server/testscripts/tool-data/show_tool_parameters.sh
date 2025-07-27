@@ -6,12 +6,40 @@
 set -e
 
 # Default configuration
-DEFAULT_HOST="localhost"
-DEFAULT_PORT="8000"
-HOST="$DEFAULT_HOST"
-PORT="$DEFAULT_PORT"
-SERVER_URL="http://$HOST:$PORT"
+DEFAULT_URL="http://localhost:8000"
+SERVER_URL="$DEFAULT_URL"
 TOOLS_ENDPOINT="$SERVER_URL/tools"
+
+# Function to parse URL and extract components
+parse_url() {
+    local url="$1"
+    
+    # Remove protocol (http:// or https://)
+    local url_no_protocol="${url#http://}"
+    url_no_protocol="${url_no_protocol#https://}"
+    
+    # Extract host and port
+    if [[ "$url_no_protocol" == *":"* ]]; then
+        HOST="${url_no_protocol%:*}"
+        PORT="${url_no_protocol#*:}"
+        # Remove any path after port
+        PORT="${PORT%%/*}"
+    else
+        HOST="$url_no_protocol"
+        # Remove any path after host
+        HOST="${HOST%%/*}"
+        PORT="8000"  # Default port
+    fi
+    
+    # Reconstruct the URL
+    if [[ "$url" == https://* ]]; then
+        SERVER_URL="https://$HOST:$PORT"
+    else
+        SERVER_URL="http://$HOST:$PORT"
+    fi
+    
+    TOOLS_ENDPOINT="$SERVER_URL/tools"
+}
 
 # Colors for output
 GREEN='\033[0;32m'
@@ -27,21 +55,18 @@ NC='\033[0m' # No Color
 show_usage() {
     echo -e "${CYAN}${BOLD}TMF ODA Transformer MCP Server - Tool Parameters Script${NC}"
     echo ""
-    echo -e "${YELLOW}Usage:${NC} $0 [OPTIONS] [TOOL_NAME]"
-    echo ""
-    echo -e "${YELLOW}Options:${NC}"
-    echo -e "  -h, --host HOST         MCP server host (default: $DEFAULT_HOST)"
-    echo -e "  -p, --port PORT         MCP server port (default: $DEFAULT_PORT)"
-    echo -e "  --help                  Show this help message"
+    echo -e "${YELLOW}Usage:${NC} $0 [URL] [TOOL_NAME]"
     echo ""
     echo -e "${YELLOW}Arguments:${NC}"
+    echo -e "  URL                    MCP server URL (default: $DEFAULT_URL)"
     echo -e "  TOOL_NAME              Name of specific tool to show parameters for (optional)"
     echo ""
     echo -e "${YELLOW}Examples:${NC}"
-    echo -e "  $0                           # Show parameters for all tools on localhost:8000"
-    echo -e "  $0 list_journeys             # Show parameters for specific tool on localhost:8000"
-    echo -e "  $0 -h 192.168.1.100 -p 9000 # Show parameters on remote server"
-    echo -e "  $0 --host example.com --port 8080 create_journey # Show tool parameters on remote server"
+    echo -e "  $0                                    # Show parameters for all tools on localhost:8000"
+    echo -e "  $0 list_journeys                      # Show parameters for specific tool on localhost:8000"
+    echo -e "  $0 http://192.168.1.100:9000          # Show parameters on remote server"
+    echo -e "  $0 http://example.com:8080 create_journey # Show tool parameters on remote server"
+    echo -e "  $0 https://api.company.com             # Use HTTPS connection"
     echo ""
 }
 
@@ -49,20 +74,17 @@ show_usage() {
 parse_arguments() {
     while [[ $# -gt 0 ]]; do
         case $1 in
-            -h|--host)
-                HOST="$2"
-                shift 2
-                ;;
-            -p|--port)
-                PORT="$2"
-                shift 2
-                ;;
             --help)
                 show_usage
                 exit 0
                 ;;
+            http://*|https://*)
+                parse_url "$1"
+                shift
+                ;;
             -*)
                 echo -e "${RED}❌ Unknown option: $1${NC}"
+                echo -e "${YELLOW}💡 Use URL format instead: $0 http://host:port${NC}"
                 show_usage
                 exit 1
                 ;;
@@ -73,10 +95,6 @@ parse_arguments() {
                 ;;
         esac
     done
-    
-    # Update SERVER_URL and TOOLS_ENDPOINT with parsed values
-    SERVER_URL="http://$HOST:$PORT"
-    TOOLS_ENDPOINT="$SERVER_URL/tools"
 }
 
 print_header() {
@@ -484,7 +502,6 @@ main() {
     
     echo -e "${BLUE}🚀 Fully Dynamic TMF ODA Transformer Tool Parameters${NC}"
     echo -e "${BLUE}Server URL: $SERVER_URL${NC}"
-    echo -e "${BLUE}Host: $HOST, Port: $PORT${NC}"
     echo -e "${BLUE}Started: $(date)${NC}"
     echo -e "${BLUE}Mode: 100% Dynamic (no hardcoded parameter data)${NC}"
     echo ""
