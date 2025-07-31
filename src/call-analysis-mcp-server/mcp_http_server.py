@@ -590,11 +590,275 @@ async def ask_analysis_question_wrapper(**kwargs):
             "processing_time_seconds": (datetime.now() - start_time).total_seconds()
         }
 
+async def analyze_transcript_batch_wrapper(**kwargs):
+    """Wrapper for analyze-transcript-batch tool."""
+    try:
+        s3_bucket = kwargs['s3_bucket']
+        s3_prefix = kwargs['s3_prefix']
+        output_bucket = kwargs['output_bucket']
+        output_prefix = kwargs.get('output_prefix', 'batch_analysis')
+        max_files = kwargs.get('max_files', 100)
+        analysis_options = kwargs.get('analysis_options', None)
+        aws_region = kwargs.get('aws_region', 'us-east-1')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.analysis_tools import batch_analysis_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await batch_analysis_tool(mcp, s3_bucket=s3_bucket, s3_prefix=s3_prefix, 
+                                         output_bucket=output_bucket, output_prefix=output_prefix,
+                                         max_files=max_files, analysis_options=analysis_options,
+                                         aws_region=aws_region)
+        
+        return {
+            "success": True,
+            "result": result,
+            "s3_bucket": s3_bucket,
+            "s3_prefix": s3_prefix,
+            "output_bucket": output_bucket
+        }
+        
+    except Exception as e:
+        print(f"Error in analyze_transcript_batch_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def generate_business_intelligence_wrapper(**kwargs):
+    """Wrapper for generate-business-intelligence tool."""
+    try:
+        analysis_s3_urls = kwargs['analysis_s3_urls']
+        output_bucket = kwargs['output_bucket']
+        time_period = kwargs.get('time_period', 'Today')
+        output_key = kwargs.get('output_key', 'business_intelligence.json')
+        aws_region = kwargs.get('aws_region', 'us-east-1')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.analysis_tools import business_intelligence_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await business_intelligence_tool(mcp, analysis_s3_urls=analysis_s3_urls,
+                                               output_bucket=output_bucket, time_period=time_period,
+                                               output_key=output_key, aws_region=aws_region)
+        
+        return {
+            "success": True,
+            "result": result,
+            "analysis_s3_urls": analysis_s3_urls,
+            "output_bucket": output_bucket
+        }
+        
+    except Exception as e:
+        print(f"Error in generate_business_intelligence_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def analyze_local_scripts_wrapper(**kwargs):
+    """Wrapper for analyze-local-scripts tool."""
+    try:
+        scripts_folder = kwargs.get('scripts_folder', '/opt/mycode/aws-mcp/src/call-analysis-mcp-server/transcripts')
+        script_pattern = kwargs.get('script_pattern', 'script*.json')
+        output_file = kwargs.get('output_file', '/opt/mycode/aws-mcp/src/call-analysis-mcp-server/transcripts/local_analysis_report.json')
+        time_period = kwargs.get('time_period', 'Current Script Collection')
+        max_scripts = kwargs.get('max_scripts', 50)
+        analysis_options = kwargs.get('analysis_options', None)
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.analysis_tools import local_scripts_analysis_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await local_scripts_analysis_tool(mcp, scripts_folder=scripts_folder,
+                                                 script_pattern=script_pattern, output_file=output_file,
+                                                 time_period=time_period, max_scripts=max_scripts,
+                                                 analysis_options=analysis_options)
+        
+        return {
+            "success": True,
+            "result": result,
+            "scripts_folder": scripts_folder,
+            "output_file": output_file
+        }
+        
+    except Exception as e:
+        print(f"Error in analyze_local_scripts_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def read_s3_transcript_wrapper(**kwargs):
+    """Wrapper for read-s3-transcript tool."""
+    try:
+        s3_bucket = kwargs['s3_bucket']
+        s3_key = kwargs['s3_key']
+        aws_region = kwargs.get('aws_region', 'us-east-1')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.s3_tools import s3_reader_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await s3_reader_tool(mcp, s3_bucket=s3_bucket, s3_key=s3_key, aws_region=aws_region)
+        
+        return {
+            "success": True,
+            "result": result,
+            "s3_bucket": s3_bucket,
+            "s3_key": s3_key
+        }
+        
+    except Exception as e:
+        print(f"Error in read_s3_transcript_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def upload_to_s3_wrapper(**kwargs):
+    """Wrapper for upload-to-s3 tool."""
+    try:
+        content = kwargs['content']
+        s3_bucket = kwargs['s3_bucket']
+        s3_key = kwargs['s3_key']
+        content_type = kwargs.get('content_type', 'application/json')
+        aws_region = kwargs.get('aws_region', 'us-east-1')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.s3_tools import s3_uploader_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await s3_uploader_tool(mcp, content=content, s3_bucket=s3_bucket, 
+                                       s3_key=s3_key, content_type=content_type, aws_region=aws_region)
+        
+        return {
+            "success": True,
+            "result": result,
+            "s3_bucket": s3_bucket,
+            "s3_key": s3_key
+        }
+        
+    except Exception as e:
+        print(f"Error in upload_to_s3_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def generate_report_wrapper(**kwargs):
+    """Wrapper for generate-report tool."""
+    try:
+        analysis_result = kwargs['analysis_result']
+        report_type = kwargs.get('report_type', 'detailed')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.reporting_tools import generate_report_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await generate_report_tool(mcp, analysis_result=analysis_result, report_type=report_type)
+        
+        return {
+            "success": True,
+            "result": result,
+            "report_type": report_type
+        }
+        
+    except Exception as e:
+        print(f"Error in generate_report_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
+async def create_dashboard_wrapper(**kwargs):
+    """Wrapper for create-dashboard tool."""
+    try:
+        analysis_data = kwargs['analysis_data']
+        dashboard_title = kwargs.get('dashboard_title', 'Call Analysis Dashboard')
+        output_path = kwargs.get('output_path', 'dashboard.html')
+        
+        # Import the actual tool function
+        from awslabs.call_analysis_mcp_server.tools.reporting_tools import create_dashboard_tool
+        
+        # Create a mock MCP context for the tool
+        class MockMCP:
+            async def error(self, message):
+                print(f"Error: {message}")
+        
+        mcp = MockMCP()
+        
+        # Call the tool function
+        result = await create_dashboard_tool(mcp, analysis_data=analysis_data, 
+                                           dashboard_title=dashboard_title, output_path=output_path)
+        
+        return {
+            "success": True,
+            "result": result,
+            "dashboard_title": dashboard_title,
+            "output_path": output_path
+        }
+        
+    except Exception as e:
+        print(f"Error in create_dashboard_wrapper: {e}")
+        return {
+            "success": False,
+            "error": str(e)
+        }
+
 # Direct tool function mapping
 TOOL_FUNCTIONS = {
     "analyze-transcript": analyze_transcript_wrapper,
+    "analyze-transcript-batch": analyze_transcript_batch_wrapper,
+    "generate-business-intelligence": generate_business_intelligence_wrapper,
+    "analyze-local-scripts": analyze_local_scripts_wrapper,
     "ask-analysis-question": ask_analysis_question_wrapper,
-    # Add other tools as needed
+    "read-s3-transcript": read_s3_transcript_wrapper,
+    "upload-to-s3": upload_to_s3_wrapper,
+    "generate-report": generate_report_wrapper,
+    "create-dashboard": create_dashboard_wrapper,
 }
 
 class MCPContext:

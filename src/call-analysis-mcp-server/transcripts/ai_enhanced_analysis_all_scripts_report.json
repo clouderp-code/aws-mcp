@@ -1,8 +1,8 @@
 {
   "analysis_period": "AI Enhancement Test",
   "total_calls_analyzed": 52,
-  "analysis_timestamp": "2025-07-25T05:45:27.218895",
-  "overall_quality_score": 3.7,
+  "analysis_timestamp": "2025-07-29T12:59:04.030825",
+  "overall_quality_score": 4.0,
   "quality_trend": "declining",
   "calls_with_issues": 52,
   "calls_with_issues_percentage": 100.0,
@@ -13,11 +13,11 @@
       "risk_level": "medium",
       "risk_factors": [
         "service outages",
-        "customer dissatisfaction"
+        "customer considering switching providers"
       ],
       "recommended_actions": [
         "Escalate service issues",
-        "Provide service credit"
+        "Offer service credit"
       ],
       "win_probability_change": -0.25,
       "account_value": 10000.0,
@@ -30,7 +30,7 @@
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
-            "context": "Indicates dissatisfaction and potential for switching providers.",
+            "context": "Indicates dissatisfaction and potential churn.",
             "confidence_score": 0.8
           }
         ],
@@ -50,14 +50,13 @@
       "agent_name": "Jennifer",
       "risk_level": "medium",
       "risk_factors": [
-        "price comparison",
-        "competitor mention"
+        "price comparison with competitor"
       ],
       "recommended_actions": [
         "Highlight unique value proposition",
-        "Provide competitive analysis"
+        "Discuss uptime benefits"
       ],
-      "win_probability_change": -0.2,
+      "win_probability_change": -0.15,
       "account_value": 12000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
@@ -68,7 +67,7 @@
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "FiberLink gave us a quote for 1GB at $800/month.",
-            "context": "Indicates price sensitivity and comparison with competitors.",
+            "context": "Price objection and competitor mention.",
             "confidence_score": 0.8
           }
         ],
@@ -89,11 +88,11 @@
       "risk_level": "high",
       "risk_factors": [
         "budget constraints",
-        "decision-making delays"
+        "need for justification of expenses"
       ],
       "recommended_actions": [
-        "Clarify budget limits",
-        "Provide ROI analysis"
+        "Provide detailed ROI analysis",
+        "Emphasize compliance features"
       ],
       "win_probability_change": -0.4,
       "account_value": 15000.0,
@@ -105,8 +104,8 @@
             "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "I need to justify every expense, including our telecom costs.",
-            "context": "Indicates pressure to reduce costs and potential budget constraints.",
+            "evidence_text": "our board is pushing cost reduction across all vendors.",
+            "context": "Indicates pressure to reduce costs, which may impact decision.",
             "confidence_score": 0.8
           }
         ],
@@ -118,22 +117,22 @@
         "pricing": 0.1,
         "competition": 0.1,
         "satisfaction": 0.2,
-        "urgency": 0.3
+        "urgency": 0.1
       }
     },
     {
       "account_name": "CostCutters Inc",
       "agent_name": "Patricia",
-      "risk_level": "high",
+      "risk_level": "medium",
       "risk_factors": [
-        "price objections",
-        "competitor mentions"
+        "competitor quotes",
+        "need for due diligence"
       ],
       "recommended_actions": [
-        "Prepare a detailed value analysis",
-        "Address competitive pricing"
+        "Prepare comprehensive value analysis",
+        "Highlight unique service benefits"
       ],
-      "win_probability_change": -0.35,
+      "win_probability_change": -0.2,
       "account_value": 18000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
@@ -144,7 +143,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "We've had a few vendors reach out with lower pricing.",
-            "context": "Indicates active consideration of competitors and price sensitivity.",
+            "context": "Indicates price sensitivity and competition.",
             "confidence_score": 0.8
           }
         ],
@@ -153,7 +152,7 @@
         "analysis_methodology": "Batch GPT-4o analysis of customer language and sentiment"
       },
       "risk_score_breakdown": {
-        "pricing": 0.3,
+        "pricing": 0.1,
         "competition": 0.4,
         "satisfaction": 0.2,
         "urgency": 0.1
@@ -164,15 +163,14 @@
       "agent_name": "Michelle",
       "risk_level": "medium",
       "risk_factors": [
-        "hesitation",
-        "budget constraints"
+        "concerns about network performance"
       ],
       "recommended_actions": [
-        "Discuss scaling options",
-        "Provide cost breakdown"
+        "Discuss temporary upgrade options",
+        "Provide performance guarantees"
       ],
       "win_probability_change": -0.15,
-      "account_value": 8000.0,
+      "account_value": 12000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -180,9 +178,9 @@
             "call_id": "SDF-2025-012",
             "transcript_source": "script15.json",
             "speaker": "customer",
-            "timestamp": 210.0,
-            "evidence_text": "What's the cost difference, and can we automate the scaling?",
-            "context": "Indicates uncertainty about costs and potential budget concerns.",
+            "timestamp": 0.0,
+            "evidence_text": "Definitely concerned about network performance.",
+            "context": "Indicates urgency for improvement.",
             "confidence_score": 0.8
           }
         ],
@@ -202,14 +200,14 @@
       "agent_name": "Tom",
       "risk_level": "medium",
       "risk_factors": [
-        "service reliability concerns"
+        "service reliability issues"
       ],
       "recommended_actions": [
-        "Address reliability issues",
-        "Provide a tailored solution"
+        "Propose bandwidth upgrade",
+        "Assure reliability improvements"
       ],
-      "win_probability_change": -0.3,
-      "account_value": 5000.0,
+      "win_probability_change": -0.2,
+      "account_value": 8000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -219,7 +217,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "The current one keeps dropping out when it's busy.",
-            "context": "Indicates dissatisfaction with current service reliability.",
+            "context": "Indicates dissatisfaction with current service.",
             "confidence_score": 0.8
           }
         ],
@@ -239,15 +237,15 @@
       "agent_name": "Amanda",
       "risk_level": "high",
       "risk_factors": [
-        "decision-making delays",
+        "financial loss due to outages",
         "customer dissatisfaction"
       ],
       "recommended_actions": [
-        "Provide immediate solutions",
-        "Offer service credits"
+        "Offer service credit",
+        "Implement backup solutions"
       ],
-      "win_probability_change": -0.45,
-      "account_value": 12000.0,
+      "win_probability_change": -0.35,
+      "account_value": 15000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -256,8 +254,8 @@
             "transcript_source": "script17.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "This outage happened during our dinner rush! We lost probably $3000 in sales.",
-            "context": "Indicates significant financial impact and urgency for resolution.",
+            "evidence_text": "We lost probably $3000 in sales because customers couldn't pay with cards.",
+            "context": "Indicates significant financial impact and urgency.",
             "confidence_score": 0.8
           }
         ],
@@ -269,7 +267,7 @@
         "pricing": 0.1,
         "competition": 0.1,
         "satisfaction": 0.2,
-        "urgency": 0.3
+        "urgency": 0.1
       }
     },
     {
@@ -277,15 +275,14 @@
       "agent_name": "Derek",
       "risk_level": "medium",
       "risk_factors": [
-        "hesitation",
-        "trust issues"
+        "performance issues affecting trust"
       ],
       "recommended_actions": [
-        "Build trust through transparency",
-        "Resolve current issues before upselling"
+        "Resolve current performance issues",
+        "Build trust before discussing upgrades"
       ],
-      "win_probability_change": -0.2,
-      "account_value": 15000.0,
+      "win_probability_change": -0.25,
+      "account_value": 10000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -295,7 +292,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "it's hard to trust recommendations for more services when current ones aren't working properly.",
-            "context": "Indicates hesitation to invest further due to unresolved issues.",
+            "context": "Indicates hesitation due to past performance issues.",
             "confidence_score": 0.8
           }
         ],
@@ -319,7 +316,7 @@
       ],
       "recommended_actions": [
         "Offer express installation options",
-        "Provide reassurance on service quality"
+        "Provide reassurance on timeline"
       ],
       "win_probability_change": -0.15,
       "account_value": 5000.0,
@@ -356,7 +353,7 @@
         "budget constraints"
       ],
       "recommended_actions": [
-        "Negotiate pricing options",
+        "Negotiate pricing",
         "Highlight value of the upgrade"
       ],
       "win_probability_change": -0.1,
@@ -370,7 +367,7 @@
             "speaker": "customer",
             "timestamp": 57.0,
             "evidence_text": "Hmm, that's a bit more than I expected. Is there any room to negotiate that price?",
-            "context": "Shows concern over pricing, indicating potential budget constraints.",
+            "context": "Indicates a price objection and potential budget constraints.",
             "confidence_score": 0.8
           }
         ],
@@ -394,10 +391,10 @@
       ],
       "recommended_actions": [
         "Differentiate from competitors",
-        "Highlight unique selling points"
+        "Highlight local partnerships"
       ],
       "win_probability_change": -0.1,
-      "account_value": 15000.0,
+      "account_value": 12000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -407,7 +404,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "What about pricing? We're comparing with other providers in the area.",
-            "context": "Indicates potential competition and price sensitivity.",
+            "context": "Indicates potential competition affecting decision.",
             "confidence_score": 0.8
           }
         ],
@@ -430,11 +427,11 @@
         "decision-making delays"
       ],
       "recommended_actions": [
-        "Provide references promptly",
-        "Encourage quick decision-making"
+        "Provide references quickly",
+        "Emphasize urgency of HIPAA compliance"
       ],
-      "win_probability_change": -0.1,
-      "account_value": 7000.0,
+      "win_probability_change": -0.15,
+      "account_value": 10000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -444,7 +441,7 @@
             "speaker": "customer",
             "timestamp": 120.0,
             "evidence_text": "Do you work with many dental practices? We'd love references.",
-            "context": "Indicates a need for validation before proceeding, which can delay decisions.",
+            "context": "Indicates a need for validation which may delay decision.",
             "confidence_score": 0.8
           }
         ],
@@ -468,11 +465,11 @@
         "decision-making delays"
       ],
       "recommended_actions": [
-        "Provide detailed cost analysis quickly",
-        "Highlight ROI benefits"
+        "Prepare detailed cost analysis promptly",
+        "Address SLA comparisons"
       ],
-      "win_probability_change": -0.15,
-      "account_value": 9000.0,
+      "win_probability_change": -0.2,
+      "account_value": 8000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -480,9 +477,9 @@
             "call_id": "PER-2025-023",
             "transcript_source": "script26.json",
             "speaker": "customer",
-            "timestamp": 0.0,
-            "evidence_text": "I need detailed cost analysis and ROI projections for our connectivity upgrade.",
-            "context": "Indicates a need for financial justification, which can slow down the decision process.",
+            "timestamp": 120.0,
+            "evidence_text": "I also need to see reliability statistics and compare your SLAs with competitors.",
+            "context": "Indicates a need for detailed analysis which may delay decision.",
             "confidence_score": 0.8
           }
         ],
@@ -506,11 +503,11 @@
         "Decision-making delays"
       ],
       "recommended_actions": [
-        "Provide a detailed ROI analysis",
+        "Provide detailed ROI analysis",
         "Offer a limited-time discount"
       ],
       "win_probability_change": -0.25,
-      "account_value": 17520.0,
+      "account_value": 0.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -529,7 +526,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "How do I quantify that for the CFO?",
-            "context": "Shows uncertainty in justifying the price increase.",
+            "context": "Shows uncertainty in justifying the cost.",
             "confidence_score": 0.8
           }
         ],
@@ -557,7 +554,7 @@
         "Follow up on decision timeline"
       ],
       "win_probability_change": -0.15,
-      "account_value": 9600.0,
+      "account_value": 0.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -587,11 +584,12 @@
       "agent_name": "Amanda",
       "risk_level": "medium",
       "risk_factors": [
-        "Decision-making delays"
+        "Decision-making delays",
+        "Lack of urgency"
       ],
       "recommended_actions": [
-        "Provide a comparison matrix",
-        "Schedule a follow-up meeting"
+        "Provide a timeline for decision-making",
+        "Offer incentives for quicker decisions"
       ],
       "win_probability_change": -0.1,
       "account_value": 0.0,
@@ -603,8 +601,8 @@
             "transcript_source": "script40.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "I've been evaluating five providers over the past month. Need to make a decision by quarter-end.",
-            "context": "Indicates a lengthy evaluation process that could delay decision.",
+            "evidence_text": "I've been evaluating five providers over the past month.",
+            "context": "Indicates a lengthy evaluation process that may delay decision.",
             "confidence_score": 0.8
           }
         ],
@@ -624,11 +622,12 @@
       "agent_name": "Daniel",
       "risk_level": "medium",
       "risk_factors": [
+        "Competitor mentions",
         "Decision-making delays"
       ],
       "recommended_actions": [
-        "Provide detailed responses for each criterion",
-        "Schedule a follow-up meeting"
+        "Highlight competitive advantages",
+        "Follow up on scoring matrix"
       ],
       "win_probability_change": -0.2,
       "account_value": 0.0,
@@ -640,8 +639,8 @@
             "transcript_source": "script43.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "I have a scoring matrix with weighted criteria for price, coverage, SLA terms, support quality, and POS system integration.",
-            "context": "Indicates a structured evaluation process that may prolong decision-making.",
+            "evidence_text": "We're conducting a comprehensive vendor evaluation for our 200+ store locations.",
+            "context": "Indicates a competitive landscape and potential for delays.",
             "confidence_score": 0.8
           }
         ],
@@ -651,7 +650,7 @@
       },
       "risk_score_breakdown": {
         "pricing": 0.1,
-        "competition": 0.1,
+        "competition": 0.4,
         "satisfaction": 0.2,
         "urgency": 0.3
       }
@@ -665,9 +664,9 @@
       ],
       "recommended_actions": [
         "Prepare tailored presentations for stakeholders",
-        "Follow up with decision-makers"
+        "Schedule follow-up meetings"
       ],
-      "win_probability_change": -0.15,
+      "win_probability_change": -0.1,
       "account_value": 0.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
@@ -678,7 +677,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "our security consultant and one of the board members will need to approve any new vendors.",
-            "context": "Indicates multiple layers of approval that could delay the decision.",
+            "context": "Indicates multiple decision-makers which can slow down the process.",
             "confidence_score": 0.8
           }
         ],
@@ -703,7 +702,7 @@
       ],
       "recommended_actions": [
         "Focus on cost optimization strategies",
-        "Highlight flexibility in scaling"
+        "Demonstrate value in current economic climate"
       ],
       "win_probability_change": -0.3,
       "account_value": 0.0,
@@ -716,7 +715,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "we're being much more cautious about any spending increases.",
-            "context": "Indicates significant budget constraints affecting decision-making.",
+            "context": "Indicates budget constraints and hesitance to commit.",
             "confidence_score": 0.8
           }
         ],
@@ -739,11 +738,11 @@
         "Hesitation or uncertainty"
       ],
       "recommended_actions": [
-        "Clarify global capabilities",
-        "Provide detailed regional solutions"
+        "Provide detailed documentation on global capabilities",
+        "Schedule a follow-up call to clarify concerns"
       ],
       "win_probability_change": -0.15,
-      "account_value": 500000.0,
+      "account_value": 50000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -753,7 +752,7 @@
             "speaker": "customer",
             "timestamp": 120.0,
             "evidence_text": "Sorry, could you repeat that more slowly? I want to make sure I understand your global capabilities correctly.",
-            "context": "Indicates uncertainty about the service being offered.",
+            "context": "Indicates uncertainty about the service offering.",
             "confidence_score": 0.8
           }
         ],
@@ -773,15 +772,15 @@
       "agent_name": "Michael",
       "risk_level": "high",
       "risk_factors": [
-        "Decision-making delays",
-        "Lack of urgency"
+        "Lack of urgency",
+        "Decision-making delays"
       ],
       "recommended_actions": [
-        "Provide immediate solutions to outages",
-        "Offer incentives for quick decision-making"
+        "Escalate the issue to higher management",
+        "Offer temporary solutions to mitigate losses"
       ],
-      "win_probability_change": -0.25,
-      "account_value": 600000.0,
+      "win_probability_change": -0.3,
+      "account_value": 60000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -791,7 +790,7 @@
             "speaker": "customer",
             "timestamp": 45.0,
             "evidence_text": "We're losing sales every minute this is down. What's your plan to fix this recurring problem?",
-            "context": "Indicates urgency but also dissatisfaction with current service.",
+            "context": "Indicates urgency due to ongoing issues affecting sales.",
             "confidence_score": 0.8
           }
         ],
@@ -815,11 +814,11 @@
         "Competitor mentions"
       ],
       "recommended_actions": [
-        "Reassure about pricing stability",
+        "Provide assurance on pricing stability",
         "Highlight competitive advantages"
       ],
       "win_probability_change": -0.2,
-      "account_value": 700000.0,
+      "account_value": 80000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -829,7 +828,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're concerned about service changes and potential price increases.",
-            "context": "Indicates concern about potential price increases due to acquisition.",
+            "context": "Indicates concern over potential price increases due to competitor acquisition.",
             "confidence_score": 0.8
           }
         ],
@@ -853,10 +852,10 @@
       ],
       "recommended_actions": [
         "Discuss budget flexibility",
-        "Offer scalable solutions"
+        "Explore phased implementation options"
       ],
-      "win_probability_change": -0.1,
-      "account_value": 200000.0,
+      "win_probability_change": -0.15,
+      "account_value": 75000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -866,7 +865,7 @@
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "Need to be live in two weeks. Current provider says 6-8 weeks. Can you beat that?",
-            "context": "Indicates urgency but also potential budget constraints with current provider.",
+            "context": "Indicates urgency but may also reflect budget constraints with current provider.",
             "confidence_score": 0.8
           }
         ],
@@ -886,15 +885,14 @@
       "agent_name": "Sarah",
       "risk_level": "medium",
       "risk_factors": [
-        "Decision-making delays",
-        "Budget constraints"
+        "Decision-making delays"
       ],
       "recommended_actions": [
-        "Provide competitive pricing quickly",
-        "Ensure timely installation"
+        "Ensure timely quotes and installation",
+        "Communicate urgency of renewal"
       ],
-      "win_probability_change": -0.15,
-      "account_value": 500000.0,
+      "win_probability_change": -0.1,
+      "account_value": 65000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
         "primary_evidence": [
@@ -904,7 +902,7 @@
             "speaker": "customer",
             "timestamp": 30.0,
             "evidence_text": "all need to be live before renewal or we'll have to extend current provider temporarily which we don't want to do costs too much",
-            "context": "Indicates urgency and potential budget constraints with current provider.",
+            "context": "Indicates pressure to meet deadlines to avoid additional costs.",
             "confidence_score": 0.8
           }
         ],
@@ -920,65 +918,18 @@
       }
     },
     {
-      "account_name": "SecureData Systems",
-      "agent_name": "David",
-      "risk_level": "medium",
-      "risk_factors": [
-        "Hesitation or uncertainty",
-        "Lack of urgency"
-      ],
-      "recommended_actions": [
-        "Follow up with detailed SLA documentation",
-        "Provide case studies of similar implementations"
-      ],
-      "win_probability_change": -0.25,
-      "account_value": 50000.0,
-      "evidence": {
-        "decision_type": "deal_risk_assessment",
-        "primary_evidence": [
-          {
-            "call_id": "SIL-2025-005",
-            "transcript_source": "script8.json",
-            "speaker": "customer",
-            "timestamp": 60.0,
-            "evidence_text": "[7 second pause] That's good. What about DDoS mitigation?",
-            "context": "The pause indicates hesitation in fully committing to the solution.",
-            "confidence_score": 0.8
-          },
-          {
-            "call_id": "SIL-2025-005",
-            "transcript_source": "script8.json",
-            "speaker": "customer",
-            "timestamp": 150.0,
-            "evidence_text": "Can you provide SLA documentation and reference architectures for similar implementations?",
-            "context": "Requesting additional documentation suggests a lack of urgency to close the deal.",
-            "confidence_score": 0.8
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.7,
-        "analysis_methodology": "Batch GPT-4o analysis of customer language and sentiment"
-      },
-      "risk_score_breakdown": {
-        "pricing": 0.1,
-        "competition": 0.1,
-        "satisfaction": 0.2,
-        "urgency": 0.1
-      }
-    },
-    {
       "account_name": "Enterprise Solutions Inc",
       "agent_name": "Rebecca",
-      "risk_level": "low",
+      "risk_level": "medium",
       "risk_factors": [
         "Budget constraints",
         "Decision-making delays"
       ],
       "recommended_actions": [
-        "Highlight cost-saving benefits of the hybrid approach",
-        "Schedule a follow-up to discuss further"
+        "Clarify budget constraints and explore financing options",
+        "Emphasize urgency in decision-making for performance needs"
       ],
-      "win_probability_change": -0.1,
+      "win_probability_change": -0.15,
       "account_value": 75000.0,
       "evidence": {
         "decision_type": "deal_risk_assessment",
@@ -989,7 +940,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "Primarily cost reduction, but we can't sacrifice performance for our trading applications.",
-            "context": "Indicates budget constraints but also a clear need for performance, which can be addressed.",
+            "context": "Indicates a focus on cost which may lead to budget constraints affecting decision.",
             "confidence_score": 0.8
           }
         ],
@@ -1015,7 +966,7 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "escalate issues",
+        "escalate to network engineering",
         "offer service credit"
       ],
       "account_value_at_risk": null,
@@ -1028,7 +979,7 @@
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
-            "context": "Frequent outages indicate dissatisfaction and consideration of switching.",
+            "context": "Frequent outages indicate dissatisfaction and consideration of cancellation.",
             "confidence_score": 0.8
           }
         ],
@@ -1057,7 +1008,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "highlight service advantages"
+        "highlight superior uptime",
+        "provide tailored solutions"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1069,7 +1021,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're evaluating business internet providers. FiberLink gave us a quote for 1GB at $800/month.",
-            "context": "Customer is actively evaluating competitors, indicating potential churn risk.",
+            "context": "Customer is actively seeking alternatives, indicating potential churn risk.",
             "confidence_score": 0.8
           }
         ],
@@ -1094,12 +1046,13 @@
       "account_name": "Regional Medical Practice",
       "churn_probability": 0.7,
       "risk_signals": [
-        "service complaints",
-        "competitive threats"
+        "competitive threats",
+        "service complaints"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "provide value analysis"
+        "prepare value analysis",
+        "address service reliability"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1111,7 +1064,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "It's been unreliable lately.",
-            "context": "Unreliable service is a clear dissatisfaction indicator.",
+            "context": "Unreliable service can lead to dissatisfaction and exploring competitors.",
             "confidence_score": 0.8
           }
         ],
@@ -1140,7 +1093,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "prepare comprehensive value analysis"
+        "prepare comprehensive value analysis",
+        "highlight ROI"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1152,7 +1106,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "We've had a few vendors reach out with lower pricing.",
-            "context": "Mention of lower pricing from competitors indicates potential churn.",
+            "context": "Mention of lower pricing from competitors indicates a risk of switching.",
             "confidence_score": 0.8
           }
         ],
@@ -1181,7 +1135,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "recommend temporary upgrade"
+        "recommend temporary upgrade",
+        "ensure performance monitoring"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1193,7 +1148,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "Definitely concerned about network performance.",
-            "context": "Concerns about performance indicate potential dissatisfaction.",
+            "context": "Concerns about performance can lead to dissatisfaction and potential churn.",
             "confidence_score": 0.8
           }
         ],
@@ -1222,7 +1177,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "offer bandwidth upgrade"
+        "offer bandwidth upgrade",
+        "assure reliable service"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1234,7 +1190,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "The current one keeps dropping out when it's busy.",
-            "context": "Frequent service drops indicate dissatisfaction and risk of churn.",
+            "context": "Frequent service drops indicate dissatisfaction and risk of switching.",
             "confidence_score": 0.8
           }
         ],
@@ -1265,7 +1221,7 @@
       "intervention_urgency": "medium",
       "recommended_actions": [
         "arrange backup internet",
-        "issue service credit"
+        "provide service credit"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1277,7 +1233,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "This outage happened during our dinner rush! We lost probably $3000 in sales.",
-            "context": "Significant financial impact from service failure indicates high churn risk.",
+            "context": "Significant financial loss due to service failure indicates high churn risk.",
             "confidence_score": 0.8
           }
         ],
@@ -1307,7 +1263,7 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "address performance issues",
+        "address performance issues first",
         "build trust"
       ],
       "account_value_at_risk": null,
@@ -1320,7 +1276,7 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "It's hard to trust recommendations for more services when current ones aren't working properly.",
-            "context": "Trust issues due to performance problems indicate potential churn.",
+            "context": "Trust issues due to performance problems can lead to churn.",
             "confidence_score": 0.8
           }
         ],
@@ -1345,12 +1301,12 @@
       "account_name": "Digital Marketing Pro",
       "churn_probability": 0.3,
       "risk_signals": [
-        "concern about installation timeline",
+        "installation timeline concern",
         "comparison with competitors"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "offer express installation options",
+        "offer expedited installation options",
         "highlight competitive advantages"
       ],
       "account_value_at_risk": null,
@@ -1363,7 +1319,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "I'm concerned about the 2-3 week installation timeline mentioned in chat.",
-            "context": "Customer expresses concern about installation speed, indicating potential dissatisfaction.",
+            "context": "Customer's concern about installation time indicates potential dissatisfaction.",
             "confidence_score": 0.8
           }
         ],
@@ -1388,13 +1344,13 @@
       "account_name": "Growth Manufacturing Inc",
       "churn_probability": 0.4,
       "risk_signals": [
-        "dissatisfaction with billing",
-        "multiple vendor management issues"
+        "billing issues",
+        "multiple vendors"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
         "offer integrated bundle",
-        "provide personalized billing support"
+        "simplify billing"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1436,8 +1392,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "propose flexible contract terms",
-        "offer competitive pricing"
+        "offer flexible contract terms",
+        "provide discounts"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1474,13 +1430,13 @@
       "account_name": "Medical Devices Ltd",
       "churn_probability": 0.5,
       "risk_signals": [
-        "considering competitor's offer",
-        "dissatisfaction with pricing"
+        "competitive threats",
+        "price concerns"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "offer a discount",
-        "create a long-term value plan"
+        "offer discounts",
+        "enhance value proposition"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1492,7 +1448,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "Your competitor is offering the same service for 25% less.",
-            "context": "Indicates a strong competitive threat and dissatisfaction.",
+            "context": "Indicates a strong competitive threat and dissatisfaction with pricing.",
             "confidence_score": 0.8
           }
         ],
@@ -1515,15 +1471,15 @@
     },
     {
       "account_name": "CloudNative Solutions",
-      "churn_probability": 0.4,
+      "churn_probability": 0.6,
       "risk_signals": [
         "specific technical needs",
-        "dissatisfaction with agent's knowledge"
+        "lack of expertise"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "provide technical training for agents",
-        "offer specialized support"
+        "provide technical support",
+        "ensure specialized service offerings"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1535,7 +1491,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "I need someone who understands cloud architecture.",
-            "context": "Indicates dissatisfaction with agent's ability to meet technical needs.",
+            "context": "Indicates a significant risk of churn due to unmet technical requirements.",
             "confidence_score": 0.8
           }
         ],
@@ -1547,26 +1503,26 @@
         {
           "timestamp": 0.0,
           "signal": "Initial assessment",
-          "severity": 0.4
+          "severity": 0.6
         },
         {
           "timestamp": 120.0,
           "signal": "Call completion",
-          "severity": 0.4
+          "severity": 0.6
         }
       ]
     },
     {
       "account_name": "Retail Distribution Inc",
-      "churn_probability": 0.3,
+      "churn_probability": 0.4,
       "risk_signals": [
         "connectivity issues",
-        "specific service needs"
+        "service dissatisfaction"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "offer tailored solutions",
-        "ensure reliability improvements"
+        "offer premium plan",
+        "address specific issues"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1578,7 +1534,262 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We've been having some connectivity issues during our peak shipping season.",
-            "context": "Indicates dissatisfaction with service reliability.",
+            "context": "Indicates dissatisfaction with service reliability during critical times.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.4
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.4
+        }
+      ]
+    },
+    {
+      "account_name": "Financial Services Group",
+      "churn_probability": 0.5,
+      "risk_signals": [
+        "comparison with competitors",
+        "specific compliance needs"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "check compliance features",
+        "match SLA terms"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "PKG-2025-033",
+            "transcript_source": "script36.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We're comparing your service with Verizon and AT&T.",
+            "context": "Indicates active consideration of competitors, posing a churn risk.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.5
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.5
+        }
+      ]
+    },
+    {
+      "account_name": "Manufacturing Solutions Ltd",
+      "churn_probability": 0.7,
+      "risk_signals": [
+        "dissatisfaction with pricing",
+        "competitive threats"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "provide a detailed cost-benefit analysis",
+        "offer a temporary discount"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "RPL-2025-034",
+            "transcript_source": "script37.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "Your solution sounds good, but frankly, it's 30% more expensive than what we're paying now.",
+            "context": "The customer expresses concern about pricing, indicating potential dissatisfaction.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.7
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.7
+        }
+      ]
+    },
+    {
+      "account_name": "MegaCorp Industries",
+      "churn_probability": 0.6,
+      "risk_signals": [
+        "competitive threats",
+        "service complaints"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "highlight unique value propositions",
+        "offer a tailored solution"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "RTA-2025-001",
+            "transcript_source": "script4.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We're evaluating business internet providers.",
+            "context": "The customer is actively evaluating competitors, indicating potential churn risk.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.6
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.6
+        }
+      ]
+    },
+    {
+      "account_name": "Emerging Tech Startup",
+      "churn_probability": 0.5,
+      "risk_signals": [
+        "competitive threats"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "provide a detailed comparison",
+        "emphasize unique selling points"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "CBE-2025-037",
+            "transcript_source": "script40.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "I've been evaluating five providers over the past month.",
+            "context": "The customer is comparing multiple providers, indicating a risk of churn.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.5
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.5
+        }
+      ]
+    },
+    {
+      "account_name": "National Retail Chain",
+      "churn_probability": 0.4,
+      "risk_signals": [
+        "competitive threats"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "tailor responses to customer needs",
+        "provide case studies"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "RTB-2025-040",
+            "transcript_source": "script43.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We're conducting a comprehensive vendor evaluation.",
+            "context": "The customer is evaluating multiple vendors, indicating potential churn risk.",
+            "confidence_score": 0.8
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch GPT-4o analysis of customer satisfaction and retention signals"
+      },
+      "churn_indicators_timeline": [
+        {
+          "timestamp": 0.0,
+          "signal": "Initial assessment",
+          "severity": 0.4
+        },
+        {
+          "timestamp": 120.0,
+          "signal": "Call completion",
+          "severity": 0.4
+        }
+      ]
+    },
+    {
+      "account_name": "Family Office Holdings",
+      "churn_probability": 0.3,
+      "risk_signals": [
+        "relationship degradation"
+      ],
+      "intervention_urgency": "medium",
+      "recommended_actions": [
+        "prepare tailored presentations",
+        "engage with stakeholders"
+      ],
+      "account_value_at_risk": null,
+      "evidence": {
+        "decision_type": "churn_risk_assessment",
+        "primary_evidence": [
+          {
+            "call_id": "DMI-2025-041",
+            "transcript_source": "script44.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "our client's sensitive financial data, our security consultant and one of the board members will need to approve any new vendors.",
+            "context": "The need for multiple approvals indicates a cautious approach, which may signal relationship degradation.",
             "confidence_score": 0.8
           }
         ],
@@ -1600,28 +1811,28 @@
       ]
     },
     {
-      "account_name": "Financial Services Group",
+      "account_name": "Tech Consulting Firm",
       "churn_probability": 0.5,
       "risk_signals": [
-        "comparing with competitors",
-        "specific compliance needs"
+        "dissatisfaction indicators",
+        "service complaints"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "provide competitive analysis",
-        "ensure compliance features are addressed"
+        "offer cost optimization solutions",
+        "maintain communication"
       ],
       "account_value_at_risk": null,
       "evidence": {
         "decision_type": "churn_risk_assessment",
         "primary_evidence": [
           {
-            "call_id": "PKG-2025-033",
-            "transcript_source": "script36.json",
+            "call_id": "EIC-2025-042",
+            "transcript_source": "script45.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "We're comparing your service with Verizon and AT&T.",
-            "context": "Indicates a strong competitive threat and potential for churn.",
+            "evidence_text": "we're being much more cautious about any spending increases.",
+            "context": "The customer expresses caution about spending, indicating potential dissatisfaction and risk of churn.",
             "confidence_score": 0.8
           }
         ],
@@ -1651,7 +1862,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "Immediate escalation and dedicated support team"
+        "Immediate escalation to senior management",
+        "Offer compensation for outages"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1663,7 +1875,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "This is the third outage this month! Our POS systems are down and customers can't checkout. This is unacceptable!",
-            "context": "Frequent outages indicate dissatisfaction and risk of switching providers.",
+            "context": "Frequent outages indicate severe dissatisfaction and risk of switching providers.",
             "confidence_score": 0.8
           }
         ],
@@ -1692,7 +1904,8 @@
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "Reassure customer about service stability and pricing"
+        "Reassure customer about service stability",
+        "Highlight competitive advantages"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1704,7 +1917,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're concerned about service changes and potential price increases.",
-            "context": "Concerns about competitor acquisition indicate risk of churn.",
+            "context": "Concerns about service changes due to acquisition indicate a risk of churn.",
             "confidence_score": 0.8
           }
         ],
@@ -1727,13 +1940,13 @@
     },
     {
       "account_name": "FastTrack Logistics",
-      "churn_probability": 0.4,
+      "churn_probability": 0.3,
       "risk_signals": [
         "Cancellation mentions"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "Expedite quotes and installations"
+        "Provide competitive pricing and ensure timely delivery"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1744,8 +1957,8 @@
             "transcript_source": "script7.json",
             "speaker": "customer",
             "timestamp": 30.0,
-            "evidence_text": "all need to be live before renewal or we'll have to extend current provider temporarily which we don't want to do costs too much",
-            "context": "Mentioning the need to extend current provider indicates a risk of cancellation.",
+            "evidence_text": "we'll have to extend current provider temporarily which we don't want to do costs too much",
+            "context": "Mentioning the need to extend with the current provider indicates a risk of cancellation.",
             "confidence_score": 0.8
           }
         ],
@@ -1757,12 +1970,12 @@
         {
           "timestamp": 0.0,
           "signal": "Initial assessment",
-          "severity": 0.4
+          "severity": 0.3
         },
         {
           "timestamp": 120.0,
           "signal": "Call completion",
-          "severity": 0.4
+          "severity": 0.3
         }
       ]
     },
@@ -1770,13 +1983,13 @@
       "account_name": "SecureData Systems",
       "churn_probability": 0.3,
       "risk_signals": [
-        "Dissatisfaction indicators",
-        "Service complaints"
+        "service complaints",
+        "dissatisfaction indicators"
       ],
       "intervention_urgency": "medium",
       "recommended_actions": [
-        "Provide detailed SLA documentation",
-        "Enhance DDoS mitigation features"
+        "provide detailed SLA documentation",
+        "follow up on DDoS mitigation concerns"
       ],
       "account_value_at_risk": null,
       "evidence": {
@@ -1788,7 +2001,7 @@
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "We've had issues with volumetric attacks exceeding 10Gbps.",
-            "context": "Customer expresses concern over past service issues, indicating potential dissatisfaction.",
+            "context": "The mention of past issues with DDoS attacks indicates dissatisfaction with current service performance.",
             "confidence_score": 0.8
           }
         ],
@@ -1813,12 +2026,12 @@
   "new_opportunities": [
     {
       "account_name": "Zenith Corp",
-      "opportunity_type": "expansion",
-      "estimated_value": 0.0,
-      "confidence_level": 0.7,
+      "opportunity_type": "upsell",
+      "estimated_value": 1000.0,
+      "confidence_level": 0.8,
       "next_steps": [
-        "Escalate technical issues",
-        "Offer proactive monitoring service"
+        "propose proactive monitoring service",
+        "offer service credit"
       ],
       "timeline": "high",
       "evidence": {
@@ -1830,41 +2043,7 @@
             "speaker": "customer",
             "timestamp": 6.5,
             "evidence_text": "We've had three outages this month. We're seriously considering switching providers.",
-            "context": "Customer is dissatisfied and considering switching, indicating a need for improved service.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.7,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.5599999999999999,
-        "budget_availability": 0.42,
-        "timeline_urgency": 0.35,
-        "expansion_potential": 0.48999999999999994
-      }
-    },
-    {
-      "account_name": "MegaCorp Industries",
-      "opportunity_type": "upsell",
-      "estimated_value": 2000.0,
-      "confidence_level": 0.8,
-      "next_steps": [
-        "Highlight superior uptime",
-        "Provide a tailored quote"
-      ],
-      "timeline": "medium",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "RTA-2025-001",
-            "transcript_source": "script10.json",
-            "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "Uptime is critical - we process financial transactions 24/7.",
-            "context": "Customer's critical uptime needs align with our premium service offering.",
+            "context": "Customer is dissatisfied with current service and considering switching, indicating a need for improved reliability.",
             "confidence_score": 0.7
           }
         ],
@@ -1880,15 +2059,49 @@
       }
     },
     {
-      "account_name": "Regional Medical Practice",
-      "opportunity_type": "new_product",
-      "estimated_value": 15000.0,
-      "confidence_level": 0.75,
+      "account_name": "MegaCorp Industries",
+      "opportunity_type": "upsell",
+      "estimated_value": 2000.0,
+      "confidence_level": 0.9,
       "next_steps": [
-        "Discuss HIPAA-compliant solutions",
-        "Present tailored packages"
+        "highlight superior uptime SLA",
+        "offer tailored solutions for financial transactions"
       ],
       "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "RTA-2025-001",
+            "transcript_source": "script10.json",
+            "speaker": "customer",
+            "timestamp": 90.0,
+            "evidence_text": "Uptime is critical - we process financial transactions 24/7.",
+            "context": "Customer's critical uptime needs align with our superior service offering.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.9,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7200000000000001,
+        "budget_availability": 0.54,
+        "timeline_urgency": 0.45,
+        "expansion_potential": 0.63
+      }
+    },
+    {
+      "account_name": "Regional Medical Practice",
+      "opportunity_type": "expansion",
+      "estimated_value": 5000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "propose HIPAA-compliant solutions",
+        "discuss reliability enhancements"
+      ],
+      "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
@@ -1897,8 +2110,8 @@
             "transcript_source": "script11.json",
             "speaker": "customer",
             "timestamp": 60.0,
-            "evidence_text": "We also do telemedicine calls that get choppy.",
-            "context": "Customer's need for reliable service in healthcare indicates a strong opportunity for our specialized solutions.",
+            "evidence_text": "Patient records system crashes during outages.",
+            "context": "Customer's need for reliable service directly impacts patient care, indicating a strong need for our solutions.",
             "confidence_score": 0.7
           }
         ],
@@ -1916,11 +2129,11 @@
     {
       "account_name": "ScaleUp Logistics",
       "opportunity_type": "expansion",
-      "estimated_value": 50000.0,
+      "estimated_value": 15000.0,
       "confidence_level": 0.85,
       "next_steps": [
-        "Propose SD-WAN solutions",
-        "Discuss infrastructure planning"
+        "offer SD-WAN solutions",
+        "discuss infrastructure planning"
       ],
       "timeline": "high",
       "evidence": {
@@ -1932,7 +2145,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We're opening four new distribution centers this year and need to plan our network infrastructure.",
-            "context": "Customer's expansion plans present a significant opportunity for our services.",
+            "context": "Customer's expansion plans indicate a need for scalable network solutions.",
             "confidence_score": 0.7
           }
         ],
@@ -1950,11 +2163,11 @@
     {
       "account_name": "CostCutters Inc",
       "opportunity_type": "upsell",
-      "estimated_value": 10000.0,
+      "estimated_value": 3000.0,
       "confidence_level": 0.7,
       "next_steps": [
-        "Prepare a comprehensive value analysis",
-        "Highlight cost-saving features"
+        "prepare a comprehensive value analysis",
+        "highlight cost-saving opportunities"
       ],
       "timeline": "medium",
       "evidence": {
@@ -1966,7 +2179,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "I need to justify every expense, including our telecom costs.",
-            "context": "Customer's focus on cost reduction indicates a need for demonstrating value.",
+            "context": "Customer's focus on cost reduction indicates a need for value-driven solutions.",
             "confidence_score": 0.7
           }
         ],
@@ -1987,8 +2200,8 @@
       "estimated_value": 48000.0,
       "confidence_level": 0.9,
       "next_steps": [
-        "Expedite service delivery",
-        "Confirm budget alignment"
+        "expedite service delivery",
+        "confirm budget alignment"
       ],
       "timeline": "high",
       "evidence": {
@@ -2000,7 +2213,7 @@
             "speaker": "customer",
             "timestamp": 240.0,
             "evidence_text": "Budget approved at $50K annually for the right solution.",
-            "context": "Customer has a clear budget and urgency for implementation, aligning perfectly with our offerings.",
+            "context": "Customer has a clear budget for a solution, indicating readiness to purchase.",
             "confidence_score": 0.7
           }
         ],
@@ -2018,11 +2231,11 @@
     {
       "account_name": "TaxPro Accounting Services",
       "opportunity_type": "expansion",
-      "estimated_value": 3000.0,
+      "estimated_value": 2000.0,
       "confidence_level": 0.8,
       "next_steps": [
-        "Offer temporary bandwidth upgrade",
-        "Discuss automation options"
+        "offer temporary bandwidth upgrade",
+        "discuss automation options"
       ],
       "timeline": "medium",
       "evidence": {
@@ -2033,8 +2246,8 @@
             "transcript_source": "script15.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "We're expecting 30% more clients this year and hired additional preparers.",
-            "context": "Customer's growth indicates a need for scalable solutions.",
+            "evidence_text": "We're expecting 30% more clients this year.",
+            "context": "Customer's growth indicates a need for increased bandwidth during peak seasons.",
             "confidence_score": 0.7
           }
         ],
@@ -2051,12 +2264,12 @@
     },
     {
       "account_name": "Local Coffee Roasters",
-      "opportunity_type": "upsell",
-      "estimated_value": 2000.0,
+      "opportunity_type": "unmet needs",
+      "estimated_value": 1500.0,
       "confidence_level": 0.65,
       "next_steps": [
-        "Discuss higher bandwidth options",
-        "Provide a tailored solution for busy periods"
+        "propose higher bandwidth solutions",
+        "discuss reliability improvements"
       ],
       "timeline": "medium",
       "evidence": {
@@ -2066,9 +2279,9 @@
             "call_id": "LNG-2025-013",
             "transcript_source": "script16.json",
             "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "Customers can't get online, and our payment system sometimes times out.",
-            "context": "Customer's issues with current service indicate a need for increased bandwidth.",
+            "timestamp": 0.0,
+            "evidence_text": "The current one keeps dropping out when it's busy.",
+            "context": "Customer's dissatisfaction with current service indicates a need for better reliability.",
             "confidence_score": 0.7
           }
         ],
@@ -2085,12 +2298,12 @@
     },
     {
       "account_name": "Coastal Dining Group",
-      "opportunity_type": "expansion",
-      "estimated_value": 5000.0,
+      "opportunity_type": "unmet needs",
+      "estimated_value": 3000.0,
       "confidence_level": 0.75,
       "next_steps": [
-        "Arrange for backup internet",
-        "Discuss service credits"
+        "arrange for backup internet",
+        "discuss service credits"
       ],
       "timeline": "high",
       "evidence": {
@@ -2102,7 +2315,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We lost probably $3000 in sales because customers couldn't pay with cards.",
-            "context": "Customer's loss during peak times indicates a critical need for reliable service.",
+            "context": "Customer's financial loss due to service issues highlights the urgent need for reliable solutions.",
             "confidence_score": 0.7
           }
         ],
@@ -2119,12 +2332,12 @@
     },
     {
       "account_name": "Distribution Dynamics",
-      "opportunity_type": "expansion",
-      "estimated_value": 0.0,
-      "confidence_level": 0.8,
+      "opportunity_type": "unmet needs",
+      "estimated_value": 2500.0,
+      "confidence_level": 0.7,
       "next_steps": [
-        "Fix current performance issues",
-        "Build trust before discussing upgrades"
+        "address current performance issues",
+        "build trust before discussing upgrades"
       ],
       "timeline": "high",
       "evidence": {
@@ -2136,29 +2349,29 @@
             "speaker": "customer",
             "timestamp": 90.0,
             "evidence_text": "It's hard to trust recommendations for more services when current ones aren't working properly.",
-            "context": "Customer's trust issues indicate a need to resolve existing problems before upselling.",
+            "context": "Customer's skepticism about current service indicates a need to resolve issues before upselling.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.8,
+        "confidence_level": 0.7,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.6400000000000001,
-        "budget_availability": 0.48,
-        "timeline_urgency": 0.4,
-        "expansion_potential": 0.5599999999999999
+        "customer_interest": 0.5599999999999999,
+        "budget_availability": 0.42,
+        "timeline_urgency": 0.35,
+        "expansion_potential": 0.48999999999999994
       }
     },
     {
       "account_name": "Digital Marketing Pro",
       "opportunity_type": "upsell",
       "estimated_value": 0.0,
-      "confidence_level": 0.8,
+      "confidence_level": 0.85,
       "next_steps": [
-        "Offer express installation options",
-        "Highlight competitive advantages"
+        "Highlight express installation options",
+        "Emphasize competitive advantages"
       ],
       "timeline": "medium",
       "evidence": {
@@ -2170,29 +2383,29 @@
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "I was comparing you with two other providers who both quoted 10+ days.",
-            "context": "Customer is actively comparing options, indicating a potential for upsell if installation speed is improved.",
+            "context": "Customer is considering other providers due to installation speed.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.8,
+        "confidence_level": 0.85,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.6400000000000001,
-        "budget_availability": 0.48,
-        "timeline_urgency": 0.4,
-        "expansion_potential": 0.5599999999999999
+        "customer_interest": 0.68,
+        "budget_availability": 0.51,
+        "timeline_urgency": 0.425,
+        "expansion_potential": 0.595
       }
     },
     {
       "account_name": "Spencer Logistics",
       "opportunity_type": "upsell",
-      "estimated_value": 149.0,
+      "estimated_value": 360.0,
       "confidence_level": 0.9,
       "next_steps": [
         "Confirm the upgrade to 500 Mbps",
-        "Discuss potential for future upgrades"
+        "Discuss additional services like cloud backup"
       ],
       "timeline": "high",
       "evidence": {
@@ -2203,8 +2416,8 @@
             "transcript_source": "script2.json",
             "speaker": "customer",
             "timestamp": 76.0,
-            "evidence_text": "Actually, I think we'll go with the 500 Mbps. Let's proceed.",
-            "context": "Customer has agreed to the upgrade, indicating a strong interest in higher service levels.",
+            "evidence_text": "Actually, I think we'll go with the 500 Mbps.",
+            "context": "Customer is ready to upgrade, indicating a willingness to invest.",
             "confidence_score": 0.7
           }
         ],
@@ -2223,10 +2436,10 @@
       "account_name": "Enterprise Security Corp",
       "opportunity_type": "expansion",
       "estimated_value": 0.0,
-      "confidence_level": 0.85,
+      "confidence_level": 0.8,
       "next_steps": [
         "Discuss additional security features",
-        "Explore long-term contracts for stability"
+        "Explore long-term contracts for better pricing"
       ],
       "timeline": "high",
       "evidence": {
@@ -2238,31 +2451,31 @@
             "speaker": "customer",
             "timestamp": 120.0,
             "evidence_text": "What about DDoS protection? We're constantly targeted given our client base.",
-            "context": "Customer's need for DDoS protection indicates a potential for expanding service offerings.",
+            "context": "Customer's need for enhanced security indicates potential for additional services.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.85,
+        "confidence_level": 0.8,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.68,
-        "budget_availability": 0.51,
-        "timeline_urgency": 0.425,
-        "expansion_potential": 0.595
+        "customer_interest": 0.6400000000000001,
+        "budget_availability": 0.48,
+        "timeline_urgency": 0.4,
+        "expansion_potential": 0.5599999999999999
       }
     },
     {
       "account_name": "Asia Pacific Trading Ltd",
       "opportunity_type": "expansion",
       "estimated_value": 0.0,
-      "confidence_level": 0.9,
+      "confidence_level": 0.75,
       "next_steps": [
-        "Provide tailored solutions for cross-border compliance",
-        "Discuss ongoing support options"
+        "Provide tailored solutions for regulatory compliance",
+        "Discuss potential for future expansions"
       ],
-      "timeline": "high",
+      "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
@@ -2272,41 +2485,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We are expanding our operations to support clients across Asia.",
-            "context": "Customer's expansion indicates a need for more comprehensive services.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.9,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.7200000000000001,
-        "budget_availability": 0.54,
-        "timeline_urgency": 0.45,
-        "expansion_potential": 0.63
-      }
-    },
-    {
-      "account_name": "Healthcare Partners Network",
-      "opportunity_type": "new_product",
-      "estimated_value": 0.0,
-      "confidence_level": 0.75,
-      "next_steps": [
-        "Highlight HIPAA-compliant features",
-        "Discuss additional healthcare solutions"
-      ],
-      "timeline": "medium",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "COM-2025-019",
-            "transcript_source": "script22.json",
-            "speaker": "customer",
-            "timestamp": 120.0,
-            "evidence_text": "We need to ensure all vendor communications meet our compliance standards.",
-            "context": "Customer's focus on compliance suggests a need for specialized products.",
+            "context": "Customer's expansion plans suggest a need for scalable solutions.",
             "confidence_score": 0.7
           }
         ],
@@ -2322,15 +2501,49 @@
       }
     },
     {
+      "account_name": "Healthcare Partners Network",
+      "opportunity_type": "new_product",
+      "estimated_value": 0.0,
+      "confidence_level": 0.7,
+      "next_steps": [
+        "Discuss additional compliance solutions",
+        "Offer tailored packages for healthcare organizations"
+      ],
+      "timeline": "medium",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "COM-2025-019",
+            "transcript_source": "script22.json",
+            "speaker": "customer",
+            "timestamp": 120.0,
+            "evidence_text": "We need to ensure all vendor communications meet our compliance standards.",
+            "context": "Customer's focus on compliance indicates a need for specialized products.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.5599999999999999,
+        "budget_availability": 0.42,
+        "timeline_urgency": 0.35,
+        "expansion_potential": 0.48999999999999994
+      }
+    },
+    {
       "account_name": "QuickServe Restaurant Chain",
       "opportunity_type": "upsell",
       "estimated_value": 0.0,
       "confidence_level": 0.8,
       "next_steps": [
         "Discuss additional services for new locations",
-        "Highlight local partnerships for discounts"
+        "Highlight local partnerships for better pricing"
       ],
-      "timeline": "medium",
+      "timeline": "high",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
@@ -2339,8 +2552,8 @@
             "transcript_source": "script23.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "We're opening three new QuickServe locations in Austin and need reliable internet for POS systems and guest wifi.",
-            "context": "Customer's expansion indicates a need for scalable solutions.",
+            "evidence_text": "We're opening three new QuickServe locations in Austin and need reliable internet.",
+            "context": "Customer's expansion indicates a need for reliable services across multiple locations.",
             "confidence_score": 0.7
           }
         ],
@@ -2362,7 +2575,7 @@
       "confidence_level": 0.85,
       "next_steps": [
         "Provide references from similar practices",
-        "Discuss tailored packages for dental practices"
+        "Discuss additional features for dental practices"
       ],
       "timeline": "high",
       "evidence": {
@@ -2374,7 +2587,7 @@
             "speaker": "customer",
             "timestamp": 120.0,
             "evidence_text": "Do you work with many dental practices? We'd love references.",
-            "context": "Customer's request for references indicates a strong interest in specialized solutions.",
+            "context": "Customer's request for references indicates a strong interest in the service.",
             "confidence_score": 0.7
           }
         ],
@@ -2396,7 +2609,7 @@
       "confidence_level": 0.9,
       "next_steps": [
         "Discuss additional cloud services",
-        "Provide detailed technical specifications"
+        "Explore long-term contracts for better pricing"
       ],
       "timeline": "high",
       "evidence": {
@@ -2408,7 +2621,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "We need multi-homed BGP with diverse carrier paths for our cloud infrastructure.",
-            "context": "Customer's technical requirements indicate a need for advanced services.",
+            "context": "Customer's advanced requirements indicate a need for specialized services.",
             "confidence_score": 0.7
           }
         ],
@@ -2429,8 +2642,8 @@
       "estimated_value": 0.0,
       "confidence_level": 0.8,
       "next_steps": [
-        "Provide detailed cost analysis",
-        "Discuss long-term contracts for better pricing"
+        "Provide detailed cost analysis and ROI projections",
+        "Discuss additional services that could enhance value"
       ],
       "timeline": "medium",
       "evidence": {
@@ -2442,7 +2655,7 @@
             "speaker": "customer",
             "timestamp": 0.0,
             "evidence_text": "I need detailed cost analysis and ROI projections for our connectivity upgrade.",
-            "context": "Customer's request for analysis indicates a serious consideration for upgrading services.",
+            "context": "Customer's request for analysis indicates a serious consideration for upgrading.",
             "confidence_score": 0.7
           }
         ],
@@ -2461,12 +2674,12 @@
       "account_name": "Southern Hospitality Hotels",
       "opportunity_type": "expansion",
       "estimated_value": 0.0,
-      "confidence_level": 0.85,
+      "confidence_level": 0.75,
       "next_steps": [
         "Discuss scalable bandwidth options",
-        "Highlight partnerships for discounts"
+        "Explore partnerships for additional services"
       ],
-      "timeline": "high",
+      "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
@@ -2475,76 +2688,8 @@
             "transcript_source": "script27.json",
             "speaker": "customer",
             "timestamp": 90.0,
-            "evidence_text": "We need something that can handle convention crowds - sometimes our guest wifi gets swamped during big events.",
-            "context": "Customer's need for scalable solutions during events indicates a potential for expanded service offerings.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.85,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.68,
-        "budget_availability": 0.51,
-        "timeline_urgency": 0.425,
-        "expansion_potential": 0.595
-      }
-    },
-    {
-      "account_name": "Growth Manufacturing Inc",
-      "opportunity_type": "cross-sell",
-      "estimated_value": 900.0,
-      "confidence_level": 0.85,
-      "next_steps": [
-        "Present integrated bundle options",
-        "Highlight simplified billing benefits"
-      ],
-      "timeline": "medium",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "REV-2025-025",
-            "transcript_source": "script28.json",
-            "speaker": "customer",
-            "timestamp": 0.0,
-            "evidence_text": "We're happy with our internet service, but our phone and security systems are with different vendors. Billing is becoming a nightmare.",
-            "context": "Customer is frustrated with multiple vendors, indicating a need for an integrated solution.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.85,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.68,
-        "budget_availability": 0.51,
-        "timeline_urgency": 0.425,
-        "expansion_potential": 0.595
-      }
-    },
-    {
-      "account_name": "Corner Bakery & Cafe",
-      "opportunity_type": "new_product",
-      "estimated_value": 89.0,
-      "confidence_level": 0.75,
-      "next_steps": [
-        "Emphasize affordability",
-        "Highlight essential features included"
-      ],
-      "timeline": "high",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "PEL-2025-026",
-            "transcript_source": "script29.json",
-            "speaker": "customer",
-            "timestamp": 0.0,
-            "evidence_text": "Budget is tight - what's your cheapest option?",
-            "context": "Customer is looking for the most affordable option, indicating a strong need for budget-friendly solutions.",
+            "evidence_text": "We need something that can handle convention crowds.",
+            "context": "Customer's need for scalable solutions during events indicates potential for upselling.",
             "confidence_score": 0.7
           }
         ],
@@ -2560,127 +2705,59 @@
       }
     },
     {
-      "account_name": "EdgeWave Technologies",
+      "account_name": "Manufacturing Solutions Ltd",
       "opportunity_type": "upsell",
-      "estimated_value": 160.0,
-      "confidence_level": 0.9,
+      "estimated_value": 17520.0,
+      "confidence_level": 0.75,
       "next_steps": [
-        "Quote the 500 Mbps plan with SLA",
-        "Discuss bundling VoIP services"
-      ],
-      "timeline": "high",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "BIU-2025-002",
-            "transcript_source": "script3.json",
-            "speaker": "customer",
-            "timestamp": 75.0,
-            "evidence_text": "Uptime is becoming more important. We've had two slowdowns this month and our dev team was blocked.",
-            "context": "Customer's need for better uptime indicates a strong opportunity for an upgrade.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.9,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.7200000000000001,
-        "budget_availability": 0.54,
-        "timeline_urgency": 0.45,
-        "expansion_potential": 0.63
-      }
-    },
-    {
-      "account_name": "Global Logistics Corp",
-      "opportunity_type": "expansion",
-      "estimated_value": 0.0,
-      "confidence_level": 0.8,
-      "next_steps": [
-        "Propose flexible contract terms",
-        "Highlight discount options"
+        "Provide a detailed cost-benefit analysis to the CFO",
+        "Highlight the long-term savings from reduced downtime"
       ],
       "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "CTM-2025-027",
-            "transcript_source": "script30.json",
+            "call_id": "RPL-2025-034",
+            "transcript_source": "script37.json",
             "speaker": "customer",
-            "timestamp": 0.0,
-            "evidence_text": "We need flexibility given market uncertainty, but also want the best pricing possible.",
-            "context": "Customer's need for flexibility indicates potential for a tailored contract that could lead to expansion.",
+            "timestamp": 90.0,
+            "evidence_text": "How do I quantify that for the CFO? They want to see hard numbers, not just percentages.",
+            "context": "The customer is seeking quantifiable data to justify the price increase, indicating potential for upsell if value is clearly demonstrated.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.8,
+        "confidence_level": 0.75,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.6400000000000001,
-        "budget_availability": 0.48,
-        "timeline_urgency": 0.4,
-        "expansion_potential": 0.5599999999999999
+        "customer_interest": 0.6000000000000001,
+        "budget_availability": 0.44999999999999996,
+        "timeline_urgency": 0.375,
+        "expansion_potential": 0.5249999999999999
       }
     },
     {
-      "account_name": "Medical Devices Ltd",
-      "opportunity_type": "upsell",
-      "estimated_value": 0.0,
-      "confidence_level": 0.7,
-      "next_steps": [
-        "Offer a discount for loyalty",
-        "Discuss long-term value plans"
-      ],
-      "timeline": "medium",
-      "evidence": {
-        "decision_type": "opportunity_identification",
-        "primary_evidence": [
-          {
-            "call_id": "DIS-2025-028",
-            "transcript_source": "script31.json",
-            "speaker": "customer",
-            "timestamp": 0.0,
-            "evidence_text": "Your competitor is offering the same service for 25% less. I need to consider switching.",
-            "context": "Customer is considering switching due to pricing, indicating a need for a competitive offer.",
-            "confidence_score": 0.7
-          }
-        ],
-        "supporting_evidence": [],
-        "confidence_level": 0.7,
-        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
-      },
-      "opportunity_signals_strength": {
-        "customer_interest": 0.5599999999999999,
-        "budget_availability": 0.42,
-        "timeline_urgency": 0.35,
-        "expansion_potential": 0.48999999999999994
-      }
-    },
-    {
-      "account_name": "ScaleApp Technologies",
+      "account_name": "Express Delivery Services",
       "opportunity_type": "expansion",
       "estimated_value": 0.0,
       "confidence_level": 0.85,
       "next_steps": [
-        "Discuss upgrade options",
-        "Emphasize the importance of bandwidth for growth"
+        "Fast-track installations for the new locations",
+        "Offer additional support packages for peak season"
       ],
       "timeline": "high",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "UPT-2025-029",
-            "transcript_source": "script32.json",
-            "speaker": "agent",
-            "timestamp": 90.0,
-            "evidence_text": "With 50% more developers, your bandwidth needs will likely double.",
-            "context": "Agent identifies a clear need for increased bandwidth due to customer growth.",
+            "call_id": "CVF-2025-035",
+            "transcript_source": "script38.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We need to add three more delivery locations before the holiday rush.",
+            "context": "The customer is expanding their operations, indicating a clear opportunity for upselling additional services.",
             "confidence_score": 0.7
           }
         ],
@@ -2696,25 +2773,25 @@
       }
     },
     {
-      "account_name": "TechSolutions Partners",
-      "opportunity_type": "upsell",
-      "estimated_value": 0.0,
+      "account_name": "Local Dental Practice",
+      "opportunity_type": "new_product",
+      "estimated_value": 1548.0,
       "confidence_level": 0.9,
       "next_steps": [
-        "Recommend Premium plan",
-        "Highlight dedicated video conferencing prioritization"
+        "Proceed with the Dental Pro package",
+        "Discuss potential add-ons for enhanced services"
       ],
       "timeline": "high",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "INT-2025-030",
-            "transcript_source": "script33.json",
+            "call_id": "CDO-2025-036",
+            "transcript_source": "script39.json",
             "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "We've been having some quality issues during client presentations.",
-            "context": "Customer's issues with video quality indicate a strong need for an upgraded plan.",
+            "timestamp": 60.0,
+            "evidence_text": "That sounds perfect. How do we proceed?",
+            "context": "The customer is ready to proceed with the proposed package, indicating a strong interest in the product.",
             "confidence_score": 0.7
           }
         ],
@@ -2730,59 +2807,59 @@
       }
     },
     {
-      "account_name": "CloudNative Solutions",
-      "opportunity_type": "unmet needs",
-      "estimated_value": 0.0,
-      "confidence_level": 0.6,
+      "account_name": "MegaCorp Industries",
+      "opportunity_type": "upsell",
+      "estimated_value": 4000.0,
+      "confidence_level": 0.8,
       "next_steps": [
-        "Consult technical team for specific needs",
-        "Explore tailored solutions for cloud architecture"
+        "Emphasize the benefits of the Enterprise plan",
+        "Provide a detailed comparison with FiberLink"
       ],
       "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "TRN-2025-031",
-            "transcript_source": "script34.json",
+            "call_id": "RTA-2025-001",
+            "transcript_source": "script4.json",
             "speaker": "customer",
-            "timestamp": 120.0,
-            "evidence_text": "I need someone who understands cloud architecture. Do you have AWS Direct Connect capabilities?",
-            "context": "Customer's specific technical requirements indicate a gap in current offerings.",
+            "timestamp": 90.0,
+            "evidence_text": "Uptime is critical - we process financial transactions 24/7.",
+            "context": "The customer’s emphasis on uptime indicates a need for a more reliable service, which can be met with an upsell.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.6,
+        "confidence_level": 0.8,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.48,
-        "budget_availability": 0.36,
-        "timeline_urgency": 0.3,
-        "expansion_potential": 0.42
+        "customer_interest": 0.6400000000000001,
+        "budget_availability": 0.48,
+        "timeline_urgency": 0.4,
+        "expansion_potential": 0.5599999999999999
       }
     },
     {
-      "account_name": "Retail Distribution Inc",
-      "opportunity_type": "upsell",
+      "account_name": "Emerging Tech Startup",
+      "opportunity_type": "expansion",
       "estimated_value": 0.0,
       "confidence_level": 0.7,
       "next_steps": [
-        "Discuss Premium Business plan features",
-        "Emphasize reliability and bandwidth"
+        "Prepare a detailed comparison matrix",
+        "Offer a technical deep-dive session"
       ],
       "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "PCH-2025-032",
-            "transcript_source": "script35.json",
+            "call_id": "CBE-2025-037",
+            "transcript_source": "script40.json",
             "speaker": "customer",
             "timestamp": 0.0,
-            "evidence_text": "We've been having some connectivity issues during our peak shipping season.",
-            "context": "Customer's connectivity issues indicate a need for an upgraded plan.",
+            "evidence_text": "Need to make a decision by quarter-end.",
+            "context": "The customer is in a decision-making phase, indicating a potential for expansion if their needs are met.",
             "confidence_score": 0.7
           }
         ],
@@ -2798,37 +2875,513 @@
       }
     },
     {
-      "account_name": "Financial Services Group",
-      "opportunity_type": "unmet needs",
+      "account_name": "Enterprise Data Corp",
+      "opportunity_type": "upsell",
       "estimated_value": 0.0,
-      "confidence_level": 0.65,
+      "confidence_level": 0.85,
       "next_steps": [
-        "Research SLA and compliance features",
-        "Follow up with tailored offerings"
+        "Provide tailored technical documentation",
+        "Highlight additional services for high-frequency trading"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "ICM-2025-038",
+            "transcript_source": "script41.json",
+            "speaker": "customer",
+            "timestamp": 180.0,
+            "evidence_text": "We run high-frequency trading algorithms that are latency-sensitive.",
+            "context": "The customer's specific needs for latency-sensitive services indicate a potential for upselling specialized solutions.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.68,
+        "budget_availability": 0.51,
+        "timeline_urgency": 0.425,
+        "expansion_potential": 0.595
+      }
+    },
+    {
+      "account_name": "Growth Logistics Inc",
+      "opportunity_type": "expansion",
+      "estimated_value": 180000.0,
+      "confidence_level": 0.9,
+      "next_steps": [
+        "Expedite the proposal and implementation timeline",
+        "Ensure alignment with budgetary constraints"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "BSG-2025-039",
+            "transcript_source": "script42.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We've allocated $180K in this year's budget for network infrastructure upgrade.",
+            "context": "The customer has a clear budget for upgrades, indicating a strong opportunity for expansion.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.9,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7200000000000001,
+        "budget_availability": 0.54,
+        "timeline_urgency": 0.45,
+        "expansion_potential": 0.63
+      }
+    },
+    {
+      "account_name": "National Retail Chain",
+      "opportunity_type": "expansion",
+      "estimated_value": 0.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Provide detailed responses for each criterion",
+        "Include case studies relevant to retail"
       ],
       "timeline": "medium",
       "evidence": {
         "decision_type": "opportunity_identification",
         "primary_evidence": [
           {
-            "call_id": "PKG-2025-033",
-            "transcript_source": "script36.json",
+            "call_id": "RTB-2025-040",
+            "transcript_source": "script43.json",
             "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "Can you match their SLA terms? And what about SOX compliance features for financial institutions?",
-            "context": "Customer's specific compliance needs indicate a gap in current offerings.",
+            "timestamp": 0.0,
+            "evidence_text": "We're conducting a comprehensive vendor evaluation for our 200+ store locations.",
+            "context": "The customer is evaluating multiple vendors for a large deployment, indicating a significant opportunity for expansion.",
             "confidence_score": 0.7
           }
         ],
         "supporting_evidence": [],
-        "confidence_level": 0.65,
+        "confidence_level": 0.75,
         "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
       },
       "opportunity_signals_strength": {
-        "customer_interest": 0.52,
-        "budget_availability": 0.39,
-        "timeline_urgency": 0.325,
-        "expansion_potential": 0.45499999999999996
+        "customer_interest": 0.6000000000000001,
+        "budget_availability": 0.44999999999999996,
+        "timeline_urgency": 0.375,
+        "expansion_potential": 0.5249999999999999
+      }
+    },
+    {
+      "account_name": "Family Office Holdings",
+      "opportunity_type": "upsell",
+      "estimated_value": 0.0,
+      "confidence_level": 0.8,
+      "next_steps": [
+        "Prepare tailored presentations for stakeholders",
+        "Highlight security features and compliance certifications"
+      ],
+      "timeline": "medium",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "DMI-2025-041",
+            "transcript_source": "script44.json",
+            "speaker": "customer",
+            "timestamp": 120.0,
+            "evidence_text": "The security consultant is particularly interested in data encryption and access controls.",
+            "context": "The customer's focus on security indicates a potential for upselling additional security features.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.8,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.6400000000000001,
+        "budget_availability": 0.48,
+        "timeline_urgency": 0.4,
+        "expansion_potential": 0.5599999999999999
+      }
+    },
+    {
+      "account_name": "Tech Consulting Firm",
+      "opportunity_type": "cost optimization",
+      "estimated_value": 0.0,
+      "confidence_level": 0.7,
+      "next_steps": [
+        "Restructure the current plan to reduce costs",
+        "Offer flexibility to scale up when needed"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "EIC-2025-042",
+            "transcript_source": "script45.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We're being much more cautious about any spending increases.",
+            "context": "The customer is looking for ways to manage costs, indicating a need for optimization rather than expansion.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.7,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.5599999999999999,
+        "budget_availability": 0.42,
+        "timeline_urgency": 0.35,
+        "expansion_potential": 0.48999999999999994
+      }
+    },
+    {
+      "account_name": "International Manufacturing Corp",
+      "opportunity_type": "expansion",
+      "estimated_value": 500000.0,
+      "confidence_level": 0.85,
+      "next_steps": [
+        "Provide tailored solutions for each region",
+        "Offer a bundled package for all twelve countries"
+      ],
+      "timeline": "medium",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "AVC-2025-043",
+            "transcript_source": "script46.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We have facilities in twelve countries and need connectivity solutions that work globally.",
+            "context": "Indicates a need for a comprehensive solution across multiple regions.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.68,
+        "budget_availability": 0.51,
+        "timeline_urgency": 0.425,
+        "expansion_potential": 0.595
+      }
+    },
+    {
+      "account_name": "Community Bank Network",
+      "opportunity_type": "upsell",
+      "estimated_value": 150000.0,
+      "confidence_level": 0.9,
+      "next_steps": [
+        "Provide additional features for branch connectivity",
+        "Suggest a maintenance plan post-upgrade"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "PFC-2025-044",
+            "transcript_source": "script47.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We need to discuss our branch connectivity upgrade before our board meeting tomorrow.",
+            "context": "Indicates urgency and readiness to invest in upgrades.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.9,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7200000000000001,
+        "budget_availability": 0.54,
+        "timeline_urgency": 0.45,
+        "expansion_potential": 0.63
+      }
+    },
+    {
+      "account_name": "Freight Solutions LLC",
+      "opportunity_type": "upsell",
+      "estimated_value": 200000.0,
+      "confidence_level": 0.8,
+      "next_steps": [
+        "Highlight redundancy features",
+        "Offer a premium support package"
+      ],
+      "timeline": "medium",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "CCB-2025-045",
+            "transcript_source": "script48.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "They're excited about the redundancy features you mentioned.",
+            "context": "Interest in redundancy indicates a willingness to invest in enhanced features.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.8,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.6400000000000001,
+        "budget_availability": 0.48,
+        "timeline_urgency": 0.4,
+        "expansion_potential": 0.5599999999999999
+      }
+    },
+    {
+      "account_name": "Specialized Medical Clinic",
+      "opportunity_type": "expansion",
+      "estimated_value": 100000.0,
+      "confidence_level": 0.75,
+      "next_steps": [
+        "Discuss potential upgrades for additional services",
+        "Explore other compliance needs"
+      ],
+      "timeline": "low",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "ATA-2025-046",
+            "transcript_source": "script49.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "Everything's been perfect. Patient data transfers are much faster.",
+            "context": "Satisfaction with current service suggests potential for additional services.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.75,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.6000000000000001,
+        "budget_availability": 0.44999999999999996,
+        "timeline_urgency": 0.375,
+        "expansion_potential": 0.5249999999999999
+      }
+    },
+    {
+      "account_name": "Retail Plus Corp",
+      "opportunity_type": "unmet needs",
+      "estimated_value": 300000.0,
+      "confidence_level": 0.95,
+      "next_steps": [
+        "Implement immediate redundancy solutions",
+        "Offer a discount for long-term commitment"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "VEA-2025-002",
+            "transcript_source": "script5.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "This is the third outage this month! Our POS systems are down.",
+            "context": "Indicates a critical need for reliable service and potential for immediate solutions.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.95,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.76,
+        "budget_availability": 0.57,
+        "timeline_urgency": 0.475,
+        "expansion_potential": 0.6649999999999999
+      }
+    },
+    {
+      "account_name": "TechFlow Solutions",
+      "opportunity_type": "expansion",
+      "estimated_value": 250000.0,
+      "confidence_level": 0.85,
+      "next_steps": [
+        "Provide long-term contract options",
+        "Discuss additional services to enhance stability"
+      ],
+      "timeline": "medium",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "EDG-2025-047",
+            "transcript_source": "script50.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "We're concerned about service changes and potential price increases.",
+            "context": "Concerns about service stability indicate a need for reliable options.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.85,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.68,
+        "budget_availability": 0.51,
+        "timeline_urgency": 0.425,
+        "expansion_potential": 0.595
+      }
+    },
+    {
+      "account_name": "Regional Healthcare System",
+      "opportunity_type": "positive engagement",
+      "estimated_value": 50000.0,
+      "confidence_level": 0.9,
+      "next_steps": [
+        "Maintain regular check-ins",
+        "Explore additional services to enhance the partnership"
+      ],
+      "timeline": "low",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "ADV-2025-048",
+            "transcript_source": "script51.json",
+            "speaker": "customer",
+            "timestamp": 210.0,
+            "evidence_text": "This level of attention and follow-through has restored our confidence in the partnership.",
+            "context": "Positive feedback indicates a strong relationship and potential for upselling.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.9,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7200000000000001,
+        "budget_availability": 0.54,
+        "timeline_urgency": 0.45,
+        "expansion_potential": 0.63
+      }
+    },
+    {
+      "account_name": "Scaling Software Company",
+      "opportunity_type": "expansion",
+      "estimated_value": 400000.0,
+      "confidence_level": 0.88,
+      "next_steps": [
+        "Design a scalable architecture",
+        "Discuss future growth needs"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "FUT-2025-052",
+            "transcript_source": "script52.json",
+            "speaker": "agent",
+            "timestamp": 0.0,
+            "evidence_text": "Based on your growth metrics and our predictive modeling, you'll likely need 5x your current bandwidth within 18 months.",
+            "context": "Indicates a clear need for scalable solutions to accommodate future growth.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.88,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7040000000000001,
+        "budget_availability": 0.528,
+        "timeline_urgency": 0.44,
+        "expansion_potential": 0.616
+      }
+    },
+    {
+      "account_name": "TechBoost Solutions",
+      "opportunity_type": "expansion",
+      "estimated_value": 300000.0,
+      "confidence_level": 0.92,
+      "next_steps": [
+        "Accelerate deployment timeline",
+        "Offer a startup package with flexible terms"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "EPA-2025-003",
+            "transcript_source": "script6.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "Just got Series A funding and need to triple our capacity.",
+            "context": "Indicates urgent need for increased capacity and readiness to invest.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.92,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.7360000000000001,
+        "budget_availability": 0.552,
+        "timeline_urgency": 0.46,
+        "expansion_potential": 0.644
+      }
+    },
+    {
+      "account_name": "FastTrack Logistics",
+      "opportunity_type": "upsell",
+      "estimated_value": 200000.0,
+      "confidence_level": 0.87,
+      "next_steps": [
+        "Provide competitive pricing for new locations",
+        "Discuss multi-site discounts"
+      ],
+      "timeline": "high",
+      "evidence": {
+        "decision_type": "opportunity_identification",
+        "primary_evidence": [
+          {
+            "call_id": "SPA-2025-004",
+            "transcript_source": "script7.json",
+            "speaker": "customer",
+            "timestamp": 0.0,
+            "evidence_text": "Need pricing for three new warehouses in Phoenix Dallas and Atlanta.",
+            "context": "Indicates immediate need for pricing and potential for upselling additional services.",
+            "confidence_score": 0.7
+          }
+        ],
+        "supporting_evidence": [],
+        "confidence_level": 0.87,
+        "analysis_methodology": "Batch AI analysis of expansion signals and customer language"
+      },
+      "opportunity_signals_strength": {
+        "customer_interest": 0.6960000000000001,
+        "budget_availability": 0.522,
+        "timeline_urgency": 0.435,
+        "expansion_potential": 0.609
       }
     },
     {
@@ -2838,7 +3391,7 @@
       "confidence_level": 0.85,
       "next_steps": [
         "Provide detailed SLA documentation and reference architectures to build trust.",
-        "Offer a bundled package that includes DDoS mitigation services."
+        "Suggest additional DDoS mitigation services or advanced security features."
       ],
       "timeline": "high",
       "evidence": {
@@ -2850,16 +3403,7 @@
             "speaker": "customer",
             "timestamp": 60.0,
             "evidence_text": "What about DDoS mitigation? We've had issues with volumetric attacks exceeding 10Gbps.",
-            "context": "The customer is actively seeking solutions for DDoS mitigation, indicating a need for additional services.",
-            "confidence_score": 0.7
-          },
-          {
-            "call_id": "SIL-2025-005",
-            "transcript_source": "script8.json",
-            "speaker": "customer",
-            "timestamp": 150.0,
-            "evidence_text": "Can you provide SLA documentation and reference architectures for similar implementations?",
-            "context": "The request for SLA documentation suggests the customer is serious about evaluating the service, indicating a potential upsell opportunity.",
+            "context": "The customer is actively seeking solutions for DDoS mitigation, indicating a need for enhanced security services.",
             "confidence_score": 0.7
           }
         ],
@@ -2880,8 +3424,8 @@
       "estimated_value": 75000.0,
       "confidence_level": 0.9,
       "next_steps": [
-        "Present a detailed proposal for the hybrid approach with cost-benefit analysis.",
-        "Schedule a follow-up meeting to discuss implementation timelines and support."
+        "Propose a hybrid solution that combines MPLS and SD-WAN to meet performance and cost needs.",
+        "Offer a trial period for the hybrid solution to demonstrate its effectiveness."
       ],
       "timeline": "medium",
       "evidence": {
@@ -2890,19 +3434,10 @@
           {
             "call_id": "TON-2025-006",
             "transcript_source": "script9.json",
-            "speaker": "customer",
-            "timestamp": 90.0,
-            "evidence_text": "Primarily cost reduction, but we can't sacrifice performance for our trading applications.",
-            "context": "The customer is looking for a solution that balances cost and performance, indicating a need for a tailored solution that could lead to expansion.",
-            "confidence_score": 0.7
-          },
-          {
-            "call_id": "TON-2025-006",
-            "transcript_source": "script9.json",
             "speaker": "agent",
             "timestamp": 90.0,
-            "evidence_text": "I'd recommend our hybrid approach - MPLS for critical trading paths with SD-WAN overlay for other traffic.",
-            "context": "The agent's recommendation aligns with the customer's needs, suggesting a strong fit for an expanded service offering.",
+            "evidence_text": "For trading with sub-5ms requirements, I'd recommend our hybrid approach - MPLS for critical trading paths with SD-WAN overlay for other traffic.",
+            "context": "The agent's recommendation for a hybrid approach indicates a tailored solution that can meet the customer's specific needs, suggesting potential for expansion.",
             "confidence_score": 0.7
           }
         ],
@@ -2922,13 +3457,14 @@
     {
       "agent_name": "Agent_CHR-2025-001",
       "skill_gaps": [
+        "Customer satisfaction",
         "Empathy and rapport building"
       ],
       "performance_metrics": {
-        "satisfaction": 6.5,
+        "satisfaction": 4.0,
         "empathy": 5.0
       },
-      "training_priority": "medium",
+      "training_priority": "high",
       "recommended_training": [
         "Active listening workshop",
         "Customer empathy training",
@@ -2961,7 +3497,7 @@
         "Empathy and rapport building"
       ],
       "performance_metrics": {
-        "satisfaction": 6.5,
+        "satisfaction": 8.5,
         "empathy": 5.0
       },
       "training_priority": "medium",
@@ -3386,26 +3922,29 @@
   ],
   "recurring_objections": [],
   "call_quality_issues": [],
-  "average_sentiment_score": 0.5865384615384618,
-  "average_customer_satisfaction": 7.0673076923076925,
+  "average_sentiment_score": 0.6788461538461539,
+  "average_customer_satisfaction": 7.740384615384615,
   "first_call_resolution_rate": 0.038461538461538464,
   "average_call_duration": 0.827403846153846,
   "top_priorities": [
-    "Address 26 deals at risk - implement immediate recovery actions",
-    "Prevent churn for 19 at-risk accounts - schedule retention calls",
-    "Implement agent training program"
+    "Address 25 deals at risk - implement immediate recovery actions",
+    "Prevent churn for 25 at-risk accounts - schedule retention calls",
+    "Urgent training needed for 1 agents"
   ],
-  "success_indicators": [],
+  "success_indicators": [
+    "69% of calls achieved high customer satisfaction",
+    "Positive sentiment achieved in 69% of calls"
+  ],
   "areas_for_improvement": [
     "Overall call quality needs improvement",
     "Agent skills development required"
   ],
   "evidence_summary": {
-    "total_evidence_items": 83,
-    "calls_with_evidence": 42,
-    "deal_risk_evidence": 28,
-    "churn_risk_evidence": 19,
-    "opportunity_evidence": 34,
+    "total_evidence_items": 95,
+    "calls_with_evidence": 47,
+    "deal_risk_evidence": 26,
+    "churn_risk_evidence": 25,
+    "opportunity_evidence": 42,
     "training_evidence": 0,
     "objection_examples": 0,
     "quality_issue_examples": 0
@@ -5116,7 +5655,7 @@
   "average_resolution_time_minutes": 0.0,
   "escalation_rate": 0.07692307692307693,
   "follow_up_adherence_rate": 0.8,
-  "analysis_confidence": 0.66,
+  "analysis_confidence": 0.74,
   "review_recommendations": [
     "Analysis appears well-supported - spot check key insights"
   ]
